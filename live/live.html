@@ -2,8 +2,8 @@
 <html>
 <head>
 <title>Live Coder</title>
-<script src='jquery.js' type='text/javascript'></script>
-<script src='jquery.timeago.js' type='text/javascript'></script>
+<script type='text/javascript' src='jquery.js'></script>
+<script type='text/javascript' src='jquery.timeago.js'></script>
 <script type='text/javascript'>
 
 //------------------------------------------------------------------------------
@@ -108,7 +108,7 @@ var clear_scripts = function () {
 };
 
 //------------------------------------------------------------------------------
-// Donation
+// Social
 
 var donate_via_paypal = function () {
   $('#paypal').submit();
@@ -132,6 +132,18 @@ $(document).ready(function() {
   $('#clear_all').on('click', clear_scripts);
 
   $('#donate').on('click', donate_via_paypal);
+
+  // google plus
+  if (window.location.href == 'http://livecoder.net') {
+    var po = document.createElement('script');
+    po.type = 'text/javascript';
+    po.async = true;
+    po.src = 'https://apis.google.com/js/plusone.js';
+    var s = document.getElementsByTagName('script')[0];
+    s.parentNode.insertBefore(po, s);
+  } else {
+    $('.g-plusone').css('display','none');
+  }
 
   list_scripts();
 
@@ -160,6 +172,7 @@ $(document).ready(function() {
       <button id='save'>save</button>
       <button id='clear_all'>clear all</button>
       |
+      <div class="g-plusone" data-size="medium" data-annotation="none" data-href="http://livecoder.net"></div>
       <button id='donate'> donate </button>
     </td>
   </tr>
