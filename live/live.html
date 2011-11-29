@@ -1,23 +1,52 @@
 <!DOCTYPE html>
 <html>
 <head>
-<script src="jquery-1.7.1.js"></script>
+<script src='jquery-1.7.1.js'></script>
 <script>
 
 var safe_eval = function ()
 {
-  code = $("#source").val();
-  result = eval(code);
-  $("#result").text(result);
-}
+  var code = $('#source').val();
+
+  var result;
+  try {
+    result = String(eval(code));
+  }
+  catch(err) {
+    result = 'error: ' + String(err);
+  }
+
+  $('#result').text(result);
+};
 
 $(document).ready(function() {
 
-  $("#source").css("background-color", "#eeffee");
-  $("#result").css("background-color", "#eeeeee");
+  $('#source').css('background-color', '#eeffee');
+  $('#result').css('background-color', '#eeeeee');
 
-  $("#source").text("// enter code here");
-  $("#eval").click(safe_eval);
+  $('#source').text('// enter code here');
+  $('#eval').on('click', safe_eval);
+
+  $('#live').on('change', function(){
+    if ($(this).is(':checked')) {
+
+      $('#source').on('keyup', function(){
+        try {
+          $('#result').text(String(eval($(this).val())));
+          $(this).css('background-color', '#eeffee');
+        }
+        catch (err) {
+          $(this).css('background-color', '#ffeeee');
+        }
+      });
+
+      $('#source').trigger('keyup');
+    }
+
+    else {
+      $('#source').off('change');
+    }
+  }).trigger('change');
 })
 
 </script>
@@ -31,6 +60,7 @@ $(document).ready(function() {
       </textarea>
     </td>
     <td>
+      <input type='checkbox' id='live' checked /> live <br />
       <button id=eval>eval</button>
     </td>
     <td>
