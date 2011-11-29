@@ -4,50 +4,103 @@
 <script src='jquery-1.7.1.js'></script>
 <script>
 
+window.log = function (message) { $('#log').val(message); }
+window.print = function (message) { $('#result').val(message); }
+
+//------------------------------------------------------------------------------
+// Evaluation
+
 var safe_eval = function ()
 {
-  var code = $('#source').val();
-
-  var result;
   try {
-    result = String(eval(code));
+    print(JSON.stringify(eval($('#source').val())));
+    $(this).css('background-color', '#eeffee');
   }
-  catch(err) {
-    result = 'error: ' + String(err);
+  catch (err) {
+    $(this).css('background-color', '#ffeeee');
+    log('error: ' + String(err));
   }
-
-  $('#result').text(result);
 };
+
+var live_eval = function () {
+  if ($(this).is(':checked')) {
+    $('#source').on('keyup', safe_eval)
+      .trigger('keyup');
+  }
+  else {
+    $('#source').off('keyup');
+  }
+};
+
+//------------------------------------------------------------------------------
+// Persistence
+
+var script_link = function (key) {
+  var link = document.createElement('button');
+  $(link).on('click', function () {
+    $('#source').val(localStorage.getItem(key))
+      .trigger('keyup');
+  })
+  datestamp = String(Date(key.slice('saved script '.length)));
+  firstline = localStorage.getItem(key).split('\n',1)[0];
+  $(link).text(datestamp + ': ' + firstline + '...');
+  return link;
+}
+
+var list_scripts = function () {
+
+  var pattern = new RegExp('^saved script [0-9]+$');
+
+  var list = [];
+  for (var i = 0; i < localStorage.length; ++i) {
+    key = localStorage.key(i);
+    if (pattern.test(key)) {
+      list.push(key);
+    }
+  }
+  list.sort();
+
+  var menu = $('#script_list')
+  menu.empty();
+  for (i in list) {
+    var key = list[i];
+    menu.append(script_link(key))
+      .append(document.createElement('br'));
+  }
+};
+
+var save_script = function () {
+  var name = 'saved script ' + String(Date.now());
+  var script = $('#source').val();
+  log('storing ' + name);
+  localStorage.setItem(name, script);
+  list_scripts();
+};
+
+var clear_scripts = function () {
+  localStorage.clear(); // WARNING this clears everything
+  list_scripts();
+};
+
+//------------------------------------------------------------------------------
+// Main
 
 $(document).ready(function() {
 
   $('#source').css('background-color', '#eeffee');
   $('#result').css('background-color', '#eeeeee');
+  $('#log').css('background-color', '#ffffee');
 
   $('#source').text('// enter code here');
   $('#eval').on('click', safe_eval);
 
-  $('#live').on('change', function(){
-    if ($(this).is(':checked')) {
+  $('#live').on('change', live_eval).trigger('change');
 
-      $('#source').on('keyup', function(){
-        try {
-          $('#result').text(String(eval($(this).val())));
-          $(this).css('background-color', '#eeffee');
-        }
-        catch (err) {
-          $(this).css('background-color', '#ffeeee');
-        }
-      });
+  $('#save').on('click', save_script);
+  $('#clear_all').on('click', clear_scripts);
 
-      $('#source').trigger('keyup');
-    }
-
-    else {
-      $('#source').off('change');
-    }
-  }).trigger('change');
-})
+  list_scripts();
+});
 
 </script>
 </head>
@@ -56,16 +109,24 @@ $(document).ready(function() {
 <table>
   <tr>
     <td>
-      <textarea id=source rows=20 cols=40>
-      </textarea>
+      <textarea id=source rows=23 cols=40> </textarea>
     </td>
     <td>
-      <input type='checkbox' id='live' checked /> live <br />
+      <textarea id=result rows=20 cols=40 readonly> </textarea>
+      <textarea id=log rows=2 cols=40 readonly> </textarea>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <input type='checkbox' id='live' checked /> live
       <button id=eval>eval</button>
+      |
+      <button id=save>save</button>
+      <button id=clear_all>clear all</button>
     </td>
-    <td>
-      <textarea id=result rows=20 cols=40>
-      </textarea>
+  </tr>
+  <tr>
+    <td id=script_list colspan=2>
     </td>
   </tr>
 </table>
