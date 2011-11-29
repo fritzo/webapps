@@ -2,8 +2,21 @@
 <html>
 <head>
 <title>Live Coder</title>
-<script src='jquery.js'></script>
-<script>
+<script src='jquery.js' type='text/javascript'></script>
+<script src='jquery.timeago.js' type='text/javascript'></script>
+<script type='text/javascript'>
+
+//------------------------------------------------------------------------------
+// Live
+
+var live = {};
+
+live.logo =
+"//  _     _             ____           _           \n" +
+"// | |   (_)__   _____ / ___| ___   __| | ___ _ __ \n" +
+"// | |   | |\\ \\ / / _ \\ |    / _ \\ / _` |/ _ \\ '__|\n" +
+"// | |___| | \\ V /  __/ |___| (_) | (_| |  __/ |   \n" +
+"// |_____|_|  \\_/ \\___|\\____|\\___/ \\__,_|\\___|_|";
 
 window.log = function (message) {
   $('#log').val(message);
@@ -50,7 +63,7 @@ var script_link = function (key) {
       .trigger('keyup');
   })
   time = Number(key.slice('saved script '.length));
-  datestamp = String(new Date(time));
+  datestamp = $.timeago(new Date(time));
   firstline = localStorage.getItem(key).split('\n',1)[0];
   $(link).text(datestamp + ': ' + firstline + '...');
   return link;
@@ -110,7 +123,7 @@ $(document).ready(function() {
   $('#result').css('background-color', '#eeeeee');
   $('#log').css('background-color', '#ffffee');
 
-  $('#source').text('// enter code here');
+  $('#source').text(live.logo + '\n//  enter code below');
 
   $('#eval').on('click', safe_eval);
   $('#if_live').on('change', live_eval).trigger('change');
@@ -132,11 +145,11 @@ $(document).ready(function() {
 <table>
   <tr>
     <td>
-      <textarea id='source' rows=23 cols=40> </textarea>
+      <textarea id='source' rows=23 cols=50> </textarea>
     </td>
     <td>
-      <textarea id='result' rows=20 cols=40 readonly> </textarea>
-      <textarea id='log' rows=2 cols=40 readonly> </textarea>
+      <textarea id='result' rows=20 cols=50 readonly> </textarea>
+      <textarea id='log' rows=2 cols=50 readonly> </textarea>
     </td>
   </tr>
   <tr>
