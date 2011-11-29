@@ -1,34 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-<script src='jquery-1.7.1.js'></script>
+<title>Live Coder</title>
+<script src='jquery.js'></script>
 <script>
 
-window.log = function (message) { $('#log').val(message); }
-window.print = function (message) { $('#result').val(message); }
+window.log = function (message) {
+  $('#log').val(message);
+}
+window.print = function (message) {
+  $('#result').val(message);
+}
 
 //------------------------------------------------------------------------------
 // Evaluation
 
-var safe_eval = function ()
-{
+var safe_eval = function () {
+  source = $('#source');
+
   try {
-    print(JSON.stringify(eval($('#source').val())));
-    $(this).css('background-color', '#eeffee');
+    print(JSON.stringify(eval(source.val())));
+    source.css('background-color', '#eeffee');
+    log('');
   }
   catch (err) {
-    $(this).css('background-color', '#ffeeee');
+    source.css('background-color', '#ffeeee');
     log('error: ' + String(err));
   }
 };
 
 var live_eval = function () {
-  if ($(this).is(':checked')) {
-    $('#source').on('keyup', safe_eval)
-      .trigger('keyup');
+  source = $('#source');
+
+  if ($('#if_live').is(':checked')) {
+    source.on('keyup', safe_eval).trigger('keyup');
   }
   else {
-    $('#source').off('keyup');
+    source.off('keyup');
   }
 };
 
@@ -41,7 +49,8 @@ var script_link = function (key) {
     $('#source').val(localStorage.getItem(key))
       .trigger('keyup');
   })
-  datestamp = String(Date(key.slice('saved script '.length)));
+  time = Number(key.slice('saved script '.length));
+  datestamp = String(new Date(time));
   firstline = localStorage.getItem(key).split('\n',1)[0];
   $(link).text(datestamp + ': ' + firstline + '...');
   return link;
@@ -49,7 +58,7 @@ var script_link = function (key) {
 
 var list_scripts = function () {
 
-  var pattern = new RegExp('^saved script [0-9]+$');
+  var pattern = /^saved script [0-9]+$/;
 
   var list = [];
   for (var i = 0; i < localStorage.length; ++i) {
@@ -60,9 +69,10 @@ var list_scripts = function () {
   }
   list.sort();
 
+  // TODO add collapsable view windows to allow copy-paste of code
   var menu = $('#script_list')
   menu.empty();
-  for (i in list) {
+  for (var i = 0; i < list.length; ++i) {
     var key = list[i];
     menu.append(script_link(key))
       .append(document.createElement('br'));
@@ -78,9 +88,18 @@ var save_script = function () {
 };
 
 var clear_scripts = function () {
-  localStorage.clear(); // WARNING this clears everything
-  list_scripts();
+  if (confirm('Really clear all local scripts?')) {
+    localStorage.clear(); // WARNING this clears everything
+    list_scripts();
+  }
 };
+
+//------------------------------------------------------------------------------
+// Donation
+
+var donate_via_paypal = function () {
+  $('#paypal').submit();
+}
 
 //------------------------------------------------------------------------------
 // Main
@@ -92,14 +111,18 @@ $(document).ready(function() {
   $('#log').css('background-color', '#ffffee');
 
   $('#source').text('// enter code here');
-  $('#eval').on('click', safe_eval);
 
-  $('#live').on('change', live_eval).trigger('change');
+  $('#eval').on('click', safe_eval);
+  $('#if_live').on('change', live_eval).trigger('change');
 
   $('#save').on('click', save_script);
   $('#clear_all').on('click', clear_scripts);
 
+  $('#donate').on('click', donate_via_paypal);
+
   list_scripts();
+
+  $('#paypal').css('display', 'none');
 });
 
 </script>
@@ -109,27 +132,35 @@ $(document).ready(function() {
 <table>
   <tr>
     <td>
-      <textarea id=source rows=23 cols=40> </textarea>
+      <textarea id='source' rows=23 cols=40> </textarea>
     </td>
     <td>
-      <textarea id=result rows=20 cols=40 readonly> </textarea>
-      <textarea id=log rows=2 cols=40 readonly> </textarea>
+      <textarea id='result' rows=20 cols=40 readonly> </textarea>
+      <textarea id='log' rows=2 cols=40 readonly> </textarea>
     </td>
   </tr>
   <tr>
-    <td>
-      <input type='checkbox' id='live' checked /> live
+    <td colspan=2>
+      <input type='checkbox' id='if_live' checked /> live
       <button id=eval>eval</button>
       |
-      <button id=save>save</button>
-      <button id=clear_all>clear all</button>
+      <button id='save'>save</button>
+      <button id='clear_all'>clear all</button>
+      |
+      <button id='donate'> donate </button>
     </td>
   </tr>
   <tr>
-    <td id=script_list colspan=2>
+    <td id='script_list' colspan=2>
     </td>
   </tr>
 </table>
+
+<form id='paypal' action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_blank">
+<input type="hidden" name="cmd" value="_s-xclick">
+<input type="hidden" name="encrypted" value="-----BEGIN PKCS7-----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-----END PKCS7-----
+">
+</form>
 
 </body>
 </html>
