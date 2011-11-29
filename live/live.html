@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="jquery-1.7.1.js"></script>
+<script>
+
+var safe_eval = function ()
+{
+  code = $("#source").val();
+  result = eval(code);
+  $("#result").text(result);
+}
+
+$(document).ready(function() {
+
+  $("#source").css("background-color", "#eeffee");
+  $("#result").css("background-color", "#eeeeee");
+
+  $("#source").text("// enter code here");
+  $("#eval").click(safe_eval);
+})
+
+</script>
+</head>
+<body>
+
+<table>
+  <tr>
+    <td>
+      <textarea id=source rows=20 cols=40>
+      </textarea>
+    </td>
+    <td>
+      <button id=eval>eval</button>
+    </td>
+    <td>
+      <textarea id=result rows=20 cols=40>
+      </textarea>
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>
+
