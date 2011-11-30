@@ -50,7 +50,7 @@ window.print = function (message) {
 //------------------------------------------------------------------------------
 // User
 
-live.login = function (user) {
+live.setUser = function (user) {
   if (user == undefined) {
     user = 'anonymous';
   }
@@ -152,11 +152,6 @@ live.getScriptLink = function (key) {
             .css('display', 'none')
             .append($(document.createElement('code'))
                 .html(fullSource))));
-
-  // TODO add preview
-  //firstline = localStorage.getItem(key).split('\n',1)[0];
-  //$(link).text(datestamp + ': ' + firstline + '...');
-
   return tr;
 }
 
@@ -218,11 +213,14 @@ $(document).ready(function() {
     $('.g-plusone').css('display','none');
   }
 
-  $('#login').on('click', function () {
-    live.login(prompt());
+  $('#setUser').on('click', function () {
+    var user = prompt('What name will you use?')
+    if (user != undefined) {
+      live.setUser(user);
+    }
   });
 
-  live.login(localStorage.getItem('user'));
+  live.setUser(localStorage.getItem('user'));
 
   live.listScripts();
 
@@ -278,7 +276,7 @@ body {
   <button id='save'>save</button>
   <button id='deleteAll'>delete all</button>
   |
-  <button id='login'>login</button>
+  <button id='setUser'>user</button>
   <span id='username'></span>
   |
   <a href='about.html'><button>about</button></a>
