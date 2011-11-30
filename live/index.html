@@ -18,6 +18,14 @@ function assert (condition, message) {
   }
 }
 
+function localStorage_keys () {
+  var keys = new Array(localStorage.length);
+  for (var i = 0, I = localStorage.length; i < I; ++i) {
+    keys[i] = localStorage.key(i);
+  }
+  return keys;
+}
+
 //------------------------------------------------------------------------------
 // Live
 
@@ -45,7 +53,7 @@ live.login = function (user) {
     user = 'anonymous';
   }
 
-  var pattern = /[a-zA-Z0-9_-]+([ a-zA-Z0-9_-][a-zA-Z0-9_-]+)*/;
+  var pattern = /^[a-zA-Z0-9_-]+$/;
   if ((user.length <= 40) && pattern.test(user)) {
     live.user = user;
     localStorage.setItem('user', user);
@@ -58,7 +66,7 @@ live.login = function (user) {
 //------------------------------------------------------------------------------
 // Evaluation
 
-live.safe_eval = function () {
+live.safeEval = function () {
   source = $('#source');
 
   try {
@@ -72,11 +80,11 @@ live.safe_eval = function () {
   }
 };
 
-live.live_eval = function () {
+live.liveEval = function () {
   source = $('#source');
 
   if ($('#if_live').is(':checked')) {
-    source.on('keyup', live.safe_eval).trigger('keyup');
+    source.on('keyup', live.safeEval).trigger('keyup');
   }
   else {
     source.off('keyup');
@@ -86,56 +94,63 @@ live.live_eval = function () {
 //------------------------------------------------------------------------------
 // Persistence
 
-live.script_link = function (key) {
+live.scriptLink = function (key) {
+
   var link = document.createElement('button');
   $(link).on('click', function () {
     $('#source').val(localStorage.getItem(key))
       .trigger('keyup');
   })
-  time = Number(key.slice('saved script '.length));
+
+  // TODO add collapsable view windows to allow copy-paste of code
+  time = Number(key.split('.')[1]);
   datestamp = $.timeago(new Date(time));
   firstline = localStorage.getItem(key).split('\n',1)[0];
   $(link).text(datestamp + ': ' + firstline + '...');
+
   return link;
 }
 
-live.list_scripts = function () {
+live.getStoredScripts = function () {
+  return localStorage_keys().filter(function (key) {
+    return /^script\.[0-9]+\.[a-zA-Z0-9_-]+$/.test(key);
+  });
+}
 
-  var pattern = /^saved script [0-9]+$/;
+live.listScripts = function () {
 
-  var list = [];
-  for (var i = 0; i < localStorage.length; ++i) {
-    key = localStorage.key(i);
-    if (pattern.test(key)) {
-      list.push(key);
-    }
-  }
-  list.sort();
+  var keys = live.getStoredScripts();
+  keys.sort();
+  keys.reverse();
 
-  // TODO add collapsable view windows to allow copy-paste of code
-  var menu = $('#script_list')
+  var menu = $('#scriptList')
   menu.empty();
-  for (var i = 0; i < list.length; ++i) {
-    var key = list[i];
-    menu.append(live.script_link(key))
+  for (var i = 0; i < keys.length; ++i) {
+    var key = keys[i];
+    menu.append(live.scriptLink(key))
       .append(document.createElement('br'));
   }
 };
 
-live.save_script = function () {
-  var name = 'saved script ' + String(Date.now());
-  var script = $('#source').val();
+live.saveScript = function () {
+  var name = 'script.' + String(Date.now()) + live.user;
+  var script = {
+    source: $('#source').val(),
+    user: live.user
+  }
   log('storing ' + name);
   localStorage.setItem(name, script);
-  list_scripts();
+  listScripts();
 };
 
-live.clear_scripts = function () {
-  // TODO don't kill all local storage
-  if (confirm('Really clear all local scripts?')) {
-    localStorage.clear();
-    list_scripts();
+live.clearScripts = function () {
+
+  var keys = live.getStoredScripts();
+  for (var i = 0, I = keys.length; i < I; ++i) {
+    localStorage.removeItem(keys[i]);
   }
+
+  listScripts();
 };
 
 //------------------------------------------------------------------------------
@@ -145,11 +160,11 @@ $(document).ready(function() {
 
   $('#source').text(live.logo);
 
-  $('#eval').on('click', live.safe_eval);
-  $('#if_live').on('change', live.live_eval).trigger('change');
+  $('#eval').on('click', live.safeEval);
+  $('#if_live').on('change', live.liveEval).trigger('change');
 
-  $('#save').on('click', live.save_script);
-  $('#clear_all').on('click', live.clear_scripts);
+  $('#save').on('click', live.saveScript);
+  $('#clearAll').on('click', live.clearScripts);
 
   // google plus
   if (window.location.origin == 'http://livecoder.net') {
@@ -169,7 +184,7 @@ $(document).ready(function() {
 
   live.login(localStorage.getItem('user'));
 
-  live.list_scripts();
+  live.listScripts();
 
   $('#paypal').css('display', 'none');
 });
@@ -201,10 +216,10 @@ $(document).ready(function() {
 
 <div class='toolbar'>
   <input type='checkbox' id='if_live' checked /> live
-  <button id=eval>eval</button>
+  <button id='eval'>eval</button>
   |
   <button id='save'>save</button>
-  <button id='clear_all'>clear all</button>
+  <button id='clearAll'>clear all</button>
   |
   <button id='login'>login</button>
   <span id='username'></span>
@@ -213,7 +228,7 @@ $(document).ready(function() {
 </div>
 
 <div>
-  <table id='script_list'>
+  <table id='scriptList'>
   </table>
 </div>
 
