@@ -2,6 +2,7 @@
 <html>
 <head>
 <title>Live Coder</title>
+<!-- ------------------------------------------------------------------------ -->
 <script type='text/javascript' src='jquery.js'></script>
 <script type='text/javascript' src='jquery.timeago.js'></script>
 <script type='text/javascript'>
@@ -94,27 +95,61 @@ live.liveEval = function () {
 //------------------------------------------------------------------------------
 // Persistence
 
-live.scriptLink = function (key) {
-
-  var link = document.createElement('button');
-  $(link).on('click', function () {
-    $('#source').val(localStorage.getItem(key))
-      .trigger('keyup');
-  })
-
-  // TODO add collapsable view windows to allow copy-paste of code
-  time = Number(key.split('.')[1]);
-  datestamp = $.timeago(new Date(time));
-  firstline = localStorage.getItem(key).split('\n',1)[0];
-  $(link).text(datestamp + ': ' + firstline + '...');
-
-  return link;
-}
-
 live.getStoredScripts = function () {
   return localStorage_keys().filter(function (key) {
     return /^script\.[0-9]+\.[a-zA-Z0-9_-]+$/.test(key);
   });
+}
+
+live.getScriptLink = function (key) {
+
+  var tr = $(document.createElement('tr'));
+  var loadScript = function () {
+    $('#source').val(localStorage.getItem(key)).trigger('keyup');
+  };
+
+  script_time_user = key.split('.');
+
+  time = Number(script_time_user[1]);
+  timeago = $.timeago(new Date(time));
+  tr.append(
+      $(document.createElement('td'))
+      .html(timeago)
+      .on('click', loadScript));
+
+  user = script_time_user[2];
+  tr.append(
+      $(document.createElement('td'))
+      .html(user)
+      .on('click', loadScript));
+
+  var fullSource = localStorage.getItem(key);
+  var briefSource = fullSource.replace(/\s+/g, ' ').substr(0,60) + '...';
+  var toggleBrevityOfChildren = function () {
+    $(this).children().each(function (index, element) {
+          element = $(element);
+          if (element.css('display') == 'none') {
+            element.css('display', 'inline');
+          } else {
+            element.css('display', 'none');
+          }
+        });
+  };
+  tr.append($(document.createElement('td'))
+        .on('click', toggleBrevityOfChildren)
+        .append($(document.createElement('code'))
+            .css('display', 'inline')
+            .html(briefSource))
+        .append($(document.createElement('pre'))
+            .css('display', 'none')
+            .append($(document.createElement('code'))
+                .html(fullSource))));
+
+  // TODO add preview
+  //firstline = localStorage.getItem(key).split('\n',1)[0];
+  //$(link).text(datestamp + ': ' + firstline + '...');
+
+  return tr;
 }
 
 live.listScripts = function () {
@@ -127,8 +162,7 @@ live.listScripts = function () {
   menu.empty();
   for (var i = 0; i < keys.length; ++i) {
     var key = keys[i];
-    menu.append(live.scriptLink(key))
-      .append(document.createElement('br'));
+    menu.append(live.getScriptLink(key));
   }
 };
 
@@ -137,7 +171,7 @@ live.saveScript = function () {
   var script = {
     source: $('#source').val(),
     user: live.user
-  }
+  };
   log('storing ' + name);
   localStorage.setItem(name, script);
   listScripts();
@@ -190,14 +224,31 @@ $(document).ready(function() {
 });
 
 </script>
+<!-- ------------------------------------------------------------------------ -->
 <style>
+
+body {
+  font-family: helvetica, verdana, sans;
+}
 
 #source { background-color: #eeffee; }
 #result { background-color: #eeeeee; }
 #log { background-color: #ffffee; }
 
+#scriptList tr td {
+  padding: 0px 0.25em 0px 0.25em;
+  vertical-align: top;
+}
+#scriptList tr td code {
+  color: gray;
+}
+#scriptList tr td pre code {
+  color: black;
+}
+
 </style>
 </head>
+<!-- ------------------------------------------------------------------------ -->
 <body>
 
 <div class='code'>
