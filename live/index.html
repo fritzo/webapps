@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Live Coder</title>
+<script type='text/javascript' src='jquery.js'></script>
+<script type='text/javascript' src='jquery.timeago.js'></script>
+<script type='text/javascript'>
+
+function AssertException(message) {
+  this.message = message;
+}
+AssertException.prototype.toString = function () {
+  return 'AssertException: ' + this.message;
+}
+function assert (condition, message) {
+  if (!condition) {
+    throw new AssertException(message);
+  }
+}
+
+//------------------------------------------------------------------------------
+// Live
+
+var live = {};
+
+live.logo =
+"// _     _             ____           _           \n" +
+"//| |   (_)__   _____ / ___| ___   __| | ___ _ __ \n" +
+"//| |   | |\\ \\ / / _ \\ |    / _ \\ / _` |/ _ \\ '__|\n" +
+"//| |___| | \\ V /  __/ |___| (_) | (_| |  __/ |   \n" +
+"//|_____|_|  \\_/ \\___|\\____|\\___/ \\__,_|\\___|_|.net";
+
+window.log = function (message) {
+  $('#log').val(message);
+}
+window.print = function (message) {
+  $('#result').val(message);
+}
+
+//------------------------------------------------------------------------------
+// User
+
+live.login = function (user) {
+  if (user == undefined) {
+    user = 'anonymous';
+  }
+
+  var pattern = /[a-zA-Z0-9_-]+([ a-zA-Z0-9_-][a-zA-Z0-9_-]+)*/;
+  if ((user.length <= 40) && pattern.test(user)) {
+    live.user = user;
+    localStorage.setItem('user', user);
+    $('#username').html(user);
+  } else {
+    alert('invalid username. try <=40 alphanumeric characters plus _-');
+  }
+}
+
+//------------------------------------------------------------------------------
+// Evaluation
+
+live.safe_eval = function () {
+  source = $('#source');
+
+  try {
+    print(JSON.stringify(eval(source.val())));
+    source.css('background-color', '#eeffee');
+    log('');
+  }
+  catch (err) {
+    source.css('background-color', '#ffeeee');
+    log('error: ' + String(err));
+  }
+};
+
+live.live_eval = function () {
+  source = $('#source');
+
+  if ($('#if_live').is(':checked')) {
+    source.on('keyup', live.safe_eval).trigger('keyup');
+  }
+  else {
+    source.off('keyup');
+  }
+};
+
+//------------------------------------------------------------------------------
+// Persistence
+
+live.script_link = function (key) {
+  var link = document.createElement('button');
+  $(link).on('click', function () {
+    $('#source').val(localStorage.getItem(key))
+      .trigger('keyup');
+  })
+  time = Number(key.slice('saved script '.length));
+  datestamp = $.timeago(new Date(time));
+  firstline = localStorage.getItem(key).split('\n',1)[0];
+  $(link).text(datestamp + ': ' + firstline + '...');
+  return link;
+}
+
+live.list_scripts = function () {
+
+  var pattern = /^saved script [0-9]+$/;
+
+  var list = [];
+  for (var i = 0; i < localStorage.length; ++i) {
+    key = localStorage.key(i);
+    if (pattern.test(key)) {
+      list.push(key);
+    }
+  }
+  list.sort();
+
+  // TODO add collapsable view windows to allow copy-paste of code
+  var menu = $('#script_list')
+  menu.empty();
+  for (var i = 0; i < list.length; ++i) {
+    var key = list[i];
+    menu.append(live.script_link(key))
+      .append(document.createElement('br'));
+  }
+};
+
+live.save_script = function () {
+  var name = 'saved script ' + String(Date.now());
+  var script = $('#source').val();
+  log('storing ' + name);
+  localStorage.setItem(name, script);
+  list_scripts();
+};
+
+live.clear_scripts = function () {
+  // TODO don't kill all local storage
+  if (confirm('Really clear all local scripts?')) {
+    localStorage.clear();
+    list_scripts();
+  }
+};
+
+//------------------------------------------------------------------------------
+// Main
+
+$(document).ready(function() {
+
+  $('#source').text(live.logo);
+
+  $('#eval').on('click', live.safe_eval);
+  $('#if_live').on('change', live.live_eval).trigger('change');
+
+  $('#save').on('click', live.save_script);
+  $('#clear_all').on('click', live.clear_scripts);
+
+  // google plus
+  if (window.location.origin == 'http://livecoder.net') {
+    var po = document.createElement('script');
+    po.type = 'text/javascript';
+    po.async = true;
+    po.src = 'https://apis.google.com/js/plusone.js';
+    var s = document.getElementsByTagName('script')[0];
+    s.parentNode.insertBefore(po, s);
+  } else {
+    $('.g-plusone').css('display','none');
+  }
+
+  $('#login').on('click', function () {
+    live.login(prompt());
+  });
+
+  live.login(localStorage.getItem('user'));
+
+  live.list_scripts();
+
+  $('#paypal').css('display', 'none');
+});
+
+</script>
+<style>
+
+#source { background-color: #eeffee; }
+#result { background-color: #eeeeee; }
+#log { background-color: #ffffee; }
+
+</style>
+</head>
+<body>
+
+<div class='code'>
+  <table>
+    <tr>
+      <td>
+        <textarea id='source' rows=23 cols=50> </textarea>
+      </td>
+      <td>
+        <textarea id='result' rows=20 cols=50 readonly> </textarea>
+        <textarea id='log' rows=2 cols=50 readonly> </textarea>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<div class='toolbar'>
+  <input type='checkbox' id='if_live' checked /> live
+  <button id=eval>eval</button>
+  |
+  <button id='save'>save</button>
+  <button id='clear_all'>clear all</button>
+  |
+  <button id='login'>login</button>
+  <span id='username'></span>
+  |
+  <a href='about.html'><button>about</button></a>
+</div>
+
+<div>
+  <table id='script_list'>
+  </table>
+</div>
+
+</body>
+</html>
+
