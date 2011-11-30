@@ -7,6 +7,9 @@
 <script type='text/javascript' src='jquery.timeago.js'></script>
 <script type='text/javascript'>
 
+safeEval = eval;
+'use strict';
+
 function AssertException(message) {
   this.message = message;
 }
@@ -68,11 +71,13 @@ live.setUser = function (user) {
 //------------------------------------------------------------------------------
 // Evaluation
 
-live.safeEval = function () {
+// TODO switch from textarea to tree editor
+
+live.evalSource = function () {
   source = $('#source');
 
   try {
-    print(JSON.stringify(eval(source.val())));
+    print(JSON.stringify(safeEval(source.val())));
     source.css('background-color', '#eeffee');
     log('');
   }
@@ -82,11 +87,11 @@ live.safeEval = function () {
   }
 };
 
-live.liveEval = function () {
+live.liveEvalSource = function () {
   source = $('#source');
 
   if ($('#if_live').is(':checked')) {
-    source.on('keyup', live.safeEval).trigger('keyup');
+    source.on('keyup', live.evalSource).trigger('keyup');
   }
   else {
     source.off('keyup');
@@ -195,8 +200,8 @@ $(document).ready(function() {
 
   $('#source').text(live.logo);
 
-  $('#eval').on('click', live.safeEval);
-  $('#if_live').on('change', live.liveEval).trigger('change');
+  $('#eval').on('click', live.evalSource);
+  $('#if_live').on('change', live.liveEvalSource).trigger('change');
 
   $('#save').on('click', live.saveScript);
   $('#deleteAll').on('click', live.deleteScripts);
@@ -254,6 +259,11 @@ body {
 </head>
 <!-- ------------------------------------------------------------------------ -->
 <body>
+
+<script>
+// TODO switch from table to floating layered partially-transparent divs
+// TODO add html5 canvas and svg and webgl examples
+</script>
 
 <div class='code'>
   <table>
