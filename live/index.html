@@ -32,6 +32,7 @@ function localStorage_keys () {
 
 var live = {};
 
+// TODO replace this with code to draw the logo on the background
 live.logo =
 "// _     _             ____           _           \n" +
 "//| |   (_)__   _____ / ___| ___   __| | ___ _ __ \n" +
@@ -103,25 +104,32 @@ live.getStoredScripts = function () {
 
 live.getScriptLink = function (key) {
 
-  var tr = $(document.createElement('tr'));
   var loadScript = function () {
     $('#source').val(localStorage.getItem(key)).trigger('keyup');
   };
+  var deleteScript = function () {
+    localStorage.removeItem(key);
+    live.listScripts();
+  };
+
+  var tr = $(document.createElement('tr'));
+
+  tr.append($(document.createElement('td'))
+      .append($(document.createElement('button'))
+          .html('load')
+          .on('click', loadScript))
+      .append($(document.createElement('button'))
+          .html('delete')
+          .on('click', deleteScript)));
 
   script_time_user = key.split('.');
 
   time = Number(script_time_user[1]);
   timeago = $.timeago(new Date(time));
-  tr.append(
-      $(document.createElement('td'))
-      .html(timeago)
-      .on('click', loadScript));
+  tr.append($(document.createElement('td')).html(timeago));
 
   user = script_time_user[2];
-  tr.append(
-      $(document.createElement('td'))
-      .html(user)
-      .on('click', loadScript));
+  tr.append($(document.createElement('td')).html(user));
 
   var fullSource = localStorage.getItem(key);
   var briefSource = fullSource.replace(/\s+/g, ' ').substr(0,60) + '...';
@@ -167,24 +175,22 @@ live.listScripts = function () {
 };
 
 live.saveScript = function () {
-  var name = 'script.' + String(Date.now()) + live.user;
-  var script = {
-    source: $('#source').val(),
-    user: live.user
-  };
+  var name = ['script', String(Date.now()), live.user].join('.');
   log('storing ' + name);
-  localStorage.setItem(name, script);
-  listScripts();
+  localStorage.setItem(name, $('#source').val());
+  live.listScripts();
 };
 
-live.clearScripts = function () {
+live.deleteScripts = function () {
 
-  var keys = live.getStoredScripts();
-  for (var i = 0, I = keys.length; i < I; ++i) {
-    localStorage.removeItem(keys[i]);
+  if (confirm('Really delete all scripts in local storage?')) {
+    var keys = live.getStoredScripts();
+    for (var i = 0, I = keys.length; i < I; ++i) {
+      localStorage.removeItem(keys[i]);
+    }
+
+    live.listScripts();
   }
-
-  listScripts();
 };
 
 //------------------------------------------------------------------------------
@@ -198,7 +204,7 @@ $(document).ready(function() {
   $('#if_live').on('change', live.liveEval).trigger('change');
 
   $('#save').on('click', live.saveScript);
-  $('#clearAll').on('click', live.clearScripts);
+  $('#deleteAll').on('click', live.deleteScripts);
 
   // google plus
   if (window.location.origin == 'http://livecoder.net') {
@@ -270,7 +276,7 @@ body {
   <button id='eval'>eval</button>
   |
   <button id='save'>save</button>
-  <button id='clearAll'>clear all</button>
+  <button id='deleteAll'>delete all</button>
   |
   <button id='login'>login</button>
   <span id='username'></span>
