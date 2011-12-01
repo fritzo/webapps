@@ -43,12 +43,9 @@ live.logo =
 "//| |___| | \\ V /  __/ |___| (_) | (_| |  __/ |   \n" +
 "//|_____|_|  \\_/ \\___|\\____|\\___/ \\__,_|\\___|_|.net";
 
-window.log = function (message) {
-  $('#log').val(message);
-}
-window.print = function (message) {
-  $('#result').val(message);
-}
+live.log = function (message) {
+  $('#log').val(String(message));
+};
 
 //------------------------------------------------------------------------------
 // User
@@ -66,7 +63,7 @@ live.setUser = function (user) {
   } else {
     alert('invalid username. try <=40 alphanumeric characters plus _-');
   }
-}
+};
 
 //------------------------------------------------------------------------------
 // Evaluation
@@ -77,13 +74,13 @@ live.evalSource = function () {
   source = $('#source');
 
   try {
-    print(JSON.stringify(safeEval(source.val())));
-    source.css('background-color', '#eeffee');
-    log('');
+    live.log('');
+    safeEval(source.val());
+    source.css('color', '#77ff77');
   }
   catch (err) {
-    source.css('background-color', '#ffeeee');
-    log('error: ' + String(err));
+    source.css('color', '#ff7777');
+    live.log('error: ' + String(err));
   }
 };
 
@@ -105,7 +102,7 @@ live.getStoredScripts = function () {
   return localStorage_keys().filter(function (key) {
     return /^script\.[0-9]+\.[a-zA-Z0-9_-]+$/.test(key);
   });
-}
+};
 
 live.getScriptLink = function (key) {
 
@@ -158,7 +155,7 @@ live.getScriptLink = function (key) {
             .append($(document.createElement('code'))
                 .html(fullSource))));
   return tr;
-}
+};
 
 live.listScripts = function () {
 
@@ -176,7 +173,7 @@ live.listScripts = function () {
 
 live.saveScript = function () {
   var name = ['script', String(Date.now()), live.user].join('.');
-  log('storing ' + name);
+  live.log('storing ' + name);
   localStorage.setItem(name, $('#source').val());
   live.listScripts();
 };
@@ -194,9 +191,29 @@ live.deleteScripts = function () {
 };
 
 //------------------------------------------------------------------------------
+// Graphics
+
+live.draw2d = function () {
+  context = live.context2d;
+  context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+  return context;
+};
+
+live.resize = function () {
+
+  $(live.context2d.canvas).width(window.innerWidth).height(window.innerHeight);
+
+  if ($('#if_live').is(':checked')) {
+    live.evalSource();
+  }
+};
+
+//------------------------------------------------------------------------------
 // Main
 
 $(document).ready(function() {
+
+  $(window).resize(live.resize);
 
   $('#source').text(live.logo);
 
@@ -229,7 +246,15 @@ $(document).ready(function() {
 
   live.listScripts();
 
-  $('#paypal').css('display', 'none');
+  try {
+    live.context2d = document.getElementById('canvas2d').getContext('2d');
+    assert(live.context2d, 'failed to get 2d canvas context');
+  }
+  catch (e) {
+    live.log(e);
+  }
+
+  live.resize();
 });
 
 </script>
@@ -238,11 +263,70 @@ $(document).ready(function() {
 
 body {
   font-family: helvetica, verdana, sans;
+  color: white;
+  background-color: black;
+
+  width:  100%;
+  height: 100%;
+  margin: 0px;
 }
 
-#source { background-color: #eeffee; }
-#result { background-color: #eeeeee; }
-#log { background-color: #ffffee; }
+canvas {
+  position: absolute; 
+  top: 0px;
+  left: 0px;
+}
+ 
+textarea {
+  font-weight: bold;
+  font-size: x-large;
+  background-color: rgba(0,0,0,0);
+  opacity: 0.333;
+
+  position: absolute;
+  margin: 0px;
+  padding: 0px;
+  border: 0px;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+}
+#source {
+  width: 100%;
+  height: 85%;
+  top: 0px;
+  left: 0px;
+  color: #77ff77;
+}
+#log {
+  width: 100%;
+  height: 15%;
+  bottom: 0px;
+  left: 0px;
+  color: #ffff00;
+}
+
+.toolbar {
+  position: absolute;
+  width: 100%;
+  bottom: 0px; /* hack for 100% - 2ex */
+  opacity: 0.8;
+}
+button {
+  color: white;
+  background-color: #444444;
+  border-color: #222222;
+}
+#scriptList {
+  height: 11ex;
+  overflow: auto;
+}
+.toolbar table {
+  display: none;
+}
+.toolbar:hover table {
+  display: block;
+}
 
 #scriptList tr td {
   padding: 0px 0.25em 0px 0.25em;
@@ -252,34 +336,27 @@ body {
   color: gray;
 }
 #scriptList tr td pre code {
-  color: black;
+  color: white;
 }
+
+/* back-to-front */
+canvas { z-index: 1; }
+textarea { z-index: 2; }
+.toolbar { z-index: 3; }
 
 </style>
 </head>
 <!-- ------------------------------------------------------------------------ -->
 <body>
 
-<script>
-// TODO switch from table to floating layered partially-transparent divs
-// TODO add html5 canvas and svg and webgl examples
-</script>
+<canvas id=canvas2d></canvas>
 
-<div class='code'>
-  <table>
-    <tr>
-      <td>
-        <textarea id='source' rows=23 cols=50> </textarea>
-      </td>
-      <td>
-        <textarea id='result' rows=20 cols=50 readonly> </textarea>
-        <textarea id='log' rows=2 cols=50 readonly> </textarea>
-      </td>
-    </tr>
-  </table>
-</div>
+<textarea id='source' rows=23 cols=50></textarea>
+<textarea id='log' rows=2 cols=50 readonly></textarea>
 
 <div class='toolbar'>
+  <table id='scriptList'> </table>
+
   <input type='checkbox' id='if_live' checked /> live
   <button id='eval'>eval</button>
   |
@@ -290,11 +367,6 @@ body {
   <span id='username'></span>
   |
   <a href='about.html'><button>about</button></a>
-</div>
-
-<div>
-  <table id='scriptList'>
-  </table>
 </div>
 
 </body>
