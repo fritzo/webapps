@@ -4,6 +4,7 @@
 <title>Live Coder</title>
 <!-- ------------------------------------------------------------------------ -->
 <script type='text/javascript' src='jquery.js'></script>
+<script type='text/javascript' src='modernizr.js'></script>
 <script type='text/javascript' src='jquery.timeago.js'></script>
 <script type='text/javascript'>
 
@@ -13,7 +14,7 @@ function AssertException(message) {
   this.message = message;
 }
 AssertException.prototype.toString = function () {
-  return 'AssertException: ' + this.message;
+  return 'Assertion Failed: ' + this.message;
 }
 function assert (condition, message) {
   if (!condition) {
@@ -34,14 +35,14 @@ function localStorage_keys () {
 
 var live = {};
 
-// TODO replace this with code to draw the logo on the background
 live.logo = [
   "",
   "// this is just an example",
   "var c = live.draw2d();",
   "c.font = 'bold 64pt Courier';",
   "c.fillStyle = '#77ff77';",
-  "c.fillText(' LiveCoder', 0, c.canvas.height/2);"
+  "c.fillText(' LiveCoder', 0, c.canvas.height/2);",
+  ""
 ].join('\n');
 
 live.log = function (message) {
@@ -214,7 +215,27 @@ live.resize = function () {
 //------------------------------------------------------------------------------
 // Main
 
+live.assertFeatures = function () {
+  var has = Modernizr;
+  assert(has.canvas, 'Browser does not support canvas element');
+  assert(has.opacity, 'Browser does not support opacity');
+  assert(has.rgba, 'Browser does not support rgba() color attributes');
+  assert(has.localstorage, 'Browser does not support localStorage');
+  assert(has.webworkers, 'Browser does not support Web Workers');
+  //assert(has.svg, 'Browser does not support svg');
+  //assert(has.audio, 'Browser does not support audio element');
+};
+
 $(document).ready(function() {
+
+  try { live.assertFeatures(); }
+  catch (e) {
+    var message = $(document.createElement('h1'))
+      .html(String(e))
+      .attr('class','warning');
+    $(document.body).empty().html(message);
+    return;
+  }
 
   $(window).resize(live.resize);
 
@@ -273,6 +294,8 @@ body {
   height: 100%;
   margin: 0px;
 }
+
+.warning { color: red; }
 
 canvas {
   position: absolute; 
