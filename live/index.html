@@ -7,7 +7,6 @@
 <script type='text/javascript' src='jquery.timeago.js'></script>
 <script type='text/javascript'>
 
-safeEval = eval;
 'use strict';
 
 function AssertException(message) {
@@ -36,12 +35,14 @@ function localStorage_keys () {
 var live = {};
 
 // TODO replace this with code to draw the logo on the background
-live.logo =
-"// _     _             ____           _           \n" +
-"//| |   (_)__   _____ / ___| ___   __| | ___ _ __ \n" +
-"//| |   | |\\ \\ / / _ \\ |    / _ \\ / _` |/ _ \\ '__|\n" +
-"//| |___| | \\ V /  __/ |___| (_) | (_| |  __/ |   \n" +
-"//|_____|_|  \\_/ \\___|\\____|\\___/ \\__,_|\\___|_|.net";
+live.logo = [
+  "",
+  "// this is just an example",
+  "var c = live.draw2d();",
+  "c.font = 'bold 64pt Courier';",
+  "c.fillStyle = '#77ff77';",
+  "c.fillText(' LiveCoder', 0, c.canvas.height/2);"
+].join('\n');
 
 live.log = function (message) {
   $('#log').val(String(message));
@@ -75,7 +76,7 @@ live.evalSource = function () {
 
   try {
     live.log('');
-    safeEval(source.val());
+    eval(source.val());
     source.css('color', '#77ff77');
   }
   catch (err) {
@@ -85,7 +86,7 @@ live.evalSource = function () {
 };
 
 live.liveEvalSource = function () {
-  source = $('#source');
+  var source = $('#source');
 
   if ($('#if_live').is(':checked')) {
     source.on('keyup', live.evalSource).trigger('keyup');
@@ -124,13 +125,13 @@ live.getScriptLink = function (key) {
           .html('delete')
           .on('click', deleteScript)));
 
-  script_time_user = key.split('.');
+  var script_time_user = key.split('.');
 
-  time = Number(script_time_user[1]);
-  timeago = $.timeago(new Date(time));
+  var time = Number(script_time_user[1]);
+  var timeago = $.timeago(new Date(time));
   tr.append($(document.createElement('td')).html(timeago));
 
-  user = script_time_user[2];
+  var user = script_time_user[2];
   tr.append($(document.createElement('td')).html(user));
 
   var fullSource = localStorage.getItem(key);
@@ -173,9 +174,10 @@ live.listScripts = function () {
 
 live.saveScript = function () {
   var name = ['script', String(Date.now()), live.user].join('.');
-  live.log('storing ' + name);
+  live.log('saving ' + name + ' ...');
   localStorage.setItem(name, $('#source').val());
   live.listScripts();
+  live.log('');
 };
 
 live.deleteScripts = function () {
@@ -194,14 +196,15 @@ live.deleteScripts = function () {
 // Graphics
 
 live.draw2d = function () {
-  context = live.context2d;
+  var context = live.context2d;
   context.clearRect(0, 0, context.canvas.width, context.canvas.height);
   return context;
 };
 
 live.resize = function () {
 
-  $(live.context2d.canvas).width(window.innerWidth).height(window.innerHeight);
+  live.context2d.canvas.width = window.innerWidth;
+  live.context2d.canvas.height = window.innerHeight;
 
   if ($('#if_live').is(':checked')) {
     live.evalSource();
