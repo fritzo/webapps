@@ -180,10 +180,9 @@ live.listScripts = function () {
 
 live.saveScript = function () {
   var name = ['script', String(Date.now()), live.user].join('.');
-  live.log('saving ' + name + ' ...');
   localStorage.setItem(name, $('#source').val());
   live.listScripts();
-  live.log('');
+  live.log('saved ' + name + ' ...');
 };
 
 live.deleteScripts = function () {
@@ -317,10 +316,19 @@ $(document).ready(function() {
 <!-- ------------------------------------------------------------------------ -->
 <style>
 
-body {
-  font-family: helvetica, verdana, sans;
+body,
+button {
   color: white;
   background-color: black;
+  font-size: small;
+  font-family: helvetica, verdana, sans;
+}
+
+body {
+  color: white;
+  background-color: black;
+  font-size: small;
+  font-family: helvetica, verdana, sans;
 
   width:  100%;
   height: 100%;
@@ -342,6 +350,8 @@ textarea {
   text-shadow: 0ex 0ex 1ex rgba(0,0,0,1);
   opacity: 0.333;
 
+  width: 99%;
+  left: 1%;
   position: absolute;
   margin: 0px;
   padding: 0px;
@@ -351,17 +361,13 @@ textarea {
   overflow: hidden;
 }
 #source {
-  width: 100%;
   height: 85%;
   top: 0px;
-  left: 0px;
   color: #77ff77;
 }
 #log {
-  width: 100%;
   height: 15%;
   bottom: 0px;
-  left: 0px;
   color: #ffff00;
 }
 
@@ -372,8 +378,9 @@ textarea {
   bottom: 0px;
   opacity: 0.8;
 }
+
 button {
-  color: white;
+  border-radius: 9px;
   background-color: #444444;
   border-color: #222222;
 }
@@ -383,7 +390,14 @@ button:hover {
   border-color: #r3;
 }
 
-#scriptList { display: none; }
+code, pre {
+  font-size: medium;
+}
+#scriptList {
+  background-color: black;
+  display: none;
+  overflow: auto; /* TODO FIXME fails on small screens */
+}
 #scriptList tr td {
   padding: 0px 0.25em 0px 0.25em;
   vertical-align: top;
@@ -416,17 +430,18 @@ textarea { z-index: 2; }
     <table id='scriptList'> </table>
 
     <button onclick='live.hideEditor();'>hide</button>
-    |
+    -
     <input type='checkbox' id='if_live' checked /> live
     <button id='eval'>eval</button>
-    |
+    -
     <button id='save'>save</button>
     <button id='load'>browse ? codes</button>
-    |
+    -
     <button id='setUser'>user</button>
     <span id='username'></span>
-    |
-    <a href='about.html'><button>about</button></a>
+    -
+    <button onkeypress="window.open('about.html');"
+            onclick="window.open('about.html');">about</button>
   </div>
 </div>
 
