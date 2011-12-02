@@ -111,9 +111,7 @@ live.getScriptListHeader = function (size) {
 
   return create('tr').append(
       create('td').append(
-          create('button').html('delete all').on('click', live.deleteScripts)),
-      create('td').attr('colspan','3').html(
-          String(size) + ' scripts are saved locally'));
+          create('button').html('delete all').click(live.deleteScripts)));
 };
 
 live.getScriptLink = function (key) {
@@ -121,6 +119,7 @@ live.getScriptLink = function (key) {
 
   var loadScript = function () {
     $('#source').val(localStorage.getItem(key)).trigger('keyup');
+    $('#scriptList').fadeOut('fast');
   };
   var deleteScript = function () {
     localStorage.removeItem(key);
@@ -130,8 +129,10 @@ live.getScriptLink = function (key) {
   var tr = create('tr');
 
   tr.append(create('td')
-      .append(create('button').html('load').on('click', loadScript))
-      .append(create('button').html('delete').on('click', deleteScript)));
+      .append(create('button').html('load').click(loadScript))
+      .append(create('button').html('delete').click(function(){
+            tr.fadeOut('fast', deleteScript);
+          })));
 
   var script_time_user = key.split('.');
 
@@ -144,22 +145,19 @@ live.getScriptLink = function (key) {
 
   var fullSource = localStorage.getItem(key);
   var briefSource = fullSource.replace(/\s+/g, ' ').substr(0,60) + '...';
-  var toggleBrevityOfChildren = function () {
-    $(this).children().each(function (index, element) {
-          element = $(element);
-          if (element.css('display') == 'none') {
-            element.css('display', 'inline');
-          } else {
-            element.css('display', 'none');
-          }
-        });
-  };
+
+  var brief = create('code')
+    .html(briefSource)
+    .attr('title', 'click to expand')
+    .show();
+  var full = create('pre')
+    .append(create('code').html(fullSource))
+    .hide();
+
   tr.append(create('td')
-        .on('click', toggleBrevityOfChildren)
-        .append(create('code').css('display', 'inline').html(briefSource))
-        .append(create('pre')
-            .css('display', 'none')
-            .append(create('code').html(fullSource))));
+      .append(brief, full)
+      .click(function(){ brief.slideToggle(50); })
+      .click(function(){ full.slideToggle(150); }));
   return tr;
 };
 
@@ -169,7 +167,9 @@ live.listScripts = function () {
   keys.sort();
   keys.reverse();
 
-  var menu = $('#scriptList')
+  $('#load').html('browse ' + keys.length + ' codes');
+
+  var menu = $('#scriptList');
   menu.empty();
   menu.append(live.getScriptListHeader(keys.length));
   for (var i = 0; i < keys.length; ++i) {
@@ -188,7 +188,7 @@ live.saveScript = function () {
 
 live.deleteScripts = function () {
 
-  if (confirm('Really delete all scripts in local storage?')) {
+  if (confirm('Really delete all codes in local storage?')) {
     var keys = live.getStoredScripts();
     for (var i = 0, I = keys.length; i < I; ++i) {
       localStorage.removeItem(keys[i]);
@@ -199,19 +199,17 @@ live.deleteScripts = function () {
 };
 
 //------------------------------------------------------------------------------
-// Hiding the editor
+// Hiding
 
 live.showEditor = function () {
-  $('#showEditor').css('display', 'none');
-  $('textarea').css('display', 'block');
-  $('#toolbar').css('display', 'block');
+  $('#showEditor').hide();
+  $('#editor').fadeIn('fast');
   $('#source').focus();
 };
 
 live.hideEditor = function () {
-  $('textarea').css('display', 'none');
-  $('#toolbar').css('display', 'none');
-  $('#showEditor').css('display', 'block');
+  $('#editor').fadeOut('fast');
+  $('#showEditor').show();
 };
 
 //------------------------------------------------------------------------------
@@ -262,10 +260,13 @@ $(document).ready(function() {
 
   $('#source').text(live.logo);
 
-  $('#eval').on('click', live.evalSource);
+  $('#eval').click(live.evalSource);
   $('#if_live').on('change', live.liveEvalSource).trigger('change');
 
-  $('#save').on('click', live.saveScript);
+  $('#save').click(live.saveScript);
+  $('#load').click(function(){
+        $('#scriptList').fadeToggle('fast');
+      });
 
   // google plus
   if (window.location.origin == 'http://livecoder.net') {
@@ -276,10 +277,10 @@ $(document).ready(function() {
     var s = document.getElementsByTagName('script')[0];
     s.parentNode.insertBefore(po, s);
   } else {
-    $('.g-plusone').css('display','none');
+    $('.g-plusone').hide();
   }
 
-  $('#setUser').on('click', function () {
+  $('#setUser').click(function () {
     var user = prompt('What name will you use?')
     if (user != undefined) {
       live.setUser(user);
@@ -303,7 +304,7 @@ $(document).ready(function() {
   var inIframe = window.location != window.parent.location;
   if (inIframe) {
     live.hideEditor();
-    $('body').on('click', function(){
+    $('body').click(function(){
       live.showEditor();
       $('body').off('click');
     });
@@ -368,7 +369,7 @@ textarea {
 #showEditor {
   position: absolute;
   width: 100%;
-  bottom: 0px; /* hack for 100% - 2ex */
+  bottom: 0px;
   opacity: 0.8;
 }
 button {
@@ -381,17 +382,8 @@ button:hover {
   background-color: #555555;
   border-color: #r3;
 }
-#scriptList {
-  height: 11ex;
-  overflow: auto;
-}
-#toolbar table {
-  display: none;
-}
-#toolbar:hover table {
-  display: block;
-}
 
+#scriptList { display: none; }
 #scriptList tr td {
   padding: 0px 0.25em 0px 0.25em;
   vertical-align: top;
@@ -416,24 +408,26 @@ textarea { z-index: 2; }
 
 <canvas id='canvas2d'></canvas>
 
-<textarea id='source' rows=23 cols=50></textarea>
-<textarea id='log' rows=2 cols=50 readonly></textarea>
+<div id='editor'>
+  <textarea id='source' rows=23 cols=50></textarea>
+  <textarea id='log' rows=2 cols=50 readonly></textarea>
 
-<div id='toolbar'>
-  <table id='scriptList'> </table>
+  <div id='toolbar'>
+    <table id='scriptList'> </table>
 
-  <button onclick='live.hideEditor();'>hide</button>
-  |
-  <input type='checkbox' id='if_live' checked /> live
-  <button id='eval'>eval</button>
-  |
-  <button id='save'>save</button>
-  |
-  <button id='setUser'>user</button>
-  <span id='username'></span>
-  |
-  <a href='about.html'><button>about</button></a>
-</div>
+    <button onclick='live.hideEditor();'>hide</button>
+    |
+    <input type='checkbox' id='if_live' checked /> live
+    <button id='eval'>eval</button>
+    |
+    <button id='save'>save</button>
+    <button id='load'>browse ? codes</button>
+    |
+    <button id='setUser'>user</button>
+    <span id='username'></span>
+    |
+    <a href='about.html'><button>about</button></a>
+  </div>
 </div>
 
 <div id='showEditor'>
