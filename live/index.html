@@ -38,10 +38,13 @@ var live = {};
 live.logo = [
   "",
   "// this is just an example",
+  //"T = 1000;",
+  //"t = (time % T) / T;",
+  //"",
   "var c = live.draw2d();",
   "c.font = 'bold 64pt Courier';",
   "c.fillStyle = '#77ff77';",
-  "c.fillText(' LiveCoder', 0, c.canvas.height/2);",
+  "c.fillText(' LiveCoder', 0, innerHeight/2);",
   ""
 ].join('\n');
 
@@ -68,34 +71,96 @@ live.setUser = function (user) {
 };
 
 //------------------------------------------------------------------------------
+// Global context
+
+// all the short variables
+var a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z;
+var A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z;
+
+// math constants
+var E       = Math.E;
+var PI      = Math.PI;
+var SQRT2   = Math.SQRT2;
+var SQRT1_2 = Math.SQRT1_2;
+var LN2     = Math.LN2;
+var LN10    = Math.LN10;
+var LOG2E   = Math.LOG2E;
+var LOG10E  = Math.LOG10E;
+
+// math functions
+var abs    = Math.abs;
+var acos   = Math.acos;
+var asin   = Math.asin;
+var atan   = Math.atan;
+var atan2  = Math.atan2;
+var ceil   = Math.ceil;
+var cos    = Math.cos;
+var exp    = Math.exp;
+var floor  = Math.floor;
+var log    = Math.log;
+var max    = Math.max;
+var min    = Math.min;
+var pow    = Math.pow;
+var random = Math.random;
+var round  = Math.round;
+var sin    = Math.sin;
+var sqrt   = Math.sqrt;
+var tan    = Math.tan;
+
+// this is set in evalSource
+var time = 0;
+
+// these are set by resize
+var width,height;
+
+//------------------------------------------------------------------------------
 // Evaluation
 
-// TODO switch from textarea to tree editor
+live.running = false;
+live.lastGoodCode = '';
 
 live.evalSource = function () {
-  source = $('#source');
+  if (!live.running) return;
+
+  var source = $('#source');
+  var code = source.val();
 
   try {
     live.log('');
-    eval(source.val());
-    source.css('color', '#77ff77');
+
+    window.time = Number(Date.now());
+    eval(code);
+
+    live.lastGoodCode = code;
+    //source.css('color', '#77ff77');
   }
   catch (err) {
-    source.css('color', '#ff7777');
+    //source.css('color', '#ff7777');
     live.log('error: ' + String(err));
+
+    try {
+      eval(live.lastGoodCode);
+    } catch (e) {
+      live.pauseEval();
+      live.log('error: ' + String(err));
+    }
   }
+
+  setTimeout(live.evalSource, 1);
 };
 
-live.liveEvalSource = function () {
-  var source = $('#source');
+live.pauseEval = function () {
+  live.running = false;
+  $('#pause').hide();
+  $('#resume').show();
+}
 
-  if ($('#if_live').is(':checked')) {
-    source.on('keyup', live.evalSource).trigger('keyup');
-  }
-  else {
-    source.off('keyup');
-  }
-};
+live.resumeEval = function () {
+  live.running = true;
+  $('#resume').hide();
+  $('#pause').show();
+  live.evalSource();
+}
 
 //------------------------------------------------------------------------------
 // Persistence
@@ -239,13 +304,10 @@ live.draw2d = function () {
 };
 
 live.resize = function () {
-
   live.context2d.canvas.width = window.innerWidth;
   live.context2d.canvas.height = window.innerHeight;
-
-  if ($('#if_live').is(':checked')) {
-    live.evalSource();
-  }
+  window.Width = window.innerWidth;
+  window.Height = window.innerWidth;
 };
 
 //------------------------------------------------------------------------------
@@ -273,17 +335,13 @@ $(document).ready(function() {
     return;
   }
 
-  $(window).resize(live.resize);
-
   $('#source').text(live.logo);
 
-  $('#eval').click(live.evalSource);
-  $('#if_live').on('change', live.liveEvalSource).trigger('change');
+  $('#pause').click(live.pauseEval);
+  $('#resume').click(live.resumeEval);
 
   $('#save').click(live.saveScript);
-  $('#load').click(function(){
-        $('#scriptList').fadeToggle('fast');
-      });
+  $('#load').click(function(){ $('#scriptList').fadeToggle('fast'); });
 
   // google plus
   if (window.location.origin == 'http://livecoder.net') {
@@ -314,8 +372,10 @@ $(document).ready(function() {
   }
   catch (e) {
     live.log(e);
+    return;
   }
 
+  $(window).resize(live.resize);
   live.resize();
 
   var inIframe = window.location != window.parent.location;
@@ -328,6 +388,8 @@ $(document).ready(function() {
   } else {
     live.showEditor(0);
   }
+
+  live.resumeEval();
 });
 
 </script>
@@ -363,7 +425,7 @@ canvas {
  
 textarea {
   font-weight: bold;
-  font-size: x-large;
+  font-size: large;
   background-color: rgba(0,0,0,0);
   text-shadow: 0ex 0ex 1ex rgba(0,0,0,1);
   opacity: 0.333;
@@ -376,10 +438,10 @@ textarea {
   border: 0px;
   outline: none;
   resize: none;
-  overflow: hidden;
+  overflow: hidden; /* TODO FIXME fails on small screens */
 }
 #source {
-  height: 85%;
+  height: 100%;
   top: 0px;
   color: #77ff77;
 }
@@ -400,14 +462,13 @@ textarea {
 }
 
 button {
-  border-radius: 9px;
+  border: none;
+  border-radius: 8px;
   background-color: #444444;
-  border-color: #222222;
 }
 button:hover {
   color: white;
-  background-color: #555555;
-  border-color: #r3;
+  background-color: #666666;
 }
 
 code, pre {
@@ -431,10 +492,11 @@ code, pre {
 
 /* back-to-front */
 canvas { z-index: 1; }
-textarea { z-index: 2; }
+#log { z-index: 2; }
+#source { z-index: 3; }
 #toolbar,
 #hideEditor,
-#showEditor { z-index: 3; }
+#showEditor { z-index: 4; }
 
 </style>
 </head>
@@ -442,6 +504,8 @@ textarea { z-index: 2; }
 <body>
 
 <canvas id='canvas2d'></canvas>
+
+<script> // TODO switch from textarea to tree editor </script>
 
 <div id='editor'>
   <textarea id='source' rows=23 cols=50></textarea>
@@ -453,8 +517,8 @@ textarea { z-index: 2; }
 
   <button onclick='live.hideMenu();'>hide</button>
   .
-  <input type='checkbox' id='if_live' checked /> live
-  <button id='eval'>eval</button>
+  <button id='pause'>pause</button>
+  <button id='resume'>resume</button>
   .
   <button id='save'>save</button>
   <button id='load'>browse ? codes</button>
