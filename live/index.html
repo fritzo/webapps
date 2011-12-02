@@ -30,6 +30,40 @@ function localStorage_keys () {
   return keys;
 }
 
+</script>
+<script type='text/javascript' id='libScript'>
+//---------------------------------------------------------
+// LiveCoder library           (for use in your javascript)
+
+// all the short variables
+var a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z;
+var A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z;
+
+// math functions              // math constants
+var abs    = Math.abs;         var E       = Math.E;
+var acos   = Math.acos;        var PI      = Math.PI;
+var asin   = Math.asin;        var SQRT2   = Math.SQRT2;
+var atan   = Math.atan;        var SQRT1_2 = Math.SQRT1_2;
+var atan2  = Math.atan2;       var LN2     = Math.LN2;
+var ceil   = Math.ceil;        var LN10    = Math.LN10;
+var cos    = Math.cos;         var LOG2E   = Math.LOG2E;
+var exp    = Math.exp;         var LOG10E  = Math.LOG10E;
+var floor  = Math.floor;       var TWOPI   = 2 * PI;
+var log    = Math.log;
+var max    = Math.max;
+var min    = Math.min;
+var pow    = Math.pow;
+var random = Math.random;
+var round  = Math.round;
+var sin    = Math.sin;
+var sqrt   = Math.sqrt;
+var tan    = Math.tan;
+
+var time = 0; // in milliseconds, this is reset every frame
+var W,H;      // window width,height in pixels
+var draw2d;   // function returning a 2d canvas context
+</script>
+<script type='text/javascript'>
 //------------------------------------------------------------------------------
 // Live
 
@@ -70,48 +104,12 @@ live.setUser = function (user) {
   }
 };
 
-//------------------------------------------------------------------------------
-// Global context
-
-// all the short variables
-var a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z;
-var A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z;
-
-// math constants
-var E       = Math.E;
-var PI      = Math.PI;
-var SQRT2   = Math.SQRT2;
-var SQRT1_2 = Math.SQRT1_2;
-var LN2     = Math.LN2;
-var LN10    = Math.LN10;
-var LOG2E   = Math.LOG2E;
-var LOG10E  = Math.LOG10E;
-
-// math functions
-var abs    = Math.abs;
-var acos   = Math.acos;
-var asin   = Math.asin;
-var atan   = Math.atan;
-var atan2  = Math.atan2;
-var ceil   = Math.ceil;
-var cos    = Math.cos;
-var exp    = Math.exp;
-var floor  = Math.floor;
-var log    = Math.log;
-var max    = Math.max;
-var min    = Math.min;
-var pow    = Math.pow;
-var random = Math.random;
-var round  = Math.round;
-var sin    = Math.sin;
-var sqrt   = Math.sqrt;
-var tan    = Math.tan;
-
-// this is set in evalSource
-var time = 0;
-
-// these are set by resize
-var width,height;
+live.promptUser = function () {
+  var user = prompt('What name will you use?');
+  if (user != undefined) {
+    live.setUser(user);
+  }
+};
 
 //------------------------------------------------------------------------------
 // Evaluation
@@ -298,6 +296,7 @@ live.hideEditor = function (speed) {
 // Graphics
 
 live.draw2d = function () {
+
   var context = live.context2d;
   context.clearRect(0, 0, context.canvas.width, context.canvas.height);
   return context;
@@ -306,8 +305,8 @@ live.draw2d = function () {
 live.resize = function () {
   live.context2d.canvas.width = window.innerWidth;
   live.context2d.canvas.height = window.innerHeight;
-  window.Width = window.innerWidth;
-  window.Height = window.innerWidth;
+  window.W = window.innerWidth;
+  window.H = window.innerWidth;
 };
 
 //------------------------------------------------------------------------------
@@ -324,6 +323,18 @@ live.assertFeatures = function () {
   //assert(has.audio, 'Browser does not support audio element');
 };
 
+$(window).keydown(function (event) {
+      switch (event.which) {
+
+        case 112: // F1 = show library
+          $('#lib').toggle();
+          event.preventDefault();
+          break;
+
+        default: // ignore
+      }
+    });
+
 $(document).ready(function() {
 
   try { live.assertFeatures(); }
@@ -335,7 +346,11 @@ $(document).ready(function() {
     return;
   }
 
+  // build toolbar
+
   $('#source').text(live.logo);
+  $('#lib').text($('#libScript').text())
+    .click(function(){ $('#lib').fadeToggle(100); });
 
   $('#pause').click(live.pauseEval);
   $('#resume').click(live.resumeEval);
@@ -343,27 +358,14 @@ $(document).ready(function() {
   $('#save').click(live.saveScript);
   $('#load').click(function(){ $('#scriptList').fadeToggle('fast'); });
 
-  // google plus
-  if (window.location.origin == 'http://livecoder.net') {
-    var po = document.createElement('script');
-    po.type = 'text/javascript';
-    po.async = true;
-    po.src = 'https://apis.google.com/js/plusone.js';
-    var s = document.getElementsByTagName('script')[0];
-    s.parentNode.insertBefore(po, s);
-  } else {
-    $('.g-plusone').hide();
-  }
+  $('#setUser').click(live.promptUser);
 
-  $('#setUser').click(function () {
-    var user = prompt('What name will you use?')
-    if (user != undefined) {
-      live.setUser(user);
-    }
-  });
+  $('#showLib').click(function(){ $('#lib').fadeToggle(100); });
+  $('#about').click(function(){ window.open('about.html'); });
+
+  // initialize
 
   live.setUser(localStorage.getItem('user'));
-
   live.listScripts();
 
   try {
@@ -430,8 +432,6 @@ textarea {
   text-shadow: 0ex 0ex 1ex rgba(0,0,0,1);
   opacity: 0.333;
 
-  width: 99%;
-  left: 1%;
   position: absolute;
   margin: 0px;
   padding: 0px;
@@ -441,14 +441,31 @@ textarea {
   overflow: hidden; /* TODO FIXME fails on small screens */
 }
 #source {
+  width: 99%;
   height: 100%;
+  left: 1%;
   top: 0px;
-  color: #77ff77;
+  color: #aaffaa;
 }
 #log {
+  width: 99%;
   height: 15%;
+  left: 1%;
   bottom: 0px;
   color: #ffff00;
+}
+#lib {
+  width: 80%;
+  height: 100%;
+  left: 10%;
+  top: 0px;
+
+  font-size: medium;
+  color: #aaaaff;
+  background-color: rgb(0,0,0);
+  opacity: 1;
+
+  display: none;
 }
 
 #toolbar,
@@ -494,9 +511,10 @@ code, pre {
 canvas { z-index: 1; }
 #log { z-index: 2; }
 #source { z-index: 3; }
+#lib { z-index: 4; }
 #toolbar,
 #hideEditor,
-#showEditor { z-index: 4; }
+#showEditor { z-index: 5; }
 
 </style>
 </head>
@@ -508,8 +526,9 @@ canvas { z-index: 1; }
 <script> // TODO switch from textarea to tree editor </script>
 
 <div id='editor'>
-  <textarea id='source' rows=23 cols=50></textarea>
-  <textarea id='log' rows=2 cols=50 readonly></textarea>
+  <textarea id='source'></textarea>
+  <textarea id='log' readonly></textarea>
+  <textarea id='lib' readonly></textarea>
 </div>
 
 <div id='toolbar'>
@@ -525,8 +544,8 @@ canvas { z-index: 1; }
   .
   <button id='setUser'>user = <span id='username'></span></button>
   .
-  <button onkeypress="window.open('about.html');"
-          onclick="window.open('about.html');">about</button>
+  <button id='showLib'>library</button>
+  <button id='about'>about</button>
 </div>
 
 <div id='hideEditor'>
