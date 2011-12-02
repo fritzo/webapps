@@ -106,7 +106,18 @@ live.getStoredScripts = function () {
   });
 };
 
+live.getScriptListHeader = function (size) {
+  var create = function (tag) { return $(document.createElement(tag)); };
+
+  return create('tr').append(
+      create('td').append(
+          create('button').html('delete all').on('click', live.deleteScripts)),
+      create('td').attr('colspan','3').html(
+          String(size) + ' scripts are saved locally'));
+};
+
 live.getScriptLink = function (key) {
+  var create = function (tag) { return $(document.createElement(tag)); };
 
   var loadScript = function () {
     $('#source').val(localStorage.getItem(key)).trigger('keyup');
@@ -115,25 +126,21 @@ live.getScriptLink = function (key) {
     localStorage.removeItem(key);
     live.listScripts();
   };
+  
+  var tr = create('tr');
 
-  var tr = $(document.createElement('tr'));
-
-  tr.append($(document.createElement('td'))
-      .append($(document.createElement('button'))
-          .html('load')
-          .on('click', loadScript))
-      .append($(document.createElement('button'))
-          .html('delete')
-          .on('click', deleteScript)));
+  tr.append(create('td')
+      .append(create('button').html('load').on('click', loadScript))
+      .append(create('button').html('delete').on('click', deleteScript)));
 
   var script_time_user = key.split('.');
 
   var time = Number(script_time_user[1]);
   var timeago = $.timeago(new Date(time));
-  tr.append($(document.createElement('td')).html(timeago));
+  tr.append(create('td').html(timeago));
 
   var user = script_time_user[2];
-  tr.append($(document.createElement('td')).html(user));
+  tr.append(create('td').html(user));
 
   var fullSource = localStorage.getItem(key);
   var briefSource = fullSource.replace(/\s+/g, ' ').substr(0,60) + '...';
@@ -147,15 +154,12 @@ live.getScriptLink = function (key) {
           }
         });
   };
-  tr.append($(document.createElement('td'))
+  tr.append(create('td')
         .on('click', toggleBrevityOfChildren)
-        .append($(document.createElement('code'))
-            .css('display', 'inline')
-            .html(briefSource))
-        .append($(document.createElement('pre'))
+        .append(create('code').css('display', 'inline').html(briefSource))
+        .append(create('pre')
             .css('display', 'none')
-            .append($(document.createElement('code'))
-                .html(fullSource))));
+            .append(create('code').html(fullSource))));
   return tr;
 };
 
@@ -167,6 +171,7 @@ live.listScripts = function () {
 
   var menu = $('#scriptList')
   menu.empty();
+  menu.append(live.getScriptListHeader(keys.length));
   for (var i = 0; i < keys.length; ++i) {
     var key = keys[i];
     menu.append(live.getScriptLink(key));
@@ -191,6 +196,22 @@ live.deleteScripts = function () {
 
     live.listScripts();
   }
+};
+
+//------------------------------------------------------------------------------
+// Hiding the editor
+
+live.showEditor = function () {
+  $('#showEditor').css('display', 'none');
+  $('textarea').css('display', 'block');
+  $('#toolbar').css('display', 'block');
+  $('#source').focus();
+};
+
+live.hideEditor = function () {
+  $('textarea').css('display', 'none');
+  $('#toolbar').css('display', 'none');
+  $('#showEditor').css('display', 'block');
 };
 
 //------------------------------------------------------------------------------
@@ -245,7 +266,6 @@ $(document).ready(function() {
   $('#if_live').on('change', live.liveEvalSource).trigger('change');
 
   $('#save').on('click', live.saveScript);
-  $('#deleteAll').on('click', live.deleteScripts);
 
   // google plus
   if (window.location.origin == 'http://livecoder.net') {
@@ -279,6 +299,17 @@ $(document).ready(function() {
   }
 
   live.resize();
+
+  var inIframe = window.location != window.parent.location;
+  if (inIframe) {
+    live.hideEditor();
+    $('body').on('click', function(){
+      live.showEditor();
+      $('body').off('click');
+    });
+  } else {
+    live.showEditor();
+  }
 });
 
 </script>
@@ -307,6 +338,7 @@ textarea {
   font-weight: bold;
   font-size: x-large;
   background-color: rgba(0,0,0,0);
+  text-shadow: 0ex 0ex 1ex rgba(0,0,0,1);
   opacity: 0.333;
 
   position: absolute;
@@ -332,7 +364,8 @@ textarea {
   color: #ffff00;
 }
 
-.toolbar {
+#toolbar,
+#showEditor {
   position: absolute;
   width: 100%;
   bottom: 0px; /* hack for 100% - 2ex */
@@ -343,14 +376,19 @@ button {
   background-color: #444444;
   border-color: #222222;
 }
+button:hover {
+  color: white;
+  background-color: #555555;
+  border-color: #r3;
+}
 #scriptList {
   height: 11ex;
   overflow: auto;
 }
-.toolbar table {
+#toolbar table {
   display: none;
 }
-.toolbar:hover table {
+#toolbar:hover table {
   display: block;
 }
 
@@ -368,31 +406,38 @@ button {
 /* back-to-front */
 canvas { z-index: 1; }
 textarea { z-index: 2; }
-.toolbar { z-index: 3; }
+#toolbar { z-index: 3; }
+#showEditor { z-index: 3; }
 
 </style>
 </head>
 <!-- ------------------------------------------------------------------------ -->
 <body>
 
-<canvas id=canvas2d></canvas>
+<canvas id='canvas2d'></canvas>
 
 <textarea id='source' rows=23 cols=50></textarea>
 <textarea id='log' rows=2 cols=50 readonly></textarea>
 
-<div class='toolbar'>
+<div id='toolbar'>
   <table id='scriptList'> </table>
 
+  <button onclick='live.hideEditor();'>hide</button>
+  |
   <input type='checkbox' id='if_live' checked /> live
   <button id='eval'>eval</button>
   |
   <button id='save'>save</button>
-  <button id='deleteAll'>delete all</button>
   |
   <button id='setUser'>user</button>
   <span id='username'></span>
   |
   <a href='about.html'><button>about</button></a>
+</div>
+</div>
+
+<div id='showEditor'>
+  <button onclick='live.showEditor();'>+</button>
 </div>
 
 </body>
