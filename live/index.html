@@ -32,36 +32,38 @@ function localStorage_keys () {
 
 </script>
 <script type='text/javascript' id='libScript'>
-//---------------------------------------------------------
-// LiveCoder library           (for use in your javascript)
+// You can use all this shorthand in your javascript:
+// expansions: fun -> function, ret -> return
+
+var time = 0;     // in milliseconds, this is reset every frame
+var dt = 1;       // in milliseconds, guaranteed to be in [1,1000]
+var W = 0, H = 0; // window width,height in pixels
+var draw2d;       // function returning a 2d canvas context
 
 // all the short variables
 var a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z;
 var A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z;
 
-// math functions              // math constants
-var abs    = Math.abs;         var E       = Math.E;
-var acos   = Math.acos;        var PI      = Math.PI;
-var asin   = Math.asin;        var SQRT2   = Math.SQRT2;
-var atan   = Math.atan;        var SQRT1_2 = Math.SQRT1_2;
-var atan2  = Math.atan2;       var LN2     = Math.LN2;
-var ceil   = Math.ceil;        var LN10    = Math.LN10;
-var cos    = Math.cos;         var LOG2E   = Math.LOG2E;
-var exp    = Math.exp;         var LOG10E  = Math.LOG10E;
-var floor  = Math.floor;       var TWOPI   = 2 * PI;
-var log    = Math.log;
-var max    = Math.max;
-var min    = Math.min;
-var pow    = Math.pow;
-var random = Math.random;
-var round  = Math.round;
-var sin    = Math.sin;
-var sqrt   = Math.sqrt;
-var tan    = Math.tan;
+// math functions & constants
+var pow   = Math.pow;      var e       = Math.E;
+var sqrt  = Math.sqrt;     var pi      = Math.PI;
+var exp   = Math.exp;      var sqrt2   = Math.SQRT2;
+var log   = Math.log;      var sqrt1_2 = Math.SQRT1_2;
+var sin   = Math.sin;      var ln2     = Math.LN2;
+var cos   = Math.cos;      var ln10    = Math.LN10;
+var tan   = Math.tan;      var log2e   = Math.LOG2E;
+var asin  = Math.asin;     var log10e  = Math.LOG10E;
+var acos  = Math.acos;
+var atan  = Math.atan;     var floor   = Math.floor;
+var atan2 = Math.atan2;    var ceil    = Math.ceil; 
+var max   = Math.max;      var round   = Math.round;
+var min   = Math.min;
+var abs   = Math.abs;      var rand    = Math.random;
 
-var time = 0; // in milliseconds, this is reset every frame
-var W,H;      // window width,height in pixels
-var draw2d;   // function returning a 2d canvas context
+var sin2pi = function(a){return sin(2*pi*a);};
+var cos2pi = function(a){return cos(2*pi*a);};
+var tan2pi = function(a){return tan(2*pi*a);};
+var bound  = function(l,u,x){return max(l,min(u,x));};
 </script>
 <script type='text/javascript'>
 //------------------------------------------------------------------------------
@@ -75,7 +77,7 @@ live.logo = [
   //"T = 1000;",
   //"t = (time % T) / T;",
   //"",
-  "var c = live.draw2d();",
+  "var c = draw2d();",
   "c.font = 'bold 64pt Courier';",
   "c.fillStyle = '#77ff77';",
   "c.fillText(' LiveCoder', 0, innerHeight/2);",
@@ -84,6 +86,10 @@ live.logo = [
 
 live.log = function (message) {
   $('#log').val(String(message));
+};
+
+live.blink = function ($button) {
+  $button.css({opacity:0}).animate({opacity:1},'fast');
 };
 
 //------------------------------------------------------------------------------
@@ -105,7 +111,7 @@ live.setUser = function (user) {
 };
 
 live.promptUser = function () {
-  var user = prompt('What name will you use?');
+  var user = prompt('What name will you use today?');
   if (user != undefined) {
     live.setUser(user);
   }
@@ -115,32 +121,41 @@ live.promptUser = function () {
 // Evaluation
 
 live.running = false;
+live.evaluating = true;
 live.lastGoodCode = '';
 
 live.evalSource = function () {
   if (!live.running) return;
 
   var source = $('#source');
-  var code = source.val();
+
+  var oldTime = window.time;
+  window.time = Number(Date.now());
+  window.dt = bound(1, 1000, time - oldTime);
 
   try {
+    if (!live.evaluating) throw '';
+
     live.log('');
 
-    window.time = Number(Date.now());
+    var code = source.val()
+          .replace(/\bfun\b/g, 'function')
+          .replace(/\bret\b/g, 'return');
+
     eval(code);
 
+    source.css('color', '#aaffaa');
     live.lastGoodCode = code;
-    //source.css('color', '#77ff77');
   }
   catch (err) {
-    //source.css('color', '#ff7777');
-    live.log('error: ' + String(err));
+    source.css('color', '#dddddd');
+    live.log(String(err));
 
     try {
       eval(live.lastGoodCode);
-    } catch (e) {
+    } catch (err) {
       live.pauseEval();
-      live.log('error: ' + String(err));
+      live.log(String(err));
     }
   }
 
@@ -159,6 +174,14 @@ live.resumeEval = function () {
   $('#pause').show();
   live.evalSource();
 }
+
+live.togglePauseEval = function () {
+  if (live.running) {
+    live.pauseEval();
+  } else {
+    live.resumeEval();
+  }
+};
 
 //------------------------------------------------------------------------------
 // Persistence
@@ -295,7 +318,7 @@ live.hideEditor = function (speed) {
 //------------------------------------------------------------------------------
 // Graphics
 
-live.draw2d = function () {
+draw2d = function () {
 
   var context = live.context2d;
   context.clearRect(0, 0, context.canvas.width, context.canvas.height);
@@ -305,8 +328,6 @@ live.draw2d = function () {
 live.resize = function () {
   live.context2d.canvas.width = window.innerWidth;
   live.context2d.canvas.height = window.innerHeight;
-  window.W = window.innerWidth;
-  window.H = window.innerWidth;
 };
 
 //------------------------------------------------------------------------------
@@ -326,8 +347,49 @@ live.assertFeatures = function () {
 $(window).keydown(function (event) {
       switch (event.which) {
 
-        case 112: // F1 = show library
+        // PAUSE = pause/resume running
+        case 19:
+          live.togglePauseEval();
+          event.preventDefault();
+          break;
+
+        // ESCAPE = hold/continue evaluation
+        case 27:
+          live.blink($('#hold'));
+          live.evaluating = !live.evaluating;
+          event.preventDefault();
+          break;
+
+        // CTRL+S to save
+        case 115: // WTF?
+        case 83:
+          if (!event.ctrlKey) break;
+        case 19: // cmd+S on mac
+          live.blink($('#save'));
+          live.saveScript();
+          event.preventDefault();
+          break;
+
+        // CTRL+O to load
+        case 79:
+          if (!event.ctrlKey) break;
+        //case ???: // cmd+O on mac
+          live.blink($('#load'));
+          $('#scriptList').fadeToggle('fast');
+          event.preventDefault();
+          break;
+
+        // F1 = show library
+        case 112:
+          live.blink($('#showLib'));
           $('#lib').toggle();
+          event.preventDefault();
+          break;
+
+        // F2 = show help
+        case 113:
+          live.blink($('#showHelp'));
+          $('#help').toggle();
           event.preventDefault();
           break;
 
@@ -351,9 +413,11 @@ $(document).ready(function() {
   $('#source').text(live.logo);
   $('#lib').text($('#libScript').text())
     .click(function(){ $('#lib').fadeToggle(100); });
+  $('#help').click(function(){ $('#help').fadeToggle(100); });
 
   $('#pause').click(live.pauseEval);
   $('#resume').click(live.resumeEval);
+  $('#hold').click(function(){ live.evaluating=!live.evaluating; });
 
   $('#save').click(live.saveScript);
   $('#load').click(function(){ $('#scriptList').fadeToggle('fast'); });
@@ -361,6 +425,7 @@ $(document).ready(function() {
   $('#setUser').click(live.promptUser);
 
   $('#showLib').click(function(){ $('#lib').fadeToggle(100); });
+  $('#showHelp').click(function(){ $('#help').fadeToggle(100); });
   $('#about').click(function(){ window.open('about.html'); });
 
   // initialize
@@ -429,8 +494,14 @@ textarea {
   font-weight: bold;
   font-size: large;
   background-color: rgba(0,0,0,0);
-  text-shadow: 0ex 0ex 1ex rgba(0,0,0,1);
-  opacity: 0.333;
+  /* this slows down rendering
+  text-shadow: 0px 0px 1ex black; 
+  */
+  text-shadow: 1px 1px 0ex black,
+               1px -1px 0ex black,
+               -1px 1px 0ex black,
+               -1px -1px 0ex black;
+  opacity: 0.5;
 
   position: absolute;
   margin: 0px;
@@ -454,19 +525,21 @@ textarea {
   bottom: 0px;
   color: #ffff00;
 }
-#lib {
+#lib,
+#help {
   width: 80%;
   height: 100%;
   left: 10%;
   top: 0px;
 
   font-size: medium;
-  color: #aaaaff;
   background-color: rgb(0,0,0);
-  opacity: 1;
+  opacity: 0.85;
 
   display: none;
 }
+#lib { color: #aaaaff; }
+#help { color: #ffaaaa; }
 
 #toolbar,
 #hideEditor,
@@ -512,9 +585,10 @@ canvas { z-index: 1; }
 #log { z-index: 2; }
 #source { z-index: 3; }
 #lib { z-index: 4; }
+#help { z-index: 5; }
 #toolbar,
 #hideEditor,
-#showEditor { z-index: 5; }
+#showEditor { z-index: 6; }
 
 </style>
 </head>
@@ -529,6 +603,22 @@ canvas { z-index: 1; }
   <textarea id='source'></textarea>
   <textarea id='log' readonly></textarea>
   <textarea id='lib' readonly></textarea>
+  <textarea id='help' readonly>
+    
+    === Keyboard Shortcuts ===
+
+    PAUSE  pause/resume computation loop
+    ESCAPE pause/resume evaluation
+           green = evaluating, gray = paused
+           Super useful for atomic modifications on code.
+
+    CTRL+S save the current code locally
+    CTRL+O show list of current scripts
+
+    F1     show/hide the library manual
+    F2     show/hide help (this message)
+
+  </textarea>
 </div>
 
 <div id='toolbar'>
@@ -536,15 +626,17 @@ canvas { z-index: 1; }
 
   <button onclick='live.hideMenu();'>hide</button>
   .
-  <button id='pause'>pause</button>
-  <button id='resume'>resume</button>
+  <button id='pause' title='shortcut = PAUSE'>pause</button>
+  <button id='resume' title='shortcut = PAUSE'>resume</button>
+  <button id='hold' title='shortcut = ESCAPE'>hold</button>
   .
-  <button id='save'>save</button>
-  <button id='load'>browse ? codes</button>
+  <button id='save' title='shortcut = CTRL+S'>save</button>
+  <button id='load' title='shortcut = CTRL+O'>browse ? codes</button>
   .
   <button id='setUser'>user = <span id='username'></span></button>
   .
-  <button id='showLib'>library</button>
+  <button id='showLib' title='shortcut = F1'>library</button>
+  <button id='showHelp' title='shortcut = F2'>help</button>
   <button id='about'>about</button>
 </div>
 
