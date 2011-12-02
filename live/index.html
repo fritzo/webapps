@@ -200,14 +200,32 @@ live.deleteScripts = function () {
 //------------------------------------------------------------------------------
 // Hiding
 
-live.showEditor = function () {
+// these cycle between 3 states
+
+live.showEditor = function (speed) {
+  if (speed == undefined) speed = 'fast';
+
   $('#showEditor').hide();
-  $('#editor').fadeIn('fast');
+  $('#hideEditor').hide();
+  $('#editor').fadeIn(speed);
+  $('#toolbar').fadeIn(speed);
   $('#source').focus();
 };
 
-live.hideEditor = function () {
-  $('#editor').fadeOut('fast');
+live.hideMenu = function (speed) {
+  if (speed == undefined) speed = 'fast';
+
+  $('#showEditor').hide();
+  $('#toolbar').fadeOut('fast');
+  $('#hideEditor').show();
+};
+
+live.hideEditor = function (speed) {
+  if (speed == undefined) speed = 'fast';
+
+  $('#hideEditor').hide();
+  $('#toolbar').hide();
+  $('#editor').fadeOut(speed);
   $('#showEditor').show();
 };
 
@@ -302,13 +320,13 @@ $(document).ready(function() {
 
   var inIframe = window.location != window.parent.location;
   if (inIframe) {
-    live.hideEditor();
+    live.hideEditor(0);
     $('body').click(function(){
-      live.showEditor();
+      live.showEditor(0);
       $('body').off('click');
     });
   } else {
-    live.showEditor();
+    live.showEditor(0);
   }
 });
 
@@ -372,11 +390,13 @@ textarea {
 }
 
 #toolbar,
+#hideEditor,
 #showEditor {
   position: absolute;
   width: 100%;
   bottom: 0px;
   opacity: 0.8;
+  display: none; /* initially */
 }
 
 button {
@@ -412,7 +432,8 @@ code, pre {
 /* back-to-front */
 canvas { z-index: 1; }
 textarea { z-index: 2; }
-#toolbar { z-index: 3; }
+#toolbar,
+#hideEditor,
 #showEditor { z-index: 3; }
 
 </style>
@@ -425,24 +446,27 @@ textarea { z-index: 2; }
 <div id='editor'>
   <textarea id='source' rows=23 cols=50></textarea>
   <textarea id='log' rows=2 cols=50 readonly></textarea>
+</div>
 
-  <div id='toolbar'>
-    <table id='scriptList'> </table>
+<div id='toolbar'>
+  <table id='scriptList'> </table>
 
-    <button onclick='live.hideEditor();'>hide</button>
-    -
-    <input type='checkbox' id='if_live' checked /> live
-    <button id='eval'>eval</button>
-    -
-    <button id='save'>save</button>
-    <button id='load'>browse ? codes</button>
-    -
-    <button id='setUser'>user</button>
-    <span id='username'></span>
-    -
-    <button onkeypress="window.open('about.html');"
-            onclick="window.open('about.html');">about</button>
-  </div>
+  <button onclick='live.hideMenu();'>hide</button>
+  .
+  <input type='checkbox' id='if_live' checked /> live
+  <button id='eval'>eval</button>
+  .
+  <button id='save'>save</button>
+  <button id='load'>browse ? codes</button>
+  .
+  <button id='setUser'>user = <span id='username'></span></button>
+  .
+  <button onkeypress="window.open('about.html');"
+          onclick="window.open('about.html');">about</button>
+</div>
+
+<div id='hideEditor'>
+  <button onclick='live.hideEditor();'>x</button>
 </div>
 
 <div id='showEditor'>
