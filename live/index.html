@@ -3,7 +3,7 @@
 <head>
 <title>Live Coder</title>
 <!-- ------------------------------------------------------------------------ -->
-<script type='text/javascript' src='jquery.js'></script>
+<script type='text/javascript' src='jquery.min.js'></script>
 <script type='text/javascript' src='modernizr.js'></script>
 <script type='text/javascript' src='jquery.timeago.js'></script>
 <script type='text/javascript'>
@@ -36,7 +36,7 @@ function localStorage_keys () {
 // expansions: fun -> function, ret -> return
 
 var time = 0;     // in milliseconds, this is reset every frame
-var dt = 1;       // in milliseconds, guaranteed to be in [1,1000]
+var dt = 1;       // timestep in milliseconds, bounded to [1,1000]
 var W = 0, H = 0; // window width,height in pixels
 var draw2d;       // function returning a 2d canvas context
 
@@ -60,10 +60,10 @@ var max   = Math.max;      var round   = Math.round;
 var min   = Math.min;
 var abs   = Math.abs;      var rand    = Math.random;
 
-var sin2pi = function(a){return sin(2*pi*a);};
-var cos2pi = function(a){return cos(2*pi*a);};
-var tan2pi = function(a){return tan(2*pi*a);};
-var bound  = function(l,u,x){return max(l,min(u,x));};
+var sin2pi = function (a) { return sin(2*pi*a) };
+var cos2pi = function (a) { return cos(2*pi*a) };
+var tan2pi = function (a) { return tan(2*pi*a) };
+var bound  = function (l,u,x) { return max(l,min(u,x)) };
 </script>
 <script type='text/javascript'>
 //------------------------------------------------------------------------------
@@ -93,93 +93,101 @@ live.blink = function ($button) {
 };
 
 //------------------------------------------------------------------------------
-// User
-
-live.setUser = function (user) {
-  if (user == undefined) {
-    user = 'anonymous';
-  }
-
-  var pattern = /^[a-zA-Z0-9_-]+$/;
-  if ((user.length <= 40) && pattern.test(user)) {
-    live.user = user;
-    localStorage.setItem('user', user);
-    $('#username').html(user);
-  } else {
-    alert('invalid username. try <=40 alphanumeric characters plus _-');
-  }
-};
-
-live.promptUser = function () {
-  var user = prompt('What name will you use today?');
-  if (user != undefined) {
-    live.setUser(user);
-  }
-};
-
-//------------------------------------------------------------------------------
 // Evaluation
 
+live.compiling = false;
 live.running = false;
-live.evaluating = true;
+live.hashedCode = '';
+live.compiledCode = '';
 live.lastGoodCode = '';
 
-live.evalSource = function () {
-  if (!live.running) return;
+live.compileSource = function () {
+  if (!live.compiling) return;
 
-  var source = $('#source');
+  var source = $('#source').val();
+
+  live.compiledCode = source
+        .replace(/\bfun\b/g, 'function')
+        .replace(/\bret\b/g, 'return');
+
+  live.hashedCode = encodeURIComponent(source);
+};
+
+live.runSource = function () {
+  if (!live.running) return;
 
   var oldTime = window.time;
   window.time = Number(Date.now());
   window.dt = bound(1, 1000, time - oldTime);
 
   try {
-    if (!live.evaluating) throw '';
+    if (!live.compiling) throw 'hit escape to compile';
 
     live.log('');
+    eval(live.compiledCode);
 
-    var code = source.val()
-          .replace(/\bfun\b/g, 'function')
-          .replace(/\bret\b/g, 'return');
+    $('#source').css('color', '#aaffaa');
 
-    eval(code);
-
-    source.css('color', '#aaffaa');
-    live.lastGoodCode = code;
+    live.lastGoodCode = live.compiledCode;
+    // disabled for DEBUG
+    //window.location.hash = live.hashedCode;
   }
   catch (err) {
-    source.css('color', '#dddddd');
+    $('#source').css('color', '#dddddd');
     live.log(String(err));
 
     try {
       eval(live.lastGoodCode);
-    } catch (err) {
-      live.pauseEval();
+    }
+    catch (err) {
       live.log(String(err));
     }
   }
 
-  setTimeout(live.evalSource, 1);
+  setTimeout(live.runSource, 1);
 };
 
-live.pauseEval = function () {
-  live.running = false;
-  $('#pause').hide();
-  $('#resume').show();
-}
+live.compileIfChanged = function (keyup) {
+  // see eg
+  // http://www.cambiaresearch.com/articles/15/javascript-char-codes-key-codes
+  switch (keyup.which) {
+    // ignore control keys
+    case 16: case 17: case 18: case 19: case 20: case 27: case 33:
+    case 34: case 35: case 36: case 37: case 38: case 39: case 40:
+      break;
+    default:
+      live.compileSource();
+  }
+};
 
-live.resumeEval = function () {
-  live.running = true;
-  $('#resume').hide();
-  $('#pause').show();
-  live.evalSource();
-}
+live.toggleCompiling = function () {
 
-live.togglePauseEval = function () {
+  if (live.compiling) {
+    live.compiling = false;
+    $('#source').off('keyup').off('click').off('change');
+  }
+  else {
+    live.compiling = true;
+    $('#source')
+        .on('keyup', live.compileIfChanged)
+        .on('click', live.compileIfChanged)
+        .on('change', live.compileIfChanged)
+        .trigger('change');
+  }
+};
+
+live.toggleRunning = function () {
+
   if (live.running) {
-    live.pauseEval();
-  } else {
-    live.resumeEval();
+    live.running = false;
+    $('#pause').hide();
+    $('#resume').show();
+  }
+   else {
+    live.running = true;
+    $('#resume').hide();
+    $('#pause').show();
+    live.runSource();
   }
 };
 
@@ -188,7 +196,7 @@ live.togglePauseEval = function () {
 
 live.getStoredScripts = function () {
   return localStorage_keys().filter(function (key) {
-    return /^script\.[0-9]+\.[a-zA-Z0-9_-]+$/.test(key);
+    return /^[0-9]+\.js$/.test(key);
   });
 };
 
@@ -220,14 +228,11 @@ live.getScriptLink = function (key) {
             tr.fadeOut('fast', deleteScript);
           })));
 
-  var script_time_user = key.split('.');
+  var time_js = key.split('.');
 
-  var time = Number(script_time_user[1]);
+  var time = Number(time_js[0]);
   var timeago = $.timeago(new Date(time));
   tr.append(create('td').html(timeago));
-
-  var user = script_time_user[2];
-  tr.append(create('td').html(user));
 
   var fullSource = localStorage.getItem(key);
   var briefSource = fullSource.replace(/\s+/g, ' ').substr(0,60) + '...';
@@ -253,7 +258,7 @@ live.listScripts = function () {
   keys.sort();
   keys.reverse();
 
-  $('#load').html('browse ' + keys.length + ' codes');
+  $('#load').html('load (' + keys.length + ')');
 
   var menu = $('#scriptList');
   menu.empty();
@@ -265,7 +270,7 @@ live.listScripts = function () {
 };
 
 live.saveScript = function () {
-  var name = ['script', String(Date.now()), live.user].join('.');
+  var name = String(Date.now()) + '.js';
   localStorage.setItem(name, $('#source').val());
   live.listScripts();
   live.log('saved ' + name + ' ...');
@@ -282,6 +287,21 @@ live.deleteScripts = function () {
     live.listScripts();
   }
 };
+
+//------------------------------------------------------------------------------
+// Hash persistence
+
+live.getHash = function () {
+  if (window.location.hash) {
+    return decodeURIComponent(window.location.hash.substr(1));
+  } else {
+    return undefined;
+  }
+};
+
+live.setHash = function (source) {
+  window.location.hash = encodeURIComponent(source);
+}
 
 //------------------------------------------------------------------------------
 // Hiding
@@ -349,14 +369,13 @@ $(window).keydown(function (event) {
 
         // PAUSE = pause/resume running
         case 19:
-          live.togglePauseEval();
+          live.toggleRunning();
           event.preventDefault();
           break;
 
-        // ESCAPE = hold/continue evaluation
+        // ESCAPE = hold/continue compiling
         case 27:
-          live.blink($('#hold'));
-          live.evaluating = !live.evaluating;
+          live.toggleCompiling();
           event.preventDefault();
           break;
 
@@ -410,53 +429,48 @@ $(document).ready(function() {
 
   // build toolbar
 
-  $('#source').text(live.logo);
+  $('#source').text(live.getHash() || live.logo);
   $('#lib').text($('#libScript').text())
     .click(function(){ $('#lib').fadeToggle(100); });
   $('#help').click(function(){ $('#help').fadeToggle(100); });
+  $('#hideAbout').click(function(){ $('#about').fadeToggle(100); });
 
-  $('#pause').click(live.pauseEval);
-  $('#resume').click(live.resumeEval);
-  $('#hold').click(function(){ live.evaluating=!live.evaluating; });
+  $('#pause').click(live.toggleRunning);
+  $('#resume').click(live.toggleRunning);
 
+  $('#clear').click(function(){ window.location.assign('index.html'); });
   $('#save').click(live.saveScript);
   $('#load').click(function(){ $('#scriptList').fadeToggle('fast'); });
 
-  $('#setUser').click(live.promptUser);
-
   $('#showLib').click(function(){ $('#lib').fadeToggle(100); });
   $('#showHelp').click(function(){ $('#help').fadeToggle(100); });
-  $('#about').click(function(){ window.open('about.html'); });
+  $('#showAbout').click(function(){ $('#about').fadeToggle('fast'); });
 
   // initialize
 
-  live.setUser(localStorage.getItem('user'));
   live.listScripts();
 
   try {
     live.context2d = document.getElementById('canvas2d').getContext('2d');
     assert(live.context2d, 'failed to get 2d canvas context');
   }
-  catch (e) {
-    live.log(e);
+  catch (err) {
+    live.log(err);
     return;
   }
 
-  $(window).resize(live.resize);
-  live.resize();
+  $(window).resize(live.resize).resize();
 
   var inIframe = window.location != window.parent.location;
   if (inIframe) {
     live.hideEditor(0);
-    $('body').click(function(){
-      live.showEditor(0);
-      $('body').off('click');
-    });
+    $('body').click(function(){ live.showEditor(0); this.off('click'); });
   } else {
     live.showEditor(0);
   }
 
-  live.resumeEval();
+  live.toggleCompiling();
+  live.toggleRunning();
 });
 
 </script>
@@ -526,7 +540,10 @@ textarea {
   color: #ffff00;
 }
 #lib,
-#help {
+#help,
+#about {
+  position: absolute;
+
   width: 80%;
   height: 100%;
   left: 10%;
@@ -540,6 +557,31 @@ textarea {
 }
 #lib { color: #aaaaff; }
 #help { color: #ffaaaa; }
+
+#about {
+  text-align: center;
+  opacity: 1;
+}
+#about button{
+  font-size: x-large;
+}
+#about dl {
+  text-align: left;
+}
+
+dt {
+  float: left;
+  clear: left;
+  width: 14em;
+  padding: 0.5em;
+  text-align: right;
+  font-weight: bold;
+  color: green;
+}
+dd {
+  margin: 0 0 0 110px;
+  padding: 0.5em;
+}
 
 #toolbar,
 #hideEditor,
@@ -589,6 +631,7 @@ canvas { z-index: 1; }
 #toolbar,
 #hideEditor,
 #showEditor { z-index: 6; }
+#about { z-index: 7; }
 
 </style>
 </head>
@@ -600,17 +643,17 @@ canvas { z-index: 1; }
 <script> // TODO switch from textarea to tree editor </script>
 
 <div id='editor'>
-  <textarea id='source'></textarea>
-  <textarea id='log' readonly></textarea>
-  <textarea id='lib' readonly></textarea>
-  <textarea id='help' readonly>
+  <textarea id='source' spellcheck='false'></textarea>
+  <textarea id='log' readonly spellcheck='false'></textarea>
+  <textarea id='lib' readonly spellcheck='false'></textarea>
+  <textarea id='help' readonly spellcheck='false'>
     
     === Keyboard Shortcuts ===
 
-    PAUSE  pause/resume computation loop
-    ESCAPE pause/resume evaluation
-           green = evaluating, gray = paused
-           Super useful for atomic modifications on code.
+    PAUSE  pause/resume running main loop
+    ESCAPE hold/continue compiling code
+           // green = holding, gray = continuing
+           // super useful for atomic modifications on code
 
     CTRL+S save the current code locally
     CTRL+O show list of current scripts
@@ -626,18 +669,13 @@ canvas { z-index: 1; }
 
   <button onclick='live.hideMenu();'>hide</button>
   .
-  <button id='pause' title='shortcut = PAUSE'>pause</button>
-  <button id='resume' title='shortcut = PAUSE'>resume</button>
-  <button id='hold' title='shortcut = ESCAPE'>hold</button>
-  .
+  <button id='clear' title='shortcut = CTRL+S'>clear</button>
   <button id='save' title='shortcut = CTRL+S'>save</button>
-  <button id='load' title='shortcut = CTRL+O'>browse ? codes</button>
+  <button id='load' title='shortcut = CTRL+O'>load</button>
   .
-  <button id='setUser'>user = <span id='username'></span></button>
-  .
-  <button id='showLib' title='shortcut = F1'>library</button>
+  <!-- <button id='showLib' title='shortcut = F1'>library</button> -->
   <button id='showHelp' title='shortcut = F2'>help</button>
-  <button id='about'>about</button>
+  <button id='showAbout'>about</button>
 </div>
 
 <div id='hideEditor'>
@@ -646,6 +684,46 @@ canvas { z-index: 1; }
 
 <div id='showEditor'>
   <button onclick='live.showEditor();'>+</button>
+</div>
+
+<div id='about'>
+  <button id=hideAbout>close</button>
+  <h2>Inspiration &amp; Related Projects</h2>
+  <dl>
+    <!--
+    <dt><a href=''></a></dt>
+      <dd></dd>
+    -->
+    <dt><a href='http://www.toplap.org'>TOPLAP</a></dt>
+      <dd>an organization dedicated to live coding of art</dd>
+    <dt><a href='http://www.lively-kernel.org'>Lively Kernel</a></dt>
+      <dd>an early experiment in browser-as-platform</dd>
+    <dt><a href='http://www.sexyvisuals.com/'>SexyVisuals</a></dt>
+      <dd>a band of visual live coders who converted some of their material to webgl</dd>
+    <dt><a href='http://mrdoob.com/projects/voxels'>mrdoob's voxels</a></dt>
+      <dd>a WebGL demo of MineCraft-style block building</dd>
+    <dt><a href='http://coffeescript.org'>coffeescript</a></dt>
+      <dd>
+        a programming langauge with javascript semantics but cleaner syntax
+        (compiles to javascript in a browser)
+      </dd>
+    <dt><a href='http://creationix.com/jack/public/index.html'>Jack</a></dt>
+      <dd>another programming language that cleans up and compiles to javascript</dd>
+    <dt><a href='http://codemirror.net'>codemirror.net</a></dt>
+      <dd>a browser-based code editor supporting e.g. javascript and coffeescript</dd>
+    <dt><a href='http://code.google.com/p/oflivecoding/'>Livecoding</a></dt>
+      <dd>a javascript live-coding framework developed with openframeworks</dd>
+    <dt><a href='http://paperjs.org'>paper.js</a></dt>
+      <dd>a vector graphics library with a sexy demo</dd>
+    <dt><a href='https://github.com/christopherdebeer/speak.js'>speak.js</a></dt>
+      <dd>a voice synthesizer running in javascript (even on chrome)</dd>
+    <dt><a href='http://jsbeautifier.org'>jsbeautifier.org</a></dt>
+      <dd>a javascript style beautifier (including lexer)</dd>
+    <dt><a href='http://playground.html5rocks.com'>playground.html5rocks</a></dt>
+      <dd>a browser-based playground for learning HTML5 and javascript</dd>
+    <dt><a href='http://www.htmlfivewow.com/demos/terminal/terminal.html'>html5wow terminal</a></dt>
+      <dd>a browser-based terminal emulator</dd>
+  </dl>
 </div>
 
 </body>
