@@ -218,8 +218,8 @@ live.getScriptLink = function (key) {
   var tr = create('tr');
 
   tr.append(create('td')
-      .append(create('button').html('load').click(loadScript))
-      .append(create('button').html('delete').click(function(){
+      .append(create('button').html('load').attr('class','roundFlat').click(loadScript))
+      .append(create('button').html('delete').attr('class','flatRound').click(function(){
             tr.fadeOut('fast', deleteScript);
           })));
 
@@ -305,6 +305,11 @@ live.selectHash = function () {
     window.clipboardData.setData(href);
     $('#shareBoxCopied').show();
   }
+}
+
+live.emptyHash = function () {
+  $('#source').val('\n').change(); // cannot be completely empty
+  live.popHash();
 }
 
 //------------------------------------------------------------------------------
@@ -404,7 +409,6 @@ $(window).keydown(function (event) {
 
         // F1 = show library
         case 112:
-          //live.blink($('#showLib'));
           $('#lib').toggle();
           event.preventDefault();
           break;
@@ -442,13 +446,12 @@ $(document).ready(function() {
   $('#pause').click(live.toggleRunning);
   $('#resume').click(live.toggleRunning);
 
-  $('#clear').click(function(){ window.location.assign('index.html#'); });
+  $('#clear').click(live.emptyHash);
   $('#save').click(live.saveScript);
   $('#load').click(function(){ $('#scriptList').fadeToggle('fast'); });
   $('#share').click(live.selectHash);
   $('#hideShareBox').click(function(){ $('#shareBox').fadeOut(100); });
 
-  $('#showLib').click(function(){ $('#lib').fadeToggle(100); });
   $('#showHelp').click(function(){ $('#help').fadeToggle(100); });
   $('#showAbout').click(function(){ $('#about').fadeToggle(100); });
 
@@ -601,20 +604,54 @@ dd {
 #hideEditor,
 #showEditor {
   position: absolute;
-  width: 100%;
   bottom: 0px;
-  opacity: 0.8;
+  left: 0px;
+  opacity: 1;
   display: none; /* initially */
 }
 
 button {
   border: none;
   border-radius: 8px;
+  padding-left: 0.7em;
+  padding-right: 0.7em;
   background-color: #444444;
 }
 button:hover {
   color: white;
   background-color: #666666;
+}
+button.roundRound {
+  border-top-left-radius:     8px;
+  border-bottom-left-radius:  8px;
+  border-top-right-radius:    8px;
+  border-bottom-right-radius: 8px;
+  padding-left:  0.7em;
+  padding-right: 0.7em;
+}
+button.roundFlat {
+  border-top-left-radius:     8px;
+  border-bottom-left-radius:  8px;
+  border-top-right-radius:    2px;
+  border-bottom-right-radius: 2px;
+  padding-left:  0.7em;
+  padding-right: 0.5em;
+}
+button.flatRound {
+  border-top-left-radius:     2px;
+  border-bottom-left-radius:  2px;
+  border-top-right-radius:    8px;
+  border-bottom-right-radius: 8px;
+  padding-left:  0.5em;
+  padding-right: 0.7em;
+}
+button.flatFlat {
+  border-top-left-radius:     2px;
+  border-bottom-left-radius:  2px;
+  border-top-right-radius:    2px;
+  border-bottom-right-radius: 2px;
+  padding-left:  0.5em;
+  padding-right: 0.5em;
 }
 
 code, pre {
@@ -709,16 +746,15 @@ canvas { z-index: 1; }
 <div id='toolbar'>
   <table id='scriptList'> </table>
 
-  <button onclick='live.hideMenu();'>hide</button>
-  .
-  <button id='clear'>clear</button>
-  <button id='save' title='shortcut = CTRL+S'>save</button>
-  <button id='load' title='shortcut = CTRL+O'>load</button>
-  <button id='share'>share</button>
-  .
-  <!-- <button id='showLib' title='shortcut = F1'>library</button> -->
-  <button id='showHelp' title='shortcut = F2'>help</button>
-  <button id='showAbout'>about</button>
+  <button class='roundRound' onclick='live.hideMenu();'>hide</button>
+  &nbsp;
+  <button class='roundFlat' id='clear'>clear</button><!--
+  --><button class='flatFlat' id='save' title='shortcut = CTRL+S'>save</button><!--
+  --><button class='flatFlat' id='load' title='shortcut = CTRL+O'>load</button><!--
+  --><button class='flatRound' id='share'>share</button>
+  &nbsp;
+  <button class='roundFlat' id='showHelp' title='shortcut = F2'>help</button><!--
+  --><button class='flatRound' id='showAbout'>about</button>
 </div>
 
 <div id='hideEditor'>
