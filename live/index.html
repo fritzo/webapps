@@ -404,7 +404,7 @@ $(window).keydown(function (event) {
 
         // F1 = show library
         case 112:
-          live.blink($('#showLib'));
+          //live.blink($('#showLib'));
           $('#lib').toggle();
           event.preventDefault();
           break;
@@ -434,10 +434,10 @@ $(document).ready(function() {
   // build toolbar
 
   $('#source').val(live.logo);
-  $('#lib').val($('#libScript').val())
+  $('#lib').val($('#libScript').text())
     .click(function(){ $('#lib').fadeToggle(100); });
   $('#help').click(function(){ $('#help').fadeToggle(100); });
-  $('#hideAbout').click(function(){ $('#about').fadeToggle(100); });
+  $('.hideAbout').click(function(){ $('#about').fadeToggle(100); });
 
   $('#pause').click(live.toggleRunning);
   $('#resume').click(live.toggleRunning);
@@ -514,12 +514,10 @@ canvas {
 #editor textarea {
   font-weight: bold;
   font-size: large;
-  background-color: rgba(0,0,0,0);
   text-shadow: 1px 1px 0ex black,
                1px -1px 0ex black,
                -1px 1px 0ex black,
                -1px -1px 0ex black;
-  opacity: 0.5;
 
   position: absolute;
   margin: 0px;
@@ -535,6 +533,8 @@ canvas {
   left: 1%;
   top: 0px;
   color: #aaffaa;
+  background-color: rgba(0,0,0,0);
+  opacity: 0.5;
 }
 #log {
   width: 99%;
@@ -542,19 +542,20 @@ canvas {
   left: 1%;
   bottom: 0px;
   color: #ffff00;
+  background-color: rgba(0,0,0,0);
+  opacity: 0.5;
 }
 #lib,
 #help,
 #about {
-  position: absolute;
-
+  position: relative;
   width: 80%;
   height: 100%;
   left: 10%;
   top: 0px;
 
   font-size: medium;
-  background-color: rgb(0,0,0);
+  background-color: black;
   opacity: 0.85;
 
   display: none;
@@ -564,9 +565,18 @@ canvas {
 
 #about {
   text-align: center;
+  background-color: #222222;
   opacity: 1;
 }
+#about a, #about a:visited {
+  color: #aaaaff; text-decoration: none;
+}
+#about h1 {
+  color: #aaaaaa;
+  font-weight: bold;
+}
 #about button{
+  width: 90%;
   font-size: x-large;
 }
 #about dl {
@@ -649,6 +659,7 @@ code, pre {
   font-size: large;
 }
 #shareBox button {
+  width: 40%;
   font-size: x-large;
 }
 
@@ -719,8 +730,8 @@ canvas { z-index: 1; }
 </div>
 
 <div id='about'>
-  <button id=hideAbout>close</button>
-  <h2>Inspiration &amp; Related Projects</h2>
+  <button class=hideAbout>close</button>
+  <h1>Inspiration &amp; Related Projects</h1>
   <dl>
     <!--
     <dt><a href=''></a></dt>
@@ -743,7 +754,7 @@ canvas { z-index: 1; }
       <dd>another programming language that cleans up and compiles to javascript</dd>
     <dt><a href='http://codemirror.net'>codemirror.net</a></dt>
       <dd>a browser-based code editor supporting e.g. javascript and coffeescript</dd>
-    <dt><a href='http://code.google.com/p/oflivecoding/'>Livecoding</a></dt>
+    <dt><a href='http://code.google.com/p/oflivecoding/'>OFLiveCoding</a></dt>
       <dd>a javascript live-coding framework developed with openframeworks</dd>
     <dt><a href='http://paperjs.org'>paper.js</a></dt>
       <dd>a vector graphics library with a sexy demo</dd>
@@ -756,6 +767,7 @@ canvas { z-index: 1; }
     <dt><a href='http://www.htmlfivewow.com/demos/terminal/terminal.html'>html5wow terminal</a></dt>
       <dd>a browser-based terminal emulator</dd>
   </dl>
+  <button class=hideAbout>close</button>
 </div>
 
 <div id='shareBox'>
