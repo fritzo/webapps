@@ -97,7 +97,6 @@ live.blink = function ($button) {
 
 live.compiling = false;
 live.running = false;
-live.hashedCode = '';
 live.compiledCode = '';
 live.lastGoodCode = '';
 
@@ -109,8 +108,6 @@ live.compileSource = function () {
   live.compiledCode = source
         .replace(/\bfun\b/g, 'function')
         .replace(/\bret\b/g, 'return');
-
-  live.hashedCode = encodeURIComponent(source);
 };
 
 live.runSource = function () {
@@ -129,8 +126,6 @@ live.runSource = function () {
     $('#source').css('color', '#aaffaa');
 
     live.lastGoodCode = live.compiledCode;
-    // disabled for DEBUG
-    //window.location.hash = live.hashedCode;
   }
   catch (err) {
     $('#source').css('color', '#dddddd');
@@ -291,16 +286,25 @@ live.deleteScripts = function () {
 //------------------------------------------------------------------------------
 // Hash persistence
 
-live.getHash = function () {
-  if (window.location.hash) {
-    return decodeURIComponent(window.location.hash.substr(1));
-  } else {
-    return undefined;
+live.popHash = function () {
+  if (window.location.hash && window.location.hash.length > 1) {
+    $('#source').val(decodeURIComponent(window.location.hash.substr(1)));
+    window.location.hash = '';
   }
 };
 
-live.setHash = function (source) {
-  window.location.hash = encodeURIComponent(source);
+live.selectHash = function () {
+  var hashedSource = encodeURIComponent($('#source').val());
+  var href = window.location.href.split('#')[0] + '#' + hashedSource;
+
+  $('#shareBoxCopied').hide();
+  $('#shareBox').fadeIn(100);
+  $('#shareBoxText').val(href).focus().select();
+
+  if (window.clipboardData) {
+    window.clipboardData.setData(href);
+    $('#shareBoxCopied').show();
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -429,8 +433,8 @@ $(document).ready(function() {
 
   // build toolbar
 
-  $('#source').text(live.getHash() || live.logo);
-  $('#lib').text($('#libScript').text())
+  $('#source').val(live.logo);
+  $('#lib').val($('#libScript').val())
     .click(function(){ $('#lib').fadeToggle(100); });
   $('#help').click(function(){ $('#help').fadeToggle(100); });
   $('#hideAbout').click(function(){ $('#about').fadeToggle(100); });
@@ -438,16 +442,19 @@ $(document).ready(function() {
   $('#pause').click(live.toggleRunning);
   $('#resume').click(live.toggleRunning);
 
-  $('#clear').click(function(){ window.location.assign('index.html'); });
+  $('#clear').click(function(){ window.location.assign('index.html#'); });
   $('#save').click(live.saveScript);
   $('#load').click(function(){ $('#scriptList').fadeToggle('fast'); });
+  $('#share').click(live.selectHash);
+  $('#hideShareBox').click(function(){ $('#shareBox').fadeOut(100); });
 
   $('#showLib').click(function(){ $('#lib').fadeToggle(100); });
   $('#showHelp').click(function(){ $('#help').fadeToggle(100); });
-  $('#showAbout').click(function(){ $('#about').fadeToggle('fast'); });
+  $('#showAbout').click(function(){ $('#about').fadeToggle(100); });
 
   // initialize
 
+  live.popHash();
   live.listScripts();
 
   try {
@@ -503,14 +510,11 @@ canvas {
   top: 0px;
   left: 0px;
 }
- 
-textarea {
+
+#editor textarea {
   font-weight: bold;
   font-size: large;
   background-color: rgba(0,0,0,0);
-  /* this slows down rendering
-  text-shadow: 0px 0px 1ex black; 
-  */
   text-shadow: 1px 1px 0ex black,
                1px -1px 0ex black,
                -1px 1px 0ex black,
@@ -622,6 +626,32 @@ code, pre {
   color: white;
 }
 
+#shareBox {
+  position: absolute;
+  left: 10%;
+  bottom: 50%; 
+
+  font-weight: bold;
+  font-size: large;
+
+  background-color: #222222;
+  border: solid 12px #222222;
+  border-radius: 18px;
+  opacity: 1;
+  display: none; /* initially */
+}
+#shareBox textarea {  
+  resize: none;
+  overflow: hidden;
+
+  font-family: helvetica, verdana, sans;
+  font-weight: bold;
+  font-size: large;
+}
+#shareBox button {
+  font-size: x-large;
+}
+
 /* back-to-front */
 canvas { z-index: 1; }
 #log { z-index: 2; }
@@ -630,7 +660,8 @@ canvas { z-index: 1; }
 #help { z-index: 5; }
 #toolbar,
 #hideEditor,
-#showEditor { z-index: 6; }
+#showEditor,
+#shareBox { z-index: 6; }
 #about { z-index: 7; }
 
 </style>
@@ -669,9 +700,10 @@ canvas { z-index: 1; }
 
   <button onclick='live.hideMenu();'>hide</button>
   .
-  <button id='clear' title='shortcut = CTRL+S'>clear</button>
+  <button id='clear'>clear</button>
   <button id='save' title='shortcut = CTRL+S'>save</button>
   <button id='load' title='shortcut = CTRL+O'>load</button>
+  <button id='share'>share</button>
   .
   <!-- <button id='showLib' title='shortcut = F1'>library</button> -->
   <button id='showHelp' title='shortcut = F2'>help</button>
@@ -724,6 +756,13 @@ canvas { z-index: 1; }
     <dt><a href='http://www.htmlfivewow.com/demos/terminal/terminal.html'>html5wow terminal</a></dt>
       <dd>a browser-based terminal emulator</dd>
   </dl>
+</div>
+
+<div id='shareBox'>
+  <textarea id='shareBoxText' rows=1 cols=40 readonly spellcheck='false'></textarea>
+  <br />
+  <button id='hideShareBox'>close</button>
+  <span id='shareBoxCopied'>Copied to clipboard!</span>
 </div>
 
 </body>
