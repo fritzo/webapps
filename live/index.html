@@ -38,18 +38,22 @@ function localStorage_keys () {
 // expansions: fun -> function, ret -> return
 
 // Time
+// once{...} evaluates once, then decays to the inert nonce{...}
 var time = 0;     // in milliseconds, this is reset every call
 // TODO factor dtime into schedule callback
 var dtime = 1;    // timestep in milliseconds, bounded to [1,1000]
-var schedule;//(callback(dtime), timestep, cancelIfLateBy=inf) recurses in time
+var schedule;//(callback(dtime), periodMs, cancelIfLateByMs=inf) recurses in time
 
 // Graphics
-var W = 0, H = 0; // window width,height in pixels
+var windowW = 0, windowH = 0; // window inner width,height in pixels
+var mouseX = 0, mouseY = 0;   // mouse coords in pixels
 // TODO factor this into context2d and clear2d()
 var draw2d;//() returns a 2d canvas context
 
 // Audio
 var play;//(seq:Uint8Array) plays an audio sequence (mono 8bit 22050Hz)
+var tone;//(freqHz, durationSec) returns a sequence for a single tone
+// TODO add audio synthesis that runs in background via a Web Worker
 
 // all the short variables
 var a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z;
@@ -70,6 +74,7 @@ var atan2 = Math.atan2;    var ceil    = Math.ceil;
 var max   = Math.max;      var round   = Math.round;
 var min   = Math.min;
 var abs   = Math.abs;      var rand    = Math.random;
+// TOD add var inf
 
 var sin2pi = function (a) { return sin(2*pi*a) };
 var cos2pi = function (a) { return cos(2*pi*a) };
@@ -78,7 +83,7 @@ var bound  = function (l,u,x) { return max(l,min(u,x)) };
 </script>
 <script type='text/javascript'>
 //------------------------------------------------------------------------------
-// Live
+// Live (misc)
 
 var live = {};
 
@@ -91,7 +96,7 @@ live.logo = [
   "var c = draw2d();",
   "c.font = 'bold 64pt Courier';",
   "c.fillStyle = '#77ff77';",
-  "c.fillText(' LiveCoder', 0, innerHeight/2);",
+  "c.fillText(' LiveCoder.net', 0, innerHeight/2);",
   ""
 ].join('\n');
 
@@ -110,6 +115,7 @@ live.compiling = false;
 live.running = false;
 live.compiledCode = '';
 live.lastGoodCode = '';
+live.taskList = [];
 
 live.compileSource = function () {
   if (!live.compiling) return;
@@ -140,17 +146,23 @@ live.runSource = function () {
   }
   catch (err) {
     $('#source').css('color', '#dddddd');
-    live.log(String(err));
+    live.log(err);
 
     try {
       eval(live.lastGoodCode);
     }
     catch (err) {
-      live.log(String(err));
+      live.log(err);
     }
   }
 
+  live.updateTasks();
+
   setTimeout(live.runSource, 1);
+};
+
+live.updateTasks = function () {
+  
 };
 
 live.compileIfChanged = function (keyup) {
@@ -176,8 +188,8 @@ live.toggleCompiling = function () {
     live.compiling = true;
     $('#source')
         .on('keyup', live.compileIfChanged)
-        .on('click', live.compileIfChanged)
-        .on('change', live.compileIfChanged)
+        .on('click', live.compileSource)
+        .on('change', live.compileSource)
         .trigger('change');
   }
 };
@@ -210,8 +222,15 @@ live.getScriptListHeader = function (size) {
   var create = function (tag) { return $(document.createElement(tag)); };
 
   return create('tr').append(
-      create('td').append(
-          create('button').html('delete all').click(live.deleteScripts)));
+      create('td').attr('colspan','3').append(
+          create('button')
+            .html('delete all')
+            .click(live.deleteScripts)
+            .attr('class','roundFlat'),
+          create('button')
+            .html('hide list')
+            .click(function(){ $('#scriptList').fadeToggle('fast') })
+            .attr('class','flatRound')));
 };
 
 live.getScriptLink = function (key) {
@@ -244,7 +263,7 @@ live.getScriptLink = function (key) {
   var timeago = $.timeago(new Date(time));
   tr.append(create('td').html(timeago));
 
-  var fullSource = localStorage.getItem(key);
+  var fullSource = $.trim(localStorage.getItem(key));
   var briefSource = fullSource.replace(/\s+/g, ' ').substr(0,60) + '...';
 
   var brief = create('code')
@@ -301,30 +320,31 @@ live.deleteScripts = function () {
 //------------------------------------------------------------------------------
 // Hash persistence
 
-live.popHash = function () {
+live.getHash = function () {
+  var hashedSource = encodeURIComponent($('#source').val());
+  return window.location.href.split('#')[0] + '#' + hashedSource;
+};
+
+live.clearHash = function () {
   if (window.location.hash && window.location.hash.length > 1) {
     $('#source').val(decodeURIComponent(window.location.hash.substr(1)));
     window.location.hash = '';
   }
 };
 
-live.selectHash = function () {
-  var hashedSource = encodeURIComponent($('#source').val());
-  var href = window.location.href.split('#')[0] + '#' + hashedSource;
+live.shareHash = function () {
+  var href = live.getHash();
+  var html = "<iframe width='480' height='240' src='" + href + "'></iframe>";
 
   $('#shareBoxCopied').hide();
   $('#shareBox').fadeIn(100);
   $('#shareBoxText').val(href).focus().select();
+  $('#shareBoxHtml').val(html);
 
   if (window.clipboardData) {
     window.clipboardData.setData(href);
     $('#shareBoxCopied').show();
   }
-}
-
-live.emptyHash = function () {
-  $('#source').val('\n').change(); // cannot be completely empty
-  live.popHash();
 }
 
 //------------------------------------------------------------------------------
@@ -362,6 +382,8 @@ live.hideEditor = function (speed) {
 //------------------------------------------------------------------------------
 // Graphics
 
+// TODO factor draw2d into 
+
 draw2d = function () {
 
   var context = live.context2d;
@@ -370,9 +392,16 @@ draw2d = function () {
 };
 
 live.resize = function () {
-  live.context2d.canvas.width = window.innerWidth;
-  live.context2d.canvas.height = window.innerHeight;
+  windowW = live.context2d.canvas.width = window.innerWidth;
+  windowH = live.context2d.canvas.height = window.innerHeight;
 };
+
+$(document).ready(function(){
+      $(document).mousemove(function(e){
+            window.mouseX = e.pageX;
+            window.mouseY = e.pageY;
+          });
+    });
 
 //------------------------------------------------------------------------------
 // Audio (mono 8bit 22050 Hz -- hey, it's just a browser)
@@ -495,15 +524,8 @@ $(window).keydown(function (event) {
           event.preventDefault();
           break;
 
-        // F1 = show library
+        // F1 = show help
         case 112:
-          live.blink($('#showLib'));
-          $('#lib').toggle();
-          event.preventDefault();
-          break;
-
-        // F2 = show help
-        case 113:
           live.blink($('#showHelp'));
           $('#help').toggle();
           event.preventDefault();
@@ -527,27 +549,24 @@ $(document).ready(function() {
   // build toolbar
 
   $('#source').val(live.logo);
-  $('#lib').val($('#libraryJs').text())
-    .click(function(){ $('#lib').fadeToggle(100); });
   $('#help').click(function(){ $('#help').fadeToggle(100); });
   $('.hideAbout').click(function(){ $('#about').fadeToggle(100); });
 
   $('#pause').click(live.toggleRunning);
   $('#resume').click(live.toggleRunning);
 
-  $('#clear').click(live.emptyHash);
   $('#save').click(live.saveScript);
   $('#load').click(function(){ $('#scriptList').fadeToggle('fast'); });
-  $('#share').click(live.selectHash);
+
+  $('#share').click(live.shareHash);
   $('#hideShareBox').click(function(){ $('#shareBox').fadeOut(100); });
 
   $('#showHelp').click(function(){ $('#help').fadeToggle(100); });
-  $('#showLib').click(function(){ $('#lib').fadeToggle(100); });
   $('#showAbout').click(function(){ $('#about').fadeToggle(100); });
 
   // initialize
 
-  live.popHash();
+  live.clearHash();
   live.listScripts();
 
   try {
@@ -564,7 +583,6 @@ $(document).ready(function() {
   var inIframe = window.location != window.parent.location;
   if (inIframe) {
     live.hideEditor(0);
-    $('body').click(function(){ live.showEditor(0); this.off('click'); });
   } else {
     live.showEditor(0);
   }
@@ -581,16 +599,11 @@ body,
 button {
   color: white;
   background-color: black;
-  font-size: small;
+  font-size: medium;
   font-family: helvetica, verdana, sans;
 }
 
 body {
-  color: white;
-  background-color: black;
-  font-size: small;
-  font-family: helvetica, verdana, sans;
-
   width:  100%;
   height: 100%;
   margin: 0px;
@@ -638,7 +651,6 @@ canvas {
   background-color: rgba(0,0,0,0);
   opacity: 0.5;
 }
-#lib,
 #help,
 #about {
   position: relative;
@@ -653,8 +665,7 @@ canvas {
 
   display: none;
 }
-#lib { color: #aaaaff; }
-#help { color: #ffaaaa; }
+#help { color: #aaaaff; }
 
 #about {
   text-align: center;
@@ -693,6 +704,7 @@ dd {
 #toolbar,
 #hideEditor,
 #showEditor {
+  margin: 2px;
   position: absolute;
   bottom: 0px;
   left: 0px;
@@ -701,8 +713,9 @@ dd {
 }
 
 button {
+  margin: 2px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   background-color: #444444;
 }
 button:hover {
@@ -710,16 +723,16 @@ button:hover {
   background-color: #666666;
 }
 button.roundRound {
-  border-top-left-radius:     8px;
-  border-bottom-left-radius:  8px;
-  border-top-right-radius:    8px;
-  border-bottom-right-radius: 8px;
+  border-top-left-radius:     10px;
+  border-bottom-left-radius:  10px;
+  border-top-right-radius:    10px;
+  border-bottom-right-radius: 10px;
   padding-left:  0.7em;
   padding-right: 0.7em;
 }
 button.roundFlat {
-  border-top-left-radius:     8px;
-  border-bottom-left-radius:  8px;
+  border-top-left-radius:     10px;
+  border-bottom-left-radius:  10px;
   border-top-right-radius:    2px;
   border-bottom-right-radius: 2px;
   padding-left:  0.7em;
@@ -728,8 +741,8 @@ button.roundFlat {
 button.flatRound {
   border-top-left-radius:     2px;
   border-bottom-left-radius:  2px;
-  border-top-right-radius:    8px;
-  border-bottom-right-radius: 8px;
+  border-top-right-radius:    10px;
+  border-bottom-right-radius: 10px;
   padding-left:  0.5em;
   padding-right: 0.7em;
 }
@@ -763,9 +776,8 @@ code, pre {
 
 #shareBox {
   position: absolute;
+  top: 10%;
   left: 10%;
-  right: 10%;
-  bottom: 50%; 
 
   font-size: x-large;
 
@@ -776,8 +788,8 @@ code, pre {
   display: none; /* initially */
 }
 #shareBox textarea {  
-  resize: none;
   overflow: hidden;
+  height: 5.2ex;
 
   font-family: helvetica, verdana, sans;
   font-weight: bold;
@@ -792,8 +804,7 @@ code, pre {
 canvas { z-index: 1; }
 #log { z-index: 2; }
 #source { z-index: 3; }
-#lib { z-index: 4; }
-#help { z-index: 5; }
+#help { z-index: 4; }
 #toolbar,
 #hideEditor,
 #showEditor,
@@ -812,7 +823,6 @@ canvas { z-index: 1; }
 <div id='editor'>
   <textarea id='source' spellcheck='false'></textarea>
   <textarea id='log' readonly spellcheck='false'></textarea>
-  <textarea id='lib' readonly spellcheck='false'></textarea>
   <textarea id='help' readonly spellcheck='false'>
     
     === Keyboard Shortcuts ===
@@ -836,13 +846,11 @@ canvas { z-index: 1; }
 
   <button class='roundRound' onclick='live.hideMenu();'>hide</button>
   &nbsp;
-  <button class='roundFlat' id='clear'>clear</button><!--
-  --><button class='flatFlat' id='save' title='shortcut = CTRL+S'>save</button><!--
+  <button class='roundFlat' id='save' title='shortcut = CTRL+S'>save</button><!--
   --><button class='flatFlat' id='load' title='shortcut = CTRL+O'>load</button><!--
   --><button class='flatRound' id='share'>share</button>
   &nbsp;
-  <button class='roundFlat' id='showHelp' title='shortcut = F2'>help</button><!--
-  --><button class='flatFlat' id='showLib' title='shortcut = F1'>lib</button><!--
+  <button class='roundFlat' id='showHelp' title='shortcut = F1'>help</button><!--
   --><button class='flatRound' id='showAbout'>about</button>
 </div>
 
@@ -898,8 +906,13 @@ canvas { z-index: 1; }
 </div>
 
 <div id='shareBox'>
-  Send this link to a friend:
-  <textarea id='shareBoxText' rows=1 cols=60 readonly spellcheck='false'></textarea>...
+  Share this link with friends:
+  <br />
+  <textarea id='shareBoxText' rows=2 cols=48 readonly spellcheck='false'></textarea>
+  <br />
+  Embed this HTML in another page:
+  <br />
+  <textarea id='shareBoxHtml' rows=2 cols=48 spellcheck='false'></textarea>
   <br />
   <button id='hideShareBox'>close</button>
   <span id='shareBoxCopied'>Copied to clipboard!</span>
