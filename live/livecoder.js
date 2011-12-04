@@ -75,7 +75,7 @@ window.livecoder = (function(){
 
   var live = {};
 
-  var logo = [
+  live.logo = [
     "",
     "// this is just an example",
     //"T = 1000;",
@@ -88,21 +88,28 @@ window.livecoder = (function(){
     ""
   ].join('\n');
 
+  live.log = function (message) {
+    live.$log.val(String(message));
+  };
+
+  live.setSource = function (val) {
+    live.$source.val(val);
+  };
+  live.getSource = function (val) {
+    return live.$source.val();
+  };
+
   live.init = function ($source, $log) {
 
-    live.$source = $source;
     live.$log = $log;
+    live.$source = $source;
 
-    $source.val(logo);
+    live.setSource(live.logo);
 
     live.initGraphics();
 
     live.toggleCompiling();
     live.toggleRunning();
-  };
-
-  live.log = function (message) {
-    live.$log.val(String(message));
   };
 
   //----------------------------------------------------------------------------
@@ -117,9 +124,7 @@ window.livecoder = (function(){
   live.compileSource = function () {
     if (!live.compiling) return;
 
-    var source = $('#source').val();
-
-    live.compiledCode = source
+    live.compiledCode = live.getSource()
           .replace(/\bfun\b/g, 'function')
           .replace(/\bret\b/g, 'return');
   };
@@ -167,10 +172,12 @@ window.livecoder = (function(){
     // see eg
     // http://www.cambiaresearch.com/articles/15/javascript-char-codes-key-codes
     switch (keyup.which) {
+
       // ignore control keys
       case 16: case 17: case 18: case 19: case 20: case 27: case 33:
       case 34: case 35: case 36: case 37: case 38: case 39: case 40:
         break;
+
       default:
         live.compileSource();
     }
@@ -324,8 +331,8 @@ window.livecoder = (function(){
 
     log: live.log,
 
-    setSource: function(val){ live.$source = val; },
-    getSource: function(val){ return live.$source; },
+    setSource: live.setSource,
+    getSource: live.getSource,
 
     toggleCompiling: live.toggleCompiling,
     toggleRunning: live.toggleCompilling,

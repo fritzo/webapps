@@ -261,9 +261,9 @@ $(document).ready(function() {
 
   // build editor
 
-  $('#hideToolbar').click(ui.hideToolbar);
-  $('#hideEditor').click(ui.hideEditor);
   $('#showEditor').click(ui.showEditor);
+  $('#hideEditor').click(ui.hideEditor);
+  $('#hideToolbar').click(ui.hideToolbar);
 
   $('#save').click(ui.saveScript);
   $('#load').click(function(){ $('#scriptList').fadeToggle('fast'); });
@@ -313,7 +313,7 @@ body {
 .warning { color: red; }
 
 canvas {
-  position: absolute; 
+  position: fixed; 
   top: 0px;
   left: 0px;
 }
@@ -326,37 +326,39 @@ canvas {
                -1px 1px 0ex black,
                -1px -1px 0ex black;
 
-  position: absolute;
   margin: 0px;
   padding: 0px;
   border: 0px;
   outline: none;
   resize: none;
-  overflow: hidden; /* TODO FIXME fails on small screens */
+  overflow: auto; 
 }
 #source {
-  width: 99%;
-  height: 100%;
+  position: fixed;
+  top: 0%;
+  bottom: 2em;
+  width: 99%; /* HACK */
   left: 1%;
-  top: 0px;
+
   color: #aaffaa;
   background-color: rgba(0,0,0,0);
   opacity: 0.5;
 }
 #log {
-  width: 99%;
-  height: 15%;
+  position: fixed;
+  height: 10ex;
+  bottom: 2ex;
+  width: 99%; /* HACK */
   left: 1%;
-  bottom: 0px;
+
   color: #ffff00;
   background-color: rgba(0,0,0,0);
   opacity: 0.5;
 }
 #help,
 #about {
-  position: relative;
+  position: absolute;
   width: 80%;
-  height: 100%;
   left: 10%;
   top: 0px;
 
@@ -402,11 +404,9 @@ dd {
   padding: 0.5em;
 }
 
-#toolbar,
-#hideEditor,
-#showEditor {
+.toolbar {
   margin: 2px;
-  position: absolute;
+  position: fixed;
   bottom: 0px;
   left: 0px;
   opacity: 1;
@@ -476,7 +476,7 @@ code, pre {
 }
 
 #shareBox {
-  position: absolute;
+  position: fixed;
   top: 10%;
   left: 10%;
 
@@ -506,9 +506,7 @@ canvas { z-index: 1; }
 #log { z-index: 2; }
 #source { z-index: 3; }
 #help { z-index: 4; }
-#toolbar,
-#hideEditor,
-#showEditor { z-index: 6; }
+.toolbar { z-index: 6; }
 #shareBox { z-index: 7; }
 #about { z-index: 8; }
 
@@ -540,7 +538,9 @@ canvas { z-index: 1; }
   </textarea>
 </div>
 
-<div id='toolbar'>
+<div class='toolbar' id='showEditor'> <button>+</button> </div>
+<div class='toolbar' id='hideEditor'> <button>x</button> </div>
+<div class='toolbar' id='toolbar'>
   <table id='scriptList'> </table>
 
   <button id='hideToolbar' class='roundRound'>hide</button>
@@ -552,9 +552,6 @@ canvas { z-index: 1; }
   <button class='roundFlat' id='showHelp' title='shortcut = F1'>help</button><!--
   --><button class='flatRound' id='showAbout'>about</button>
 </div>
-
-<div id='hideEditor'> <button>x</button> </div>
-<div id='showEditor'> <button>+</button> </div>
 
 <div id='shareBox'>
   Share this link with friends:
