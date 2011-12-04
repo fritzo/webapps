@@ -99,12 +99,12 @@ window.livecoder = (function(){
     return live.$source.val();
   };
 
-  live.init = function ($source, $log) {
+  live.init = function ($source, $log, initSource) {
 
     live.$log = $log;
     live.$source = $source;
 
-    live.setSource(live.logo);
+    live.setSource(initSource || live.logo);
 
     live.initGraphics();
 

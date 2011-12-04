@@ -7,6 +7,7 @@
 <script type='text/javascript' src='jquery.timeago.js'></script> <!-- MIT -->
 <script type='text/javascript' src='modernizr.js'></script> <!-- MIT,BSD -->
 <script type='text/javascript' src='livecoder.js'></script> <!-- MIT -->
+<script type='text/javascript' src='riffwave.js'></script> <!-- GPL -->
 <script type='text/javascript'>
 
 var live = livecoder;
@@ -133,10 +134,13 @@ ui.getHash = function () {
   return window.location.href.split('#')[0] + '#' + hashedSource;
 };
 
-ui.clearHash = function () {
+ui.popHash = function () {
   if (window.location.hash && window.location.hash.length > 1) {
-    live.setSource(decodeURIComponent(window.location.hash.substr(1)));
+    var source = decodeURIComponent(window.location.hash.substr(1));
     window.location.hash = '';
+    return source;
+  } else {
+    return undefined;
   }
 };
 
@@ -279,7 +283,7 @@ $(document).ready(function() {
 
   // initialize
 
-  ui.clearHash();
+  var initSource = ui.popHash();
   ui.listScripts();
 
   // hide controls if window is an iframe
@@ -289,7 +293,7 @@ $(document).ready(function() {
     ui.showEditor(0);
   }
 
-  live.init($('#source'), $('#log'));
+  live.init($('#source'), $('#log'), initSource);
 });
 
 </script>
@@ -336,7 +340,7 @@ canvas {
 #source {
   position: fixed;
   top: 0%;
-  bottom: 2em;
+  bottom: 2ex;
   width: 99%; /* HACK */
   left: 1%;
 
