@@ -32,23 +32,20 @@ ui.getScriptListHeader = function (size) {
   var create = function (tag) { return $(document.createElement(tag)); };
 
   return create('tr').append(
-      create('td').attr('colspan','3').append(
+      create('td').append(
           create('button')
             .html('delete all')
             .click(ui.deleteScripts)
-            .attr('class','roundFlat'),
-          create('button')
-            .html('hide list')
-            .click(function(){ $('#scriptList').fadeToggle('fast') })
-            .attr('class','flatRound')));
+            .attr('class','roundRound')));
 };
 
 ui.getScriptLink = function (key) {
   var create = function (tag) { return $(document.createElement(tag)); };
 
   var loadScript = function () {
-    $('#source').val(localStorage.getItem(key)).trigger('keyup');
-    $('#scriptList').fadeOut('fast');
+    live.reset();
+    live.setSource(localStorage.getItem(key))
+    $('#source').trigger('keyup');
   };
   var deleteScript = function () {
     localStorage.removeItem(key);
@@ -70,7 +67,10 @@ ui.getScriptLink = function (key) {
   var time_js = key.split('.');
   var time = Number(time_js[0]);
   var timeago = $.timeago(new Date(time));
-  tr.append(create('td').html(timeago).click(loadScript));
+  tr.append(create('td')
+        .html(timeago)
+        .attr('title', 'click to load')
+        .click(loadScript));
 
   var fullSource = $.trim(localStorage.getItem(key));
   var briefSource = fullSource.replace(/\s+/g, ' ').substr(0,60) + '...';
@@ -80,13 +80,15 @@ ui.getScriptLink = function (key) {
     .attr('title', 'click to expand')
     .show();
   var full = create('pre')
-    .append(create('code').html(fullSource))
+    .append(create('code').text(fullSource))
     .hide();
 
   tr.append(create('td')
       .append(brief, full)
-      .click(function(){ brief.slideToggle(50); })
-      .click(function(){ full.slideToggle(150); }));
+      .click(function(){
+            brief.slideToggle(50);
+            full.slideToggle(150);
+          }));
   return tr;
 };
 
@@ -98,6 +100,7 @@ ui.listScripts = function () {
 
   $('#load').html('load (' + keys.length + ')');
 
+  // TODO FIXME script list extends above top of page
   var menu = $('#scriptList');
   menu.empty();
   menu.append(ui.getScriptListHeader(keys.length));
@@ -265,21 +268,25 @@ $(document).ready(function() {
 
   // build editor
 
+  $('#source').on('focus', function(){
+        $('#scriptList').fadeOut('fast');
+        $('#shareBox').fadeOut(100); 
+        $('#about').fadeOut('fast');
+        $('#help').fadeOut('fast');
+      });
+
   $('#showEditor').click(ui.showEditor);
   $('#hideEditor').click(ui.hideEditor);
   $('#hideToolbar').click(ui.hideToolbar);
 
   $('#save').click(ui.saveScript);
   $('#load').click(function(){ $('#scriptList').fadeToggle('fast'); });
-
-  $('#hideShareBox').click(function(){ $('#shareBox').fadeOut(100); });
   $('#share').click(ui.shareHash);
 
   $('#showHelp').click(function(){ $('#help').fadeToggle(100); });
   $('#help').click(function(){ $('#help').fadeToggle(100); });
 
   $('#showAbout').click(function(){ $('#about').fadeToggle(100); });
-  $('.hideAbout').click(function(){ $('#about').fadeToggle(100); });
 
   // initialize
 
@@ -466,17 +473,14 @@ code, pre {
 #scriptList {
   background-color: black;
   display: none;
-  overflow: auto; /* TODO FIXME fails on small screens */
+
+  /* FIXME this does not work */
+  max-height: 66%;
+  overflow: auto;
 }
 #scriptList tr td {
   padding: 0px 0.25em 0px 0.25em;
   vertical-align: top;
-}
-#scriptList tr td code {
-  color: gray;
-}
-#scriptList tr td pre code {
-  color: white;
 }
 
 #shareBox {
@@ -566,12 +570,10 @@ canvas { z-index: 1; }
   <br />
   <textarea id='shareBoxHtml' rows=2 cols=48 spellcheck='false'></textarea>
   <br />
-  <button id='hideShareBox'>close</button>
   <span id='shareBoxCopied'>Copied to clipboard!</span>
 </div>
 
 <div id='about'>
-  <button class=hideAbout>close</button>
   <h1>Inspiration &amp; Related Projects</h1>
   <dl>
     <!--
@@ -610,7 +612,6 @@ canvas { z-index: 1; }
     <dt><a href='http://www.htmlfivewow.com/demos/terminal/terminal.html'>html5wow terminal</a></dt>
       <dd>a browser-based terminal emulator</dd>
   </dl>
-  <button class=hideAbout>close</button>
 </div>
 
 </body>

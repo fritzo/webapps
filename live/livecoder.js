@@ -35,7 +35,8 @@ var schedule;//(callback(dtime), periodMs, cancelIfLateByMs=inf) recurses in tim
 // Graphics
 var windowW = 0, windowH = 0; // window inner width,height in pixels
 var mouseX = 0, mouseY = 0;   // mouse coords in pixels
-var draw2d;//() returns a 2d canvas context
+var clear2d;                  // clears drawing context
+var draw2d;                   // a 2d canvas context
 
 // Audio
 var play;//(seq:Uint8Array) plays an audio sequence (mono 8bit 22050Hz)
@@ -76,24 +77,31 @@ window.livecoder = (function(){
   var live = {};
 
   live.logo = [
+    "# try changing this",
     "",
-    "// this is just an example",
-    //"T = 1000;",
-    //"t = (time % T) / T;",
-    //"",
-    "var c = draw2d();",
-    "c.font = 'bold 64pt Courier';",
-    "c.fillStyle = '#77ff77';",
-    "c.fillText(' LiveCoder.net', 0, innerHeight/2);",
+    "clear2d();",
+    "var d = draw2d;",
+    "",
+    "d.font = 'bold 64pt Courier';",
+    "d.fillStyle = 'rgb(95,191,95)';",
+    "d.textAlign = 'center';",
+    "d.fillText(",
+    "    'Hello World!',",
+    "    1/8 * mouseX + 3/8 * windowW,",
+    "    1/8 * mouseY + 3/8 * windowH);",
     ""
   ].join('\n');
 
   live.log = function (message) {
-    live.$log.val(String(message));
+    if (message !== undefined) {
+      return live.$log.val(String(message));
+    } else {
+      return live.$log;
+    }
   };
 
   live.setSource = function (val) {
-    live.$source.val(val);
+    return live.$source.val(val);
   };
   live.getSource = function (val) {
     return live.$source.val();
@@ -112,6 +120,11 @@ window.livecoder = (function(){
     live.toggleRunning();
   };
 
+  live.reset = function () {
+    live.lastGoodCode = '';
+    clear2d();
+  };
+
   //----------------------------------------------------------------------------
   // Evaluation
 
@@ -126,7 +139,7 @@ window.livecoder = (function(){
 
     live.compiledCode = live.getSource()
           .replace(/\bfun\b/g, 'function')
-          .replace(/\bret\b/g, 'return');
+          .replace(/#/g, '//');
   };
 
   live.runSource = function () {
@@ -217,29 +230,25 @@ window.livecoder = (function(){
   //----------------------------------------------------------------------------
   // Graphics
 
-  window.draw2d = function (keep) {
-
-    var context = live.context2d;
-    if (!keep) {
-      context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-    }
-    return context;
+  window.clear2d = function (keep) {
+    var d = draw2d;
+    d.clearRect(0, 0, d.canvas.width, d.canvas.height);
   };
 
   live.resize = function () {
-    windowW = live.context2d.canvas.width = window.innerWidth;
-    windowH = live.context2d.canvas.height = window.innerHeight;
+    windowW = draw2d.canvas.width = window.innerWidth;
+    windowH = draw2d.canvas.height = window.innerHeight;
   };
 
   live.initGraphics = function () {
 
     try {
-      live.context2d = document.getElementById('canvas2d').getContext('2d');
-      assert(live.context2d, 'failed to get 2d canvas context');
+      draw2d = document.getElementById('canvas2d').getContext('2d');
+      assert(draw2d, 'failed to get 2d canvas context');
     }
     catch (err) {
       live.log(err);
-      live.context2d = undefined;
+      draw2d = undefined;
     }
 
     $(window).resize(live.resize).resize();
@@ -328,6 +337,7 @@ window.livecoder = (function(){
   return {
 
     init: live.init,
+    reset: live.reset,
 
     log: live.log,
 
