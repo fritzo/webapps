@@ -1,9 +1,25 @@
-// live.js
-
-// Requirements:
-// * jquery.js
-// * a textarea with id #source
-// * a textarea with id #log
+/*
+ * livecoder: version (2011-12-05)
+ * http://livecoder.net
+ *
+ * Livecoder is tool to make browser-based javascript live coding easy.
+ * It includes a language extension, a live coding editor, a task scheduler,
+ * and a few math/graphics/audio tools for live coding of art.
+ *
+ * Requires:
+ * - jquery.js
+ * - jquery.caret.js
+ * - a textarea for source editing
+ * - a textarea for error logging
+ *
+ * Provides:
+ * - an obect 'livecoder'
+ * - a mess of global variables useful for live coding
+ *
+ * Copyright (c) 2012, Fritz Obermeyer
+ * Licensed under the MIT license:
+ * http://www.opensource.org/licenses/mit-license.php
+ */
 
 //------------------------------------------------------------------------------
 // Global safety
@@ -94,19 +110,17 @@ window.livecoder = (function(){
   ].join('\n');
 
   live.log = function (message) {
-    if (message !== undefined) {
-      return live.$log.val(String(message));
-    } else {
-      return live.$log;
-    }
+    live.$log.val(String(message || ''));
   };
 
   live.setSource = function (val) {
-    return live.$source.val(val);
+    live.$source.val(val);
   };
   live.getSource = function (val) {
     return live.$source.val();
   };
+
+  live.reset = undefined; // defined below
 
   live.init = function ($source, $log, initSource) {
 
@@ -121,11 +135,6 @@ window.livecoder = (function(){
     live.toggleRunning();
   };
 
-  live.reset = function () {
-    live.lastGoodCode = '';
-    clear2d();
-  };
-
   //----------------------------------------------------------------------------
   // Evaluation
 
@@ -135,12 +144,33 @@ window.livecoder = (function(){
   live.lastGoodCode = '';
   live.taskList = [];
 
+  live.reset = function () {
+    live.lastGoodCode = '';
+    clear2d();
+  };
+
   live.compileSource = function () {
     if (!live.compiling) return;
 
-    live.compiledCode = live.getSource()
-          .replace(/\bfun\b/g, 'function')
-          .replace(/#/g, '//');
+    try {
+      var source = live.getSource();
+
+      live.compiledCode = source
+            .replace(/\bonce\b/g, 'if(1)')
+            .replace(/\bnonce\b/g, 'if(0)')
+            .replace(/\bfun\b/g, 'function')
+            .replace(/#/g, '//');
+      // TODO compile fully to code here
+
+      if (source.match(/\bonce\b/)) {
+        var pos = live.$source.caret();
+        live.setSource(source.replace(/\bonce\b/g, 'nonce'));
+        live.$source.caret(pos);
+      }
+    }
+    catch (err) {
+      live.log('');
+    }
   };
 
   live.runSource = function () {
