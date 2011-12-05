@@ -94,7 +94,7 @@ window.livecoder = (function(){
   var live = {};
 
   live.logo = [
-    "# try changing this",
+    "// try changing this",
     "",
     "clear2d();",
     "var d = draw2d;",
@@ -158,8 +158,7 @@ window.livecoder = (function(){
       live.compiledCode = source
             .replace(/\bonce\b/g, 'if(1)')
             .replace(/\bnonce\b/g, 'if(0)')
-            .replace(/\bfun\b/g, 'function')
-            .replace(/#/g, '//');
+            .replace(/\bfun\b/g, 'function');
       // TODO compile fully to code here
 
       if (source.match(/\bonce\b/)) {
@@ -213,6 +212,10 @@ window.livecoder = (function(){
   };
 
   live.compileIfChanged = function (keyup) {
+
+    $source = live.$source;
+    var delay = false;
+
     // see eg
     // http://www.cambiaresearch.com/articles/15/javascript-char-codes-key-codes
     switch (keyup.which) {
@@ -220,11 +223,25 @@ window.livecoder = (function(){
       // ignore control keys
       case 16: case 17: case 18: case 19: case 20: case 27: case 33:
       case 34: case 35: case 36: case 37: case 38: case 39: case 40:
+        return;
+
+      // be careful with comment markers // by waiting to compile
+      case 191: // slash
+        delay = true;
         break;
+      case 8: // backspace
+        delay = ($source.val().charAt($source.caret()-1) === '/')
+        break
+      case 46: // delete
+        delay = ($source.val().charAt($source.caret()) === '/')
+        break
 
       default:
-        live.compileSource();
+        break;
     }
+
+    if (delay) setTimeout(live.compileSource, 200);
+    else live.compileSource();
   };
 
   live.toggleCompiling = function () {
