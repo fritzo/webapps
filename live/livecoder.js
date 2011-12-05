@@ -39,9 +39,10 @@ var clear2d;                  // clears drawing context
 var draw2d;                   // a 2d canvas context
 
 // Audio
+var sampleRate = 22050;
 var play;//(seq:Uint8Array) plays an audio sequence (mono 8bit 22050Hz)
 var tone;//(freqHz, durationSec) returns a sequence for a single tone
-// TODO add audio synthesis that runs in background via a Web Worker
+var noise;
 
 // all the short variables
 var a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z;

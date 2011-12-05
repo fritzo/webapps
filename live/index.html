@@ -64,12 +64,13 @@ ui.getScriptLink = function (key) {
   var fullSource = $.trim(localStorage.getItem(key));
   var briefSource = fullSource.replace(/\s+/g, ' ').substr(0,60) + '...';
 
-  var brief = create('code')
-    .html(briefSource)
+  var brief = create('pre')
+    .append(create('code').text(briefSource))
     .attr('title', 'click to expand')
     .show();
   var full = create('pre')
     .append(create('code').text(fullSource))
+    .attr('title', 'click to collapse')
     .hide();
 
   tr.append(create('td')
@@ -226,6 +227,7 @@ $(window).keydown(function (event) {
         // F1 = show help
         case 112:
           ui.blink($('#showHelp'));
+          $('#about').hide();
           $('#help').toggle();
           event.preventDefault();
           break;
@@ -271,10 +273,15 @@ $(document).ready(function() {
   $('#showGallery').click(function(){ $('#gallery').fadeToggle('fast'); });
   $('#share').click(ui.shareHash);
 
-  $('#showHelp').click(function(){ $('#help').fadeToggle(100); });
+  $('#showHelp').click(function(){
+        $('#about').hide();
+        $('#help').fadeToggle(100);
+      });
   $('#help').click(function(){ $('#help').fadeToggle(100); });
-
-  $('#showAbout').click(function(){ $('#about').fadeToggle(100); });
+  $('#showAbout').click(function(){
+        $('#help').hide();
+        $('#about').fadeToggle(100);
+      });
 
   // initialize
 
@@ -318,6 +325,7 @@ canvas {
 }
 
 #editor textarea {
+  position: fixed;
   font-weight: bold;
   font-size: large;
   text-shadow: 1px 1px 0ex black,
@@ -331,73 +339,67 @@ canvas {
   outline: none;
   resize: none;
   overflow: auto; 
+
+  background-color: rgba(0,0,0,0);
+  opacity: 0.5;
 }
 #source {
-  position: fixed;
   top: 0%;
   bottom: 2ex;
   width: 99%; /* HACK */
   left: 1%;
 
   color: #aaffaa;
-  background-color: rgba(0,0,0,0);
-  opacity: 0.5;
 }
 #log {
-  position: fixed;
   height: 10ex;
   bottom: 2ex;
   width: 99%; /* HACK */
   left: 1%;
 
   color: #ffff00;
-  background-color: rgba(0,0,0,0);
-  opacity: 0.5;
 }
-#help,
-#about {
+
+.info {
   position: absolute;
   width: 80%;
   left: 10%;
   top: 0px;
 
   font-size: medium;
-  background-color: black;
-  opacity: 0.85;
 
-  display: none;
-}
-#help { color: #aaaaff; }
-
-#about {
   text-align: center;
   background-color: #222222;
   opacity: 1;
+
+  display: none; /* initially */
 }
-#about a, #about a:visited {
+.info p {
+  text-align: left;
+}
+.info a,
+.info a:visited {
   color: #aaaaff; text-decoration: none;
 }
-#about h1 {
+.info h1,
+.info h2 {
   color: #aaaaaa;
   font-weight: bold;
 }
-#about button{
-  width: 90%;
-  font-size: x-large;
-}
-#about dl {
+
+dl {
   text-align: left;
 }
-
 dt {
   float: left;
   clear: left;
-  width: 14em;
   padding: 0.5em;
   text-align: right;
   font-weight: bold;
   color: green;
 }
+#help dt { width: 8em; }
+#about dt { width: 14em; }
 dd {
   margin: 0 0 0 110px;
   padding: 0.5em;
@@ -457,6 +459,8 @@ button.flatFlat {
 
 code, pre {
   font-size: medium;
+  margin: 0px;
+  border: 0px;
 }
 #gallery {
   background-color: black;
@@ -500,11 +504,11 @@ code, pre {
 /* back-to-front */
 canvas { z-index: 1; }
 #log { z-index: 2; }
-#source { z-index: 3; }
-#help { z-index: 4; }
-.toolbar { z-index: 6; }
-#shareBox { z-index: 7; }
-#about { z-index: 8; }
+#source { z-index: 4; }
+.toolbar { z-index: 5; }
+#shareBox { z-index: 6; }
+#about { z-index: 7; }
+#help { z-index: 8; }
 
 </style>
 </head>
@@ -516,22 +520,6 @@ canvas { z-index: 1; }
 <div id='editor'>
   <textarea id='source' spellcheck='false'></textarea>
   <textarea id='log' readonly spellcheck='false'></textarea>
-  <textarea id='help' readonly spellcheck='false'>
-    
-    === Keyboard Shortcuts ===
-
-    PAUSE  pause/resume running main loop
-    ESCAPE hold/continue compiling code
-           // green = holding, gray = continuing
-           // useful for atomic modifications to code
-
-    CTRL+S save the current code locally
-    CTRL+O show list of current scripts
-
-    F1     show/hide quick reference TODO
-    F2     show/hide help (this message)
-
-  </textarea>
 </div>
 
 <div class='toolbar' id='showEditor'> <button>+</button> </div>
@@ -561,7 +549,32 @@ canvas { z-index: 1; }
   <span id='shareBoxCopied'>Copied to clipboard!</span>
 </div>
 
-<div id='about'>
+<!-- ------------------------------------------------------------------------ -->
+<div class='info' id='help'>
+  <h1>What is LiveCoder.net</h1>
+  <p>
+  LiveCoder.net is a simple browser-based environment for live-coding in a dialect of javascript.
+  </p>
+
+  <h1>Keyboard Shortcuts</h1>
+  <dl>   
+    <dt>PAUSE</dt> <dd>pause/resume running main loop.</dd>
+    <dt>ESCAPE</dt>
+      <dd>
+        hold/continue compiling code
+        (useful for atomic modifications to code).
+        green = holding, gray = continuing.
+      </dd>
+
+    <dt>CTRL+S</dt> <dd>save the current code locally.</dd>
+    <dt>CTRL+O</dt> <dd>show list of current scripts.</dd>
+
+    <dt>F1</dt> <dd>show/hide help (this message).</dd>
+  </dl>
+</div>
+
+<!-- ------------------------------------------------------------------------ -->
+<div class='info' id='about'>
   <h1>Inspiration &amp; Related Projects</h1>
   <dl>
     <!--
