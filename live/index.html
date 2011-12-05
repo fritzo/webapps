@@ -28,17 +28,6 @@ ui.getStoredScripts = function () {
   });
 };
 
-ui.getScriptListHeader = function (size) {
-  var create = function (tag) { return $(document.createElement(tag)); };
-
-  return create('tr').append(
-      create('td').append(
-          create('button')
-            .html('delete all')
-            .click(ui.deleteScripts)
-            .attr('class','roundRound')));
-};
-
 ui.getScriptLink = function (key) {
   var create = function (tag) { return $(document.createElement(tag)); };
 
@@ -98,12 +87,11 @@ ui.listScripts = function () {
   keys.sort();
   keys.reverse();
 
-  $('#load').html('load (' + keys.length + ')');
+  $('#showGallery').html('gallery (' + keys.length + ')');
 
   // TODO FIXME script list extends above top of page
-  var menu = $('#scriptList');
+  var menu = $('#gallery');
   menu.empty();
-  menu.append(ui.getScriptListHeader(keys.length));
   for (var i = 0; i < keys.length; ++i) {
     var key = keys[i];
     menu.append(ui.getScriptLink(key));
@@ -226,12 +214,12 @@ $(window).keydown(function (event) {
           event.preventDefault();
           break;
 
-        // CTRL+O to load
+        // CTRL+O to show gallery
         case 79:
           if (!event.ctrlKey) break;
         //case ???: // cmd+O on mac
-          ui.blink($('#load'));
-          $('#scriptList').fadeToggle('fast');
+          ui.blink($('#showGallery'));
+          $('#gallery').fadeToggle('fast');
           event.preventDefault();
           break;
 
@@ -269,7 +257,7 @@ $(document).ready(function() {
   // build editor
 
   $('#source').on('focus', function(){
-        $('#scriptList').fadeOut('fast');
+        $('#gallery').fadeOut('fast');
         $('#shareBox').fadeOut(100); 
         $('#about').fadeOut('fast');
         $('#help').fadeOut('fast');
@@ -280,7 +268,7 @@ $(document).ready(function() {
   $('#hideToolbar').click(ui.hideToolbar);
 
   $('#save').click(ui.saveScript);
-  $('#load').click(function(){ $('#scriptList').fadeToggle('fast'); });
+  $('#showGallery').click(function(){ $('#gallery').fadeToggle('fast'); });
   $('#share').click(ui.shareHash);
 
   $('#showHelp').click(function(){ $('#help').fadeToggle(100); });
@@ -470,7 +458,7 @@ button.flatFlat {
 code, pre {
   font-size: medium;
 }
-#scriptList {
+#gallery {
   background-color: black;
   display: none;
 
@@ -478,7 +466,7 @@ code, pre {
   max-height: 66%;
   overflow: auto;
 }
-#scriptList tr td {
+#gallery tr td {
   padding: 0px 0.25em 0px 0.25em;
   vertical-align: top;
 }
@@ -549,12 +537,12 @@ canvas { z-index: 1; }
 <div class='toolbar' id='showEditor'> <button>+</button> </div>
 <div class='toolbar' id='hideEditor'> <button>x</button> </div>
 <div class='toolbar' id='toolbar'>
-  <table id='scriptList'> </table>
+  <table id='gallery'> </table>
 
   <button id='hideToolbar' class='roundRound'>hide</button>
   &nbsp;
   <button class='roundFlat' id='save' title='shortcut = CTRL+S'>save</button><!--
-  --><button class='flatFlat' id='load' title='shortcut = CTRL+O'>load</button><!--
+  --><button class='flatFlat' id='showGallery' title='shortcut = CTRL+O'>gallery</button><!--
   --><button class='flatRound' id='share'>share</button>
   &nbsp;
   <button class='roundFlat' id='showHelp' title='shortcut = F1'>help</button><!--
