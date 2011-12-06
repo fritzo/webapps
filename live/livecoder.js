@@ -42,8 +42,14 @@ function assert (condition, message) {
 //------------------------------------------------------------------------------
 // Global tools for livecoding
 
+// Time
 // once{...} evaluates once, then decays to the inert nonce{...}
+var now;//() time of event evaluation
+var after;//(duration, action); schedule an event
+
+// Python
 var print;
+var dir;//(object) lists properties of an object
 
 // Graphics
 var windowW = 0, windowH = 0; // window inner width,height in pixels
@@ -56,10 +62,6 @@ var sampleRate = 22050;
 var play;//(seq:Uint8Array) plays an audio sequence (mono 8bit 22050Hz)
 var tone;//(freqHz, durationSec) returns a sequence for a single tone
 var noise;
-
-// all the short variables
-var a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z;
-var A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z;
 
 // math functions & constants
 var pow   = Math.pow;      var e       = Math.E;
@@ -82,6 +84,14 @@ var sin2pi = function (t) { return sin(2*pi*t) };
 var cos2pi = function (t) { return cos(2*pi*t) };
 var tan2pi = function (t) { return tan(2*pi*t) };
 var bound  = function (lb,ub,x) { return max(lb,min(ub,x)) };
+
+//--------
+
+var dir = function (o) {
+  var a = [], i = 0;
+  for (a[i++] in o);
+  return a;
+};
 
 //------------------------------------------------------------------------------
 // Live module
@@ -123,7 +133,12 @@ window.livecoder = (function(){
 
   live.setSource = function (val) {
     live.$source.val(val);
+
+    for (var key in live.workspace) {
+      delete live.workspace[key];
+    }
     clear2d();
+
     live.compiling = false;
     live.toggleCompiling();
     live.$source.change();
@@ -132,11 +147,10 @@ window.livecoder = (function(){
     return live.$source.val();
   };
 
-  live.init = function ($source, $log, $shadow, initSource) {
+  live.init = function ($source, $log, initSource) {
 
     live.$log = $log;
     live.$source = $source;
-    live.$shadow = $shadow;
 
     $source.val(initSource || live.logo).css('color', '#aaffaa');
 
@@ -166,10 +180,70 @@ window.livecoder = (function(){
   };
 
   //----------------------------------------------------------------------------
+  // Task Scheduling
+
+  live.time = Date.now();
+  now = function() { return live.time; };
+
+  after = function (delay, action) {
+
+    if (!(delay >= 0)) {
+      live.error('ignoring task scheduled after ' + delay);
+      return;
+    }
+    var actionTime = live.time + delay;
+
+    var safeAction = function () {
+      try {
+        live.time = actionTime; // Date.now() would cause drift
+        action();
+      } catch (err) {
+        live.error(err);
+      }
+    };
+      
+    setTimeout(safeAction, delay + live.time - Date.now());
+  };
+
+  live.scheduler = function () {
+    /*
+    var tasks = live.taskList;
+    if (tasks.length == 0) return;
+
+    // TODO update tasks
+
+    setTimeout(live.scheduler, 1);
+    */
+  };
+
+  /* another attempt
+  live.scheduler = (function () {
+
+      var Task = function () {
+      };
+
+      var tasks = [];
+
+      // interface
+      return {
+        after = after,
+
+        none:null,
+        };
+  })();
+  */
+
+  //----------------------------------------------------------------------------
   // Evaluation
 
   live.compiling = false;
+  live.workspace = {};
   live.taskList = [];
+
+  live.compileHandlers = [];
+  live.oncompile = function (handler) {
+    live.compileHandlers.push(handler);
+  };
 
   live.compileSource = function () {
     if (!live.compiling) {
@@ -181,8 +255,9 @@ window.livecoder = (function(){
 
     try {
       live.compiled = globalEval(
-          '"use strict";' +
-          '(function(){\n' +
+          '"use strict";\n' +
+          //'with(Math);\n' +
+          '(function(live){\n' +
               live.source
                 .replace(/\bonce\b/g, 'if(1)')
                 .replace(/\bnonce\b/g, 'if(0)')
@@ -193,6 +268,10 @@ window.livecoder = (function(){
       return;
     }
 
+    for (var i = 0; i < live.compileHandlers.length; ++i) {
+      live.compileHandlers[i]();
+    }
+
     if (live.source.match(/\bonce\b/)) {
       var pos = live.$source.caret() + 1;
       live.$source.val(live.source.replace(/\bonce\b/g, 'nonce')).caret(pos);
@@ -201,7 +280,8 @@ window.livecoder = (function(){
     live.log();
 
     try {
-      live.compiled();
+      live.time = Date.now();
+      live.compiled(live.workspace, function(){ return live.time; });
     } catch (err) {
       live.error(err);
       return;
@@ -267,20 +347,6 @@ window.livecoder = (function(){
           .on('change', live.compileSource)
           .trigger('change');
     }
-  };
-
-  //----------------------------------------------------------------------------
-  // Task Scheduling
-
-  live.scheduler = function () {
-    var tasks = live.taskList;
-    if (tasks.length == 0) return;
-
-    /*
-    // TODO update tasks
-
-    setTimeout(live.scheduler, 1);
-    */
   };
 
   //----------------------------------------------------------------------------
@@ -399,6 +465,7 @@ window.livecoder = (function(){
     getSource: live.getSource,
 
     toggleCompiling: live.toggleCompiling,
+    oncompile: live.oncompile,
 
     none: undefined,
   };

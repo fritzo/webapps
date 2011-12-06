@@ -17,28 +17,63 @@ var ui = {};
 //------------------------------------------------------------------------------
 // LocalStorage Persistence
 
-ui.getStoredScripts = function () {
+ui.getAutosave = function () {
+  return localStorage.getItem('autosave.js');
+};
+
+ui.startAutosave = function (delay) {
+
+  var changed = true;
+  live.oncompile(function(){ changed = true; });
+
+  var autosave = function () {
+    if (changed) {
+      changed = false;
+      localStorage.setItem('autosave.js', live.getSource());
+      console.log('autosaved');
+    }
+    setTimeout(autosave, 500);
+  };
+  autosave();
+}
+
+ui.saveScript = function (name) {
+  if (name === undefined) {
+    name = String(Date.now()) + '.js';
+  }
+  localStorage.setItem(name, live.getSource());
+  print('saved ' + name);
+  ui.buildScriptList();
+};
+
+ui.loadScript = function (name) {
+  live.setSource(localStorage.getItem(name));
+  print('loaded ' + name);
+}
+
+ui.deleteScript = function () {
+  localStorage.removeItem(name);
+  ui.buildScriptList();
+  print('deleted ' + name);
+}
+
+ui.listScripts = function () {
 
   var keys = new Array(localStorage.length);
   for (var i = 0, I = localStorage.length; i < I; ++i) {
     keys[i] = localStorage.key(i);
   }
 
-  return keys.filter(function (key) {
-    return /^[0-9]+\.js$/.test(key);
-  });
+  keys = keys.filter(function (key) { return /^[0-9]+\.js$/.test(key); });
+  keys.sort();
+  keys.reverse();
+
+  return keys;
 };
 
-ui.getScriptLink = function (key) {
-  var create = function (tag) { return $(document.createElement(tag)); };
+ui.buildScriptLink = function (key) {
 
-  var loadScript = function () {
-    live.setSource(localStorage.getItem(key))
-  };
-  var deleteScript = function () {
-    localStorage.removeItem(key);
-    ui.listScripts();
-  };
+  var create = function (tag) { return $(document.createElement(tag)); };
   
   var tr = create('tr');
 
@@ -46,11 +81,11 @@ ui.getScriptLink = function (key) {
       .append(create('button')
           .html('delete').attr('class','roundFlat')
           .click(function(){
-            tr.fadeOut('fast', deleteScript);
+            tr.fadeOut('fast', function(){ ui.deleteScript(key); });
           }))
       .append(create('button')
           .html('load').attr('class','flatRound')
-          .click(loadScript)));
+          .click(function(){ ui.loadScript(key); })));
 
   var time_js = key.split('.');
   var time = Number(time_js[0]);
@@ -59,7 +94,7 @@ ui.getScriptLink = function (key) {
         .html(timeago)
         .attr('class', 'timeago')
         .attr('title', 'click to load')
-        .click(loadScript));
+        .click(function(){ ui.loadScript(key); }));
 
   var fullSource = $.trim(localStorage.getItem(key));
   var briefSource = fullSource.replace(/\s+/g, ' ').substr(0,60) + '...';
@@ -82,40 +117,19 @@ ui.getScriptLink = function (key) {
   return tr;
 };
 
-ui.listScripts = function () {
+ui.buildScriptList = function () {
   var create = function (tag) { return $(document.createElement(tag)); };
 
-  var keys = ui.getStoredScripts();
-  keys.sort();
-  keys.reverse();
+  var keys = ui.listScripts();
 
   $('#showGallery').html('gallery (' + keys.length + ')');
 
   var menu = $('#gallery table').empty();
   for (var i = 0; i < keys.length; ++i) {
     var key = keys[i];
-    menu.append(ui.getScriptLink(key));
+    menu.append(ui.buildScriptLink(key));
   }
   menu.append(create('tr').css('height','3ex'));
-};
-
-ui.saveScript = function () {
-  var name = String(Date.now()) + '.js';
-  localStorage.setItem(name, live.getSource());
-  ui.listScripts();
-  live.log('saved ' + name + ' ...');
-};
-
-ui.deleteScripts = function () {
-
-  if (confirm('Really delete all codes in local storage?')) {
-    var keys = ui.getStoredScripts();
-    for (var i = 0, I = keys.length; i < I; ++i) {
-      localStorage.removeItem(keys[i]);
-    }
-
-    ui.listScripts();
-  }
 };
 
 //------------------------------------------------------------------------------
@@ -127,7 +141,7 @@ ui.canImport = function () {
 
 ui.exportGallery = function () {
 
-  var keys = ui.getStoredScripts();
+  var keys = ui.listScripts();
   var time_script = {};
   for (var i = 0; i < keys.length; ++i) {
     var time = keys[i];
@@ -255,6 +269,7 @@ $(window).keydown(function (event) {
         //case ???: // cmd+O on mac
           ui.blink($('#showGallery'));
           $('#gallery').fadeToggle('fast');
+          ui.buildScriptList();
           event.preventDefault();
           break;
 
@@ -302,7 +317,10 @@ $(document).ready(function() {
   $('#hideToolbar').click(ui.hideToolbar);
 
   $('#save').click(ui.saveScript);
-  $('#showGallery').click(function(){ $('#gallery').fadeToggle('fast'); });
+  $('#showGallery').click(function(){
+    $('#gallery').fadeToggle('fast');
+    ui.buildScriptList();
+  });
   $('#share').click(ui.shareHash);
 
   if (ui.canImport()) {
@@ -324,8 +342,9 @@ $(document).ready(function() {
 
   // initialize
 
-  var initSource = ui.popHash();
-  ui.listScripts();
+  var initSource = (ui.popHash() || ui.getAutosave() || '').trim();
+  console.log(initSource);
+  ui.buildScriptList();
 
   // hide controls if window is an iframe
   if (window.location != window.parent.location) {
@@ -336,6 +355,8 @@ $(document).ready(function() {
 
   live.init($('#source'), $('#log'), initSource);
   //live.initShadow($('#shadow'));
+
+  ui.startAutosave();
 });
 
 </script>
@@ -494,44 +515,43 @@ dd {
 }
 
 button {
-  margin: 2px;
-  border: none;
-  border-radius: 10px;
+  margin: 0px;
+  border: solid 2px black;
+  border-radius: 12px;
   background-color: #444444;
 }
 button:hover {
-  color: white;
   background-color: #666666;
 }
 button.roundRound {
-  border-top-left-radius:     10px;
-  border-bottom-left-radius:  10px;
-  border-top-right-radius:    10px;
-  border-bottom-right-radius: 10px;
+  border-top-left-radius:     12px;
+  border-bottom-left-radius:  12px;
+  border-top-right-radius:    12px;
+  border-bottom-right-radius: 12px;
   padding-left:  0.7em;
   padding-right: 0.7em;
 }
 button.roundFlat {
-  border-top-left-radius:     10px;
-  border-bottom-left-radius:  10px;
-  border-top-right-radius:    2px;
-  border-bottom-right-radius: 2px;
+  border-top-left-radius:     12px;
+  border-bottom-left-radius:  12px;
+  border-top-right-radius:    4px;
+  border-bottom-right-radius: 4px;
   padding-left:  0.7em;
   padding-right: 0.5em;
 }
 button.flatRound {
-  border-top-left-radius:     2px;
-  border-bottom-left-radius:  2px;
-  border-top-right-radius:    10px;
-  border-bottom-right-radius: 10px;
+  border-top-left-radius:     4px;
+  border-bottom-left-radius:  4px;
+  border-top-right-radius:    12px;
+  border-bottom-right-radius: 12px;
   padding-left:  0.5em;
   padding-right: 0.7em;
 }
 button.flatFlat {
-  border-top-left-radius:     2px;
-  border-bottom-left-radius:  2px;
-  border-top-right-radius:    2px;
-  border-bottom-right-radius: 2px;
+  border-top-left-radius:     4px;
+  border-bottom-left-radius:  4px;
+  border-top-right-radius:    4px;
+  border-bottom-right-radius: 4px;
   padding-left:  0.5em;
   padding-right: 0.5em;
 }
@@ -548,8 +568,10 @@ code, pre {
   position: absolute;
   bottom: 0px;
   max-height: 50%;
-  background-color: black;
   display: none;
+}
+#gallery table {
+  background-color: black;
 }
 #gallery table tr td {
   white-space: nowrap;
