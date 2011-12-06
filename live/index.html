@@ -577,11 +577,13 @@ canvas { z-index: 0; }
 <div id='shareBox'>
   Share this link with friends:
   <br />
-  <textarea id='shareBoxText' rows=2 cols=48 readonly spellcheck='false'></textarea>
+  <textarea id='shareBoxText' rows=2 cols=48 readonly spellcheck='false'
+    onclick='select()'></textarea>
   <br />
   Embed this HTML in another page:
   <br />
-  <textarea id='shareBoxHtml' rows=2 cols=48 spellcheck='false'></textarea>
+  <textarea id='shareBoxHtml' rows=2 cols=48 readonly spellcheck='false'
+    onclick='select()'></textarea>
   <br />
   <span id='shareBoxCopied'>Copied to clipboard!</span>
 </div>
