@@ -42,11 +42,7 @@ function assert (condition, message) {
 //------------------------------------------------------------------------------
 // Global tools for livecoding
 
-// Time
 // once{...} evaluates once, then decays to the inert nonce{...}
-var time = 0;     // in milliseconds, this is reset every call
-var dtime = 1;    // timestep in milliseconds, bounded to [1,1000]
-var schedule;//(callback(dtime), periodMs, cancelIfLateByMs=inf) recurses in time
 
 // Graphics
 var windowW = 0, windowH = 0; // window inner width,height in pixels
@@ -100,7 +96,7 @@ window.livecoder = (function(){
     "var d = draw2d;",
     "",
     "d.font = 'bold 64pt Courier';",
-    "d.fillStyle = 'rgb(95,191,95)';",
+    "d.fillStyle = '#55aa55';",
     "d.textAlign = 'center';",
     "d.fillText(",
     "    'Hello World!',",
@@ -110,110 +106,88 @@ window.livecoder = (function(){
   ].join('\n');
 
   live.log = function (message) {
-    live.$log.val(String(message || ''));
+    live.$log.val(String(message || '')).css('color', '#7777ff');
+    live.$source.css('color', '#aaffaa');
+  };
+  live.warn = function (message) {
+    live.$log.val(String(message || '')).css('color', '#ffff00');
+    live.$source.css('color', '#dddddd');
+  };
+  live.error = function (message) {
+    live.$log.val(String(message || '')).css('color', '#ff7777');
+    live.$source.css('color', '#dddddd');
   };
 
   live.setSource = function (val) {
     live.$source.val(val);
+    clear2d();
   };
   live.getSource = function (val) {
     return live.$source.val();
   };
-
-  live.reset = undefined; // defined below
 
   live.init = function ($source, $log, initSource) {
 
     live.$log = $log;
     live.$source = $source;
 
-    live.setSource(initSource || live.logo);
+    $source.val(initSource || live.logo).css('color', '#aaffaa');
 
     live.initGraphics();
 
+    live.compiling = false;
     live.toggleCompiling();
-    live.toggleRunning();
+    live.scheduler();
+  };
+
+  live.reset = function () {
   };
 
   //----------------------------------------------------------------------------
   // Evaluation
 
   live.compiling = false;
-  live.running = false;
-  live.compiledCode = '';
-  live.lastGoodCode = '';
   live.taskList = [];
 
-  live.reset = function () {
-    live.lastGoodCode = '';
-    clear2d();
-  };
-
   live.compileSource = function () {
-    if (!live.compiling) return;
+    if (!live.compiling) {
+      live.warn('hit escape to compile');
+      return;
+    }
+
+    live.source = live.$source.val();
 
     try {
-      var source = live.getSource();
-
-      live.compiledCode = source
-            .replace(/\bonce\b/g, 'if(1)')
-            .replace(/\bnonce\b/g, 'if(0)')
-            .replace(/\bfun\b/g, 'function');
-      // TODO compile fully to code here
-
-      if (source.match(/\bonce\b/)) {
-        var pos = live.$source.caret();
-        live.setSource(source.replace(/\bonce\b/g, 'nonce'));
-        live.$source.caret(pos);
-      }
+      live.compiled = globalEval(
+          '(function(time){\n' +
+              live.source
+                .replace(/\bonce\b/g, 'if(1)')
+                .replace(/\bnonce\b/g, 'if(0)')
+                .replace(/\bfun\b/g, 'function') +
+          '\n/**/})');
+    } catch (err) {
+      live.warn(err);
+      return;
     }
-    catch (err) {
-      live.log('');
-    }
-  };
 
-  live.runSource = function () {
-    if (!live.running) return;
+    if (live.source.match(/\bonce\b/)) {
+      var pos = live.$source.caret();
+      live.$source.val(live.source.replace(/\bonce\b/g, 'nonce')).caret(pos);
+    }
+
+    try {
+      live.compiled(Date.now());
+    } catch (err) {
+      live.error(err);
+      return;
+    }
 
     live.log('');
-
-    var oldTime = window.time;
-    window.time = Number(Date.now());
-    window.dtime = bound(1, 1000, time - oldTime);
-
-    try {
-      if (!live.compiling) throw 'hit escape to compile';
-
-      globalEval(live.compiledCode);
-
-      $('#source').css('color', '#aaffaa');
-
-      live.lastGoodCode = live.compiledCode;
-    }
-    catch (err) {
-      $('#source').css('color', '#dddddd');
-      live.log(err);
-
-      try {
-        globalEval(live.lastGoodCode);
-      }
-      catch (err) {
-        live.log(err);
-      }
-    }
-
-    live.updateTasks();
-
-    setTimeout(live.runSource, 1);
-  };
-
-  live.updateTasks = function () {
-    
   };
 
   live.compileIfChanged = function (keyup) {
 
-    $source = live.$source;
+    var $source = live.$source;
     var delay = false;
 
     // see eg
@@ -225,7 +199,7 @@ window.livecoder = (function(){
       case 34: case 35: case 36: case 37: case 38: case 39: case 40:
         return;
 
-      // be careful with comment markers // by waiting to compile
+      // be careful with comment markers // by delaying compile
       case 191: // slash
         delay = true;
         break;
@@ -235,6 +209,8 @@ window.livecoder = (function(){
       case 46: // delete
         delay = ($source.val().charAt($source.caret()) === '/')
         break
+
+      // TODO insert matching delimiters (),{},[],',"
 
       default:
         break;
@@ -248,10 +224,12 @@ window.livecoder = (function(){
 
     if (live.compiling) {
       live.compiling = false;
+      live.warn('hit escape to compile');
       $('#source').off('keyup').off('click').off('change');
     }
     else {
       live.compiling = true;
+      live.log();
       $('#source')
           .on('keyup', live.compileIfChanged)
           .on('click', live.compileSource)
@@ -260,19 +238,18 @@ window.livecoder = (function(){
     }
   };
 
-  live.toggleRunning = function () {
+  //----------------------------------------------------------------------------
+  // Task Scheduling
 
-    if (live.running) {
-      live.running = false;
-      live.pauseTime = Date.now();
-    }
-    else {
-      live.running = true;
-      if (live.pauseTime) {
-        time += Date.now() - live.pauseTime;
-      }
-      live.runSource();
-    }
+  live.scheduler = function () {
+    var tasks = live.taskList;
+    if (tasks.length == 0) return;
+
+    /*
+    // TODO update tasks
+
+    setTimeout(live.scheduler, 1);
+    */
   };
 
   //----------------------------------------------------------------------------
@@ -385,15 +362,11 @@ window.livecoder = (function(){
   return {
 
     init: live.init,
-    reset: live.reset,
-
-    log: live.log,
 
     setSource: live.setSource,
     getSource: live.getSource,
 
     toggleCompiling: live.toggleCompiling,
-    toggleRunning: live.toggleCompilling,
 
     none: undefined,
   };

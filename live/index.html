@@ -33,7 +33,6 @@ ui.getScriptLink = function (key) {
   var create = function (tag) { return $(document.createElement(tag)); };
 
   var loadScript = function () {
-    live.reset();
     live.setSource(localStorage.getItem(key))
     $('#source').trigger('keyup');
   };
@@ -193,12 +192,6 @@ ui.blink = function ($button) {
 
 $(window).keydown(function (event) {
       switch (event.which) {
-
-        // PAUSE = pause/resume running
-        case 19:
-          live.toggleRunning();
-          event.preventDefault();
-          break;
 
         // ESCAPE = hold/continue compiling
         case 27:
@@ -562,7 +555,6 @@ canvas { z-index: 1; }
 
   <h1>Keyboard Shortcuts</h1>
   <dl>   
-    <dt>PAUSE</dt> <dd>pause/resume running main loop.</dd>
     <dt>ESCAPE</dt>
       <dd>
         hold/continue compiling code

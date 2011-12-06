@@ -12,7 +12,8 @@
 
 new function ($) {
   $.fn.caret = function (pos) {
-    var el = $(this).get(0);
+    $this = $(this);
+    var el = $this.get(0);
 
     // .caret() returns caret position
     if (pos === undefined) {
@@ -50,6 +51,7 @@ new function ($) {
         range.select();
       }
 
+      return $this;
     }
   }
 }(jQuery);
