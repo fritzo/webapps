@@ -15,7 +15,7 @@ var live = livecoder;
 var ui = {};
 
 //------------------------------------------------------------------------------
-// Persistence
+// LocalStorage Persistence
 
 ui.getStoredScripts = function () {
 
@@ -83,6 +83,7 @@ ui.getScriptLink = function (key) {
 };
 
 ui.listScripts = function () {
+  var create = function (tag) { return $(document.createElement(tag)); };
 
   var keys = ui.getStoredScripts();
   keys.sort();
@@ -95,6 +96,7 @@ ui.listScripts = function () {
     var key = keys[i];
     menu.append(ui.getScriptLink(key));
   }
+  menu.append(create('tr').css('height','3ex'));
 };
 
 ui.saveScript = function () {
@@ -117,7 +119,47 @@ ui.deleteScripts = function () {
 };
 
 //------------------------------------------------------------------------------
-// Hash persistence
+// Data URI Persistence
+
+ui.canImport = function () {
+  return window.File && window.FileReader && window.FileList && window.Blob;
+};
+
+ui.exportGallery = function () {
+
+  var keys = ui.getStoredScripts();
+  var time_script = {};
+  for (var i = 0; i < keys.length; ++i) {
+    var time = keys[i];
+    time_script[time] = localStorage.getItem(keys[i]);
+  }
+  var json = JSON.stringify(time_script);
+  var uri = 'data:application/json;base64,' + encodeURIComponent(json);
+
+  //window.open(uri, 'LiveCoder.gallery'); // Chrome prevents this
+  window.location.href = uri; // Chrome prevents this
+};
+
+ui.importGallery = function (fileList) {
+  console.log('importing ' + fileList.length + ' files');
+  for (var i = 0, file; file = fileList[i]; ++i) {
+    //if (!file.type.match('application/json')) continue;
+    console.log(file.type || '<no file type>'); // DEBUG
+
+    var reader = new FileReader(file);
+    reader.onload = function (e) {
+      var json = decodeURIComponent(reader.result);
+      alert(json); // TODO
+    };
+    reader.onerror = function (e) {
+      console.log('Error: ' + e);
+    };
+    reader.readAsText(file);
+  }
+};
+
+//------------------------------------------------------------------------------
+// Hash Persistence
 
 ui.getHash = function () {
   var hashedSource = encodeURIComponent(live.getSource());
@@ -262,6 +304,13 @@ $(document).ready(function() {
   $('#save').click(ui.saveScript);
   $('#showGallery').click(function(){ $('#gallery').fadeToggle('fast'); });
   $('#share').click(ui.shareHash);
+
+  if (ui.canImport()) {
+    $('#export').click(ui.exportGallery);
+    $('#import').click(function(){ $('#importFiles').click(); });
+  } else {
+    $('#export, #import').css('display', 'none');
+  }
 
   $('#showHelp').click(function(){
         $('#about').hide();
@@ -497,7 +546,7 @@ code, pre {
 }
 #gallery {
   position: absolute;
-  bottom: 3ex;
+  bottom: 0px;
   max-height: 50%;
   background-color: black;
   display: none;
@@ -572,7 +621,15 @@ canvas { z-index: 0; }
   --><button class='flatRound' id='showAbout'>about</button>
 </div>
 
-<div id='gallery'> <table> </table> </div>
+<div id='gallery'>
+  <div style='position:relative; left:7ex;'>
+  <button class='roundFlat' id='export'>export gallery</button><!--
+  --><button class='flatRound' id='import'>import gallery</button>
+  <input type='file' id='importFiles' accept='application/json'
+    onchange='ui.importGallery(this.files)' />
+  </div>
+  <table> </table>
+</div>
 
 <div id='shareBox'>
   Share this link with friends:
