@@ -18,29 +18,24 @@ var ui = {};
 // LocalStorage Persistence
 
 ui.getAutosave = function () {
-  return localStorage.getItem('autosave.js');
-};
 
-ui.startAutosave = function (delay) {
-
-  var changed = true;
+  var changed = false;
   live.oncompile(function(){ changed = true; });
 
   var autosave = function () {
     if (changed) {
       changed = false;
       localStorage.setItem('autosave.js', live.getSource());
-      console.log('autosaved');
     }
     setTimeout(autosave, 500);
   };
   autosave();
-}
 
-ui.saveScript = function (name) {
-  if (name === undefined) {
-    name = String(Date.now()) + '.js';
-  }
+  return localStorage.getItem('autosave.js');
+};
+
+ui.saveScript = function () {
+  var name = String(Date.now()) + '.js';
   localStorage.setItem(name, live.getSource());
   print('saved ' + name);
   ui.buildScriptList();
@@ -51,7 +46,7 @@ ui.loadScript = function (name) {
   print('loaded ' + name);
 }
 
-ui.deleteScript = function () {
+ui.deleteScript = function (name) {
   localStorage.removeItem(name);
   ui.buildScriptList();
   print('deleted ' + name);
@@ -343,7 +338,6 @@ $(document).ready(function() {
   // initialize
 
   var initSource = (ui.popHash() || ui.getAutosave() || '').trim();
-  console.log(initSource);
   ui.buildScriptList();
 
   // hide controls if window is an iframe
@@ -355,8 +349,6 @@ $(document).ready(function() {
 
   live.init($('#source'), $('#log'), initSource);
   //live.initShadow($('#shadow'));
-
-  ui.startAutosave();
 });
 
 </script>

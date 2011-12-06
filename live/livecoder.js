@@ -42,7 +42,7 @@ function assert (condition, message) {
 //------------------------------------------------------------------------------
 // Global tools for livecoding
 
-// Time
+// Time - units are milliseconds and kHz
 // once{...} evaluates once, then decays to the inert nonce{...}
 var now;//() time of event evaluation
 var after;//(duration, action); schedule an event
@@ -58,7 +58,9 @@ var clear2d;                  // clears drawing context
 var draw2d;                   // a 2d canvas context
 
 // Audio
-var sampleRate = 22050;
+var sampleRate = 22.05; // in kHz
+var quantize8 = function (x) { return round(255/2 * (x+1)); };
+var quantize16 = function (x) { return round(65535/2 * (x+1)); };
 var play;//(seq:Uint8Array) plays an audio sequence (mono 8bit 22050Hz)
 var tone;//(freqHz, durationSec) returns a sequence for a single tone
 var noise;
@@ -116,6 +118,9 @@ window.livecoder = (function(){
     ""
   ].join('\n');
 
+  print = function (message) {
+    live.$log.val(String(message || '')).css('color', '#aaaaff');
+  };
   live.log = function (message) {
     live.$log.val(String(message || '')).css('color', '#aaaaff');
     live.$source.css('color', '#aaffaa');
@@ -128,8 +133,6 @@ window.livecoder = (function(){
     live.$log.val(String(message || '')).css('color', '#ff7777');
     live.$source.css('color', '#dddddd');
   };
-
-  print = live.log;
 
   live.setSource = function (val) {
     live.$source.val(val);
@@ -152,7 +155,12 @@ window.livecoder = (function(){
     live.$log = $log;
     live.$source = $source;
 
-    $source.val(initSource || live.logo).css('color', '#aaffaa');
+    $source
+        .val(initSource || live.logo)
+        .css('color', '#aaffaa')
+        .on('keyup', live.compileIfChanged)
+        .on('click', live.compileSource)
+        .on('change', live.compileSource);
 
     live.initGraphics();
 
@@ -268,10 +276,6 @@ window.livecoder = (function(){
       return;
     }
 
-    for (var i = 0; i < live.compileHandlers.length; ++i) {
-      live.compileHandlers[i]();
-    }
-
     if (live.source.match(/\bonce\b/)) {
       var pos = live.$source.caret() + 1;
       live.$source.val(live.source.replace(/\bonce\b/g, 'nonce')).caret(pos);
@@ -286,9 +290,17 @@ window.livecoder = (function(){
       live.error(err);
       return;
     }
+
+    for (var i = 0; i < live.compileHandlers.length; ++i) {
+      live.compileHandlers[i]();
+    }
   };
 
   live.compileIfChanged = function (keyup) {
+    if (!live.compiling) {
+      live.warn('hit escape to compile');
+      return;
+    }
 
     var $source = live.$source;
     var delay = false;
@@ -326,26 +338,11 @@ window.livecoder = (function(){
     if (live.compiling) {
       live.compiling = false;
       live.warn('hit escape to compile');
-      live.$source
-          .off('keyup')
-          .off('click')
-          .off('change');
-
-      if (live.updateShadow !== undefined) {
-        live.$source
-            .on('keyup', live.updateShadow)
-            .on('click', live.updateShadow)
-            .on('change', live.updateShadow);
-      }
     }
     else {
       live.compiling = true;
       live.log();
-      live.$source
-          .on('keyup', live.compileIfChanged)
-          .on('click', live.compileSource)
-          .on('change', live.compileSource)
-          .trigger('change');
+      live.$source.change();
     }
   };
 
