@@ -57,6 +57,7 @@ ui.getScriptLink = function (key) {
   var timeago = $.timeago(new Date(time));
   tr.append(create('td')
         .html(timeago)
+        .attr('class', 'timeago')
         .attr('title', 'click to load')
         .click(loadScript));
 
@@ -89,9 +90,7 @@ ui.listScripts = function () {
 
   $('#showGallery').html('gallery (' + keys.length + ')');
 
-  // TODO FIXME script list extends above top of page
-  var menu = $('#gallery');
-  menu.empty();
+  var menu = $('#gallery table').empty();
   for (var i = 0; i < keys.length; ++i) {
     var key = keys[i];
     menu.append(ui.getScriptLink(key));
@@ -224,8 +223,6 @@ $(window).keydown(function (event) {
           $('#help').toggle();
           event.preventDefault();
           break;
-
-        default: // ignore
       }
     });
 
@@ -300,7 +297,7 @@ body,
 button {
   color: white;
   background-color: black;
-  font-size: medium;
+  font-size: 12pt;
   font-family: helvetica, verdana, sans;
 }
 
@@ -318,10 +315,25 @@ canvas {
   left: 0px;
 }
 
+pre, code, textarea {
+  font-family:
+    /* serif */
+    Courier,
+    'Courier New',
+    'Lucida Console',
+    'Freemono',
+    'Monaco',
+    /* sans */
+    'DejaVu Sans Mono',
+    'Liberation Mono',
+    'Droid Sans Mono',
+    monospace;
+}
+
 #editor textarea {
   position: fixed;
   font-weight: bold;
-  font-size: large;
+  font-size: medium;
 
   margin: 0px;
   padding: 0px;
@@ -353,22 +365,24 @@ canvas {
 #source,
 #shadow {
   top: 0%;
+  height: 100%;
+  /*
   bottom: 2ex;
-  width: 99%; /* HACK */
+  */
   left: 1%;
+  width: 99%;
 
   color: #aaffaa;
 }
 #shadow {
   color: black;
   opacity: 0.2;
-  text-shadow: none;
 }
 #log {
   height: 10ex;
   bottom: 2ex;
-  width: 99%; /* HACK */
   left: 1%;
+  width: 99%;
 
   color: #ffff00;
 }
@@ -474,19 +488,22 @@ button.flatFlat {
 }
 
 code, pre {
-  font-size: medium;
+  font-size: small;
   margin: 0px;
   border: 0px;
 }
+.timeago {
+  font-size: small;
+}
 #gallery {
+  position: absolute;
+  bottom: 3ex;
+  max-height: 50%;
   background-color: black;
   display: none;
-
-  /* FIXME this does not work */
-  max-height: 66%;
-  overflow: auto;
 }
-#gallery tr td {
+#gallery table tr td {
+  white-space: nowrap;
   padding: 0px 0.25em 0px 0.25em;
   vertical-align: top;
 }
@@ -522,10 +539,11 @@ canvas { z-index: 0; }
 #shadow { z-index: 1; }
 #log { z-index: 2; }
 #source { z-index: 4; }
-.toolbar { z-index: 5; }
-#shareBox { z-index: 6; }
-#about { z-index: 7; }
-#help { z-index: 8; }
+#gallery { z-index: 5; }
+.toolbar { z-index: 6; }
+#shareBox { z-index: 7; }
+#about { z-index: 8; }
+#help { z-index: 9; }
 
 </style>
 </head>
@@ -543,7 +561,6 @@ canvas { z-index: 0; }
 <div class='toolbar' id='showEditor'> <button>+</button> </div>
 <div class='toolbar' id='hideEditor'> <button>x</button> </div>
 <div class='toolbar' id='toolbar'>
-  <table id='gallery'> </table>
 
   <button id='hideToolbar' class='roundRound'>hide</button>
   &nbsp;
@@ -554,6 +571,8 @@ canvas { z-index: 0; }
   <button class='roundFlat' id='showHelp' title='shortcut = F1'>help</button><!--
   --><button class='flatRound' id='showAbout'>about</button>
 </div>
+
+<div id='gallery'> <table> </table> </div>
 
 <div id='shareBox'>
   Share this link with friends:

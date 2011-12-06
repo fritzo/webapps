@@ -43,6 +43,7 @@ function assert (condition, message) {
 // Global tools for livecoding
 
 // once{...} evaluates once, then decays to the inert nonce{...}
+var print;
 
 // Graphics
 var windowW = 0, windowH = 0; // window inner width,height in pixels
@@ -106,7 +107,7 @@ window.livecoder = (function(){
   ].join('\n');
 
   live.log = function (message) {
-    live.$log.val(String(message || '')).css('color', '#7777ff');
+    live.$log.val(String(message || '')).css('color', '#aaaaff');
     live.$source.css('color', '#aaffaa');
   };
   live.warn = function (message) {
@@ -118,9 +119,13 @@ window.livecoder = (function(){
     live.$source.css('color', '#dddddd');
   };
 
+  print = live.log;
+
   live.setSource = function (val) {
     live.$source.val(val);
     clear2d();
+    live.compiling = false;
+    live.toggleCompiling();
     live.$source.change();
   };
   live.getSource = function (val) {
@@ -176,7 +181,8 @@ window.livecoder = (function(){
 
     try {
       live.compiled = globalEval(
-          '(function(time){\n' +
+          '"use strict";' +
+          '(function(){\n' +
               live.source
                 .replace(/\bonce\b/g, 'if(1)')
                 .replace(/\bnonce\b/g, 'if(0)')
@@ -192,14 +198,14 @@ window.livecoder = (function(){
       live.$source.val(live.source.replace(/\bonce\b/g, 'nonce')).caret(pos);
     }
 
+    live.log();
+
     try {
-      live.compiled(Date.now());
+      live.compiled();
     } catch (err) {
       live.error(err);
       return;
     }
-
-    live.log('');
   };
 
   live.compileIfChanged = function (keyup) {
@@ -228,9 +234,7 @@ window.livecoder = (function(){
         break
 
       // TODO insert matching delimiters (),{},[],',"
-
-      default:
-        break;
+      // TODO allow block indent and outdent
     }
 
     if (delay) setTimeout(live.compileSource, 200);
@@ -299,7 +303,7 @@ window.livecoder = (function(){
       assert(draw2d, 'failed to get 2d canvas context');
     }
     catch (err) {
-      live.log(err);
+      live.error(err);
       draw2d = undefined;
     }
 
