@@ -121,15 +121,17 @@ window.livecoder = (function(){
   live.setSource = function (val) {
     live.$source.val(val);
     clear2d();
+    live.$source.change();
   };
   live.getSource = function (val) {
     return live.$source.val();
   };
 
-  live.init = function ($source, $log, initSource) {
+  live.init = function ($source, $log, $shadow, initSource) {
 
     live.$log = $log;
     live.$source = $source;
+    live.$shadow = $shadow;
 
     $source.val(initSource || live.logo).css('color', '#aaffaa');
 
@@ -140,7 +142,22 @@ window.livecoder = (function(){
     live.scheduler();
   };
 
-  live.reset = function () {
+  //----------------------------------------------------------------------------
+  // Shadow
+
+  live.updateShadow = undefined;
+
+  live.initShadow = function ($shadow) {
+
+    live.updateShadow = function () {
+      $shadow.val(live.$source.val().replace(/./g, '\u2588'));
+    };
+
+    live.$source
+        .on('keyup', live.updateShadow)
+        .on('click', live.updateShadow)
+        .on('change', live.updateShadow)
+        .change();
   };
 
   //----------------------------------------------------------------------------
@@ -171,7 +188,7 @@ window.livecoder = (function(){
     }
 
     if (live.source.match(/\bonce\b/)) {
-      var pos = live.$source.caret();
+      var pos = live.$source.caret() + 1;
       live.$source.val(live.source.replace(/\bonce\b/g, 'nonce')).caret(pos);
     }
 
@@ -225,12 +242,22 @@ window.livecoder = (function(){
     if (live.compiling) {
       live.compiling = false;
       live.warn('hit escape to compile');
-      $('#source').off('keyup').off('click').off('change');
+      live.$source
+          .off('keyup')
+          .off('click')
+          .off('change');
+
+      if (live.updateShadow !== undefined) {
+        live.$source
+            .on('keyup', live.updateShadow)
+            .on('click', live.updateShadow)
+            .on('change', live.updateShadow);
+      }
     }
     else {
       live.compiling = true;
       live.log();
-      $('#source')
+      live.$source
           .on('keyup', live.compileIfChanged)
           .on('click', live.compileSource)
           .on('change', live.compileSource)
@@ -362,6 +389,7 @@ window.livecoder = (function(){
   return {
 
     init: live.init,
+    initShadow: live.initShadow,
 
     setSource: live.setSource,
     getSource: live.getSource,

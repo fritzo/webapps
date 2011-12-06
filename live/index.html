@@ -34,7 +34,6 @@ ui.getScriptLink = function (key) {
 
   var loadScript = function () {
     live.setSource(localStorage.getItem(key))
-    $('#source').trigger('keyup');
   };
   var deleteScript = function () {
     localStorage.removeItem(key);
@@ -290,6 +289,7 @@ $(document).ready(function() {
   }
 
   live.init($('#source'), $('#log'), initSource);
+  //live.initShadow($('#shadow'));
 });
 
 </script>
@@ -322,10 +322,6 @@ canvas {
   position: fixed;
   font-weight: bold;
   font-size: large;
-  text-shadow: 1px 1px 0ex black,
-               1px -1px 0ex black,
-               -1px 1px 0ex black,
-               -1px -1px 0ex black;
 
   margin: 0px;
   padding: 0px;
@@ -335,15 +331,38 @@ canvas {
   overflow: auto; 
 
   background-color: rgba(0,0,0,0);
-  opacity: 0.5;
 }
-#source {
+#source,
+#log {
+  opacity: 0.5;
+  /*
+  text-shadow: 1px 1px 0ex black,
+               1px -1px 0ex black,
+               -1px 1px 0ex black,
+               -1px -1px 0ex black;
+  */
+  text-shadow: +1px +2px 0ex black,
+               +1px -2px 0ex black,
+               -1px +2px 0ex black,
+               -1px -2px 0ex black,
+               +2px +1px 0ex black,
+               +2px -1px 0ex black,
+               -2px +1px 0ex black,
+               -2px -1px 0ex black;
+}
+#source,
+#shadow {
   top: 0%;
   bottom: 2ex;
   width: 99%; /* HACK */
   left: 1%;
 
   color: #aaffaa;
+}
+#shadow {
+  color: black;
+  opacity: 0.2;
+  text-shadow: none;
 }
 #log {
   height: 10ex;
@@ -499,7 +518,8 @@ code, pre {
 }
 
 /* back-to-front */
-canvas { z-index: 1; }
+canvas { z-index: 0; }
+#shadow { z-index: 1; }
 #log { z-index: 2; }
 #source { z-index: 4; }
 .toolbar { z-index: 5; }
@@ -515,6 +535,7 @@ canvas { z-index: 1; }
 <canvas id='canvas2d'></canvas>
 
 <div id='editor'>
+  <textarea id='shadow' readonly spellcheck='false'></textarea>
   <textarea id='source' spellcheck='false'></textarea>
   <textarea id='log' readonly spellcheck='false'></textarea>
 </div>
