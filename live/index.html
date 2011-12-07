@@ -73,15 +73,25 @@ ui.buildScriptLink = function (key) {
   
   var tr = create('tr');
 
+  var fullSource = $.trim(localStorage.getItem(key));
+  var briefSource = fullSource.replace(/\s+/g, ' ').substr(0,60) + '...';
+
+  var brief = create('pre')
+    .append(create('code').text(briefSource))
+    .attr('title', 'click to expand')
+    .show();
+  var full = create('pre')
+    .append(create('code').text(fullSource))
+    .css({border:'solid 1px gray', padding:'2px', color:'#aaffaa'})
+    .attr('title', 'click to collapse')
+    .hide();
+
   tr.append(create('td')
-      .append(create('button')
-          .html('delete').attr('class','roundFlat')
-          .click(function(){
-            tr.fadeOut('fast', function(){ ui.deleteScript(key); });
-          }))
-      .append(create('button')
-          .html('load').attr('class','flatRound')
-          .click(function(){ ui.loadScript(key); })));
+      .append(brief, full)
+      .click(function(){
+            brief.slideToggle(50);
+            full.slideToggle(150);
+          }));
 
   var time_js = key.split('.');
   var time = Number(time_js[0]);
@@ -92,24 +102,16 @@ ui.buildScriptLink = function (key) {
         .attr('title', 'click to load')
         .click(function(){ ui.loadScript(key); }));
 
-  var fullSource = $.trim(localStorage.getItem(key));
-  var briefSource = fullSource.replace(/\s+/g, ' ').substr(0,60) + '...';
-
-  var brief = create('pre')
-    .append(create('code').text(briefSource))
-    .attr('title', 'click to expand')
-    .show();
-  var full = create('pre')
-    .append(create('code').text(fullSource))
-    .attr('title', 'click to collapse')
-    .hide();
-
   tr.append(create('td')
-      .append(brief, full)
-      .click(function(){
-            brief.slideToggle(50);
-            full.slideToggle(150);
-          }));
+      .append(create('button')
+          .html('load').attr('class','roundFlat')
+          .click(function(){ ui.loadScript(key); }))
+      .append(create('button')
+          .html('delete').attr('class','flatRound')
+          .click(function(){
+            tr.fadeOut(150, function(){ ui.deleteScript(key); });
+          })));
+
   return tr;
 };
 
@@ -146,7 +148,7 @@ ui.exportGallery = function () {
     scripts[i] = sep + name + '\n\n' + script;
   }
 
-  return scripts.join();
+  return scripts.join('');
 };
 
 ui.importGallery = function (concatenatedScripts) {
@@ -308,12 +310,24 @@ $(document).ready(function() {
 
   // build editor
 
-  $('#source').on('focus', function(){
-        $('#gallery').fadeOut('fast');
-        $('#shareBox').fadeOut(100); 
-        $('#about').fadeOut('fast');
-        $('#help').fadeOut('fast');
+  $('#source,#log').on('focus', function(){
+        $('#gallery,#shareBox,#about,#help').fadeOut('fast');
       });
+  $('#log')
+      .attr('title','resize with arrow keys')
+      .keydown(function(event){
+            var $log = $(event.target);
+            var dheight = 0;
+            switch (event.which) {
+              case 38: dheight = 20; break;
+              case 40: dheight = -20; break;
+              default: return;
+            };
+            var height = Number($log.css('height').replace('px',''));
+            var maxHeight = window.innerHeight * 2/3;
+            height = bound(30, maxHeight, height + dheight);
+            $log.css('height', height + 'px');
+          });
 
   $('#showEditor').click(ui.showEditor);
   $('#hideEditor').click(ui.hideEditor);
@@ -327,7 +341,7 @@ $(document).ready(function() {
   $('#share').click(ui.shareHash);
 
   $('#export').click(function(){
-        $('#galleryBox').val(ui.exportGallery);
+        $('#galleryBox').val(ui.exportGallery).focus().select();
       });
   $('#import').click(function(){
         ui.importGallery($('#galleryBox').val());
@@ -453,6 +467,7 @@ pre, code, textarea {
   bottom: 2ex;
   left: 1%;
   width: 99%;
+  resize: vertical;
 
   color: #ffff00;
 }
@@ -509,10 +524,16 @@ dd {
   margin: 2px;
   position: fixed;
   bottom: 0px;
-  left: 0px;
+  right: 0px;
   opacity: 1;
   display: none; /* initially */
 }
+/*
+#toolbar {
+  text-align: center;
+  width: 100%;
+}
+*/
 
 button {
   margin: 0px;
@@ -563,6 +584,7 @@ code, pre {
 }
 .timeago {
   font-size: small;
+  text-align: right;
 }
 #gallery {
   position: absolute;
@@ -577,6 +599,24 @@ code, pre {
   white-space: nowrap;
   padding: 0px 0.25em 0px 0.25em;
   vertical-align: top;
+}
+
+#galleryBox {
+  margin: 0px;
+  border: solid 2px black;
+  color: white;
+  background-color: #444444;
+  font-weight: bold;
+  font-size: small;
+  border-radius: 4px;
+}
+#galleryBox,
+#export,
+#import {
+  vertical-align: middle;
+}
+#importExport {
+  display: none;
 }
 
 #shareBox {
@@ -605,29 +645,11 @@ code, pre {
   font-size: x-large;
 }
 
-#galleryBox {
-  margin: 0px;
-  border: solid 2px black;
-  color: white;
-  background-color: #444444;
-  font-weight: bold;
-  font-size: medium;
-  border-radius: 4px;
-}
-#galleryBox,
-#export,
-#import {
-  vertical-align: middle;
-}
-#importExport {
-  display: none;
-}
-
 /* back-to-front */
 canvas { z-index: 0; }
 #shadow { z-index: 1; }
-#log { z-index: 2; }
-#source { z-index: 4; }
+#source { z-index: 2; }
+#log { z-index: 3; } /* in front of source, but usually hidden */
 #gallery { z-index: 5; }
 .toolbar { z-index: 6; }
 #shareBox { z-index: 7; }
@@ -650,19 +672,18 @@ canvas { z-index: 0; }
 <div class='toolbar' id='showEditor'> <button>+</button> </div>
 <div class='toolbar' id='hideEditor'> <button>x</button> </div>
 <div class='toolbar' id='toolbar'>
-
-  <button id='hideToolbar' class='roundRound'>hide</button>
+  <button class='roundFlat' id='showHelp' title='shortcut = F1'>help</button><!--
+  --><button class='flatRound' id='showAbout'>about</button>
   &nbsp;
   <button class='roundFlat' id='save' title='shortcut = CTRL+S'>save</button><!--
   --><button class='flatFlat' id='showGallery' title='shortcut = CTRL+O'>gallery</button><!--
   --><button class='flatRound' id='share'>share</button>
   &nbsp;
-  <button class='roundFlat' id='showHelp' title='shortcut = F1'>help</button><!--
-  --><button class='flatRound' id='showAbout'>about</button>
+  <button id='hideToolbar' class='roundRound'>hide</button>
 </div>
 
 <div id='gallery'>
-  <div id='importExport' style='position:relative; left:7ex;'>
+  <div id='importExport' style='position:relative; text-align: right;'>
   <button class='roundFlat' id='export'>export</button><!--
   --><textarea id='galleryBox' rows=1 cols=7 spellcheck='false'>gallery</textarea><!--
   --><button class='flatRound' id='import'>import</button>

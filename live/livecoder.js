@@ -44,12 +44,14 @@ function assert (condition, message) {
 
 // Time - units are milliseconds and kHz
 // once{...} evaluates once, then decays to the inert nonce{...}
-var now;//() time of event evaluation
+// var live; // a place store variables while live coding
+var now;//() time of event evaluation (a little before Date.now())
 var after;//(duration, action); schedule an event
 
-// Python
-var print;
+// Utility
+var print;//(message) logs message
 var dir;//(object) lists properties of an object
+var clear;//() clears workspace and canvas
 
 // Graphics
 var windowW = 0, windowH = 0; // window inner width,height in pixels
@@ -103,54 +105,6 @@ window.livecoder = (function(){
 
   var live = {};
 
-  live.logo = [
-    "// try changing this",
-    "",
-    "clear2d();",
-    "var d = draw2d;",
-    "",
-    "d.font = 'bold 64pt Courier';",
-    "d.fillStyle = '#55aa55';",
-    "d.textAlign = 'center';",
-    "d.fillText(",
-    "    'Hello World!',",
-    "    1/8 * mouseX + 3/8 * windowW,",
-    "    1/8 * mouseY + 3/8 * windowH);",
-    ""
-  ].join('\n');
-
-  print = function (message) {
-    live.$log.val(String(message || '')).css('color', '#aaaaff');
-  };
-  live.log = function (message) {
-    live.$log.val(String(message || '')).css('color', '#aaaaff');
-    live.$source.css('color', '#aaffaa');
-  };
-  live.warn = function (message) {
-    live.$log.val(String(message || '')).css('color', '#ffff00');
-    live.$source.css('color', '#dddddd');
-  };
-  live.error = function (message) {
-    live.$log.val(String(message || '')).css('color', '#ff7777');
-    live.$source.css('color', '#dddddd');
-  };
-
-  live.setSource = function (val) {
-    live.$source.val(val);
-
-    for (var key in live.workspace) {
-      delete live.workspace[key];
-    }
-    clear2d();
-
-    live.compiling = false;
-    live.toggleCompiling();
-    live.$source.change();
-  };
-  live.getSource = function (val) {
-    return live.$source.val();
-  };
-
   live.init = function ($source, $log, initSource) {
 
     live.$log = $log;
@@ -168,6 +122,68 @@ window.livecoder = (function(){
     live.compiling = false;
     live.toggleCompiling();
     live.scheduler();
+  };
+
+  live.logo = [
+      "// Hello World",
+      "// i am live code",
+      "// try changing me",
+      "",
+      "var d = draw2d;",
+      "d.font = 'bold 64pt Courier';",
+      "d.fillStyle = '#55aa55';",
+      "d.textAlign = 'center';",
+      "",
+      "live.hello = function () {",
+      "  clear2d();",
+      "  draw2d.fillText(",
+      "      'Hello World!',",
+      "      1/8 * mouseX + 3/8 * windowW,",
+      "      1/8 * mouseY + 3/8 * windowH);",
+      "",
+      "  after(0, live.hello); // to stop, comment out",
+      "};",
+      "once live.hello(); // to restart, erase the n",
+      ""
+  ].join('\n');
+
+  print = function (message) {
+    live.$log.val('> ' + message).css('color', '#aaaaff').show();
+  };
+  live.log = function (message) {
+    live.$log.val(String(message)).css('color', '#aaaaff').show();
+    live.$source.css('color', '#aaffaa');
+  };
+  live.warn = function (message) {
+    live.$log.val(String(message)).css('color', '#ffff00').show();
+    live.$source.css('color', '#dddddd');
+  };
+  live.error = function (message) {
+    live.$log.val(String(message)).css('color', '#ff7777').show();
+    live.$source.css('color', '#dddddd');
+  };
+  live.success = function () {
+    live.$log.val('').hide();
+    live.$source.css('color', '#aaffaa');
+  };
+
+  clear = function () {
+    for (var key in live.workspace) {
+      delete live.workspace[key];
+    }
+    clear2d();
+  };
+
+  live.setSource = function (val) {
+    live.$source.val(val);
+    clear();
+
+    live.compiling = false;
+    live.toggleCompiling();
+    live.$source.change().focus();
+  };
+  live.getSource = function (val) {
+    return live.$source.val();
   };
 
   //----------------------------------------------------------------------------
@@ -282,7 +298,7 @@ window.livecoder = (function(){
       live.$source.val(live.source.replace(/\bonce\b/g, 'nonce')).caret(pos);
     }
 
-    live.log();
+    live.success();
 
     try {
       live.time = Date.now();
@@ -342,7 +358,7 @@ window.livecoder = (function(){
     }
     else {
       live.compiling = true;
-      live.log();
+      live.success();
       live.$source.change();
     }
   };
