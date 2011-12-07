@@ -1,0 +1,131 @@
+
+
+//==============================================================================
+// 1323208913197.js
+
+// simple rhythm
+
+var quantize = function (real) { // -1 < real < 1
+  return round(255 / 2 * (real + 1));
+};
+
+var noise = function (duration, gain) {
+  var data = []; // just an array
+  for (var i=0, I=duration*sampleRate; i < I; ++i) {
+    var env = (I - i) / I;
+    data[i] = quantize((2*rand()-1) * gain * env);
+  }
+  return (new RIFFWAVE(data)).dataURI;
+}
+
+var play = function (sound) {
+  return function(){ (new Audio(sound)).play(); };
+};
+
+var T = 2000;
+
+once { // generate samples just
+  window.long = noise(T/2, 0.05);
+  window.short = noise(T/64, 0.1);
+}
+
+live.loop = function () {
+
+  after(0, play(window.long));
+  after(1/4*T, play(window.short));
+  after(2/4*T, play(window.short));
+  after(3/4*T, play(window.short));
+  after(7/8*T, play(window.short));
+
+  after(T, live.loop); // comment out to stop
+};
+once live.loop(); // start a loop,
+
+//==============================================================================
+// 1323196209122.js
+
+// juggling dots:
+
+live.running = 10;
+
+var X = function(a){return (0.5 + sin(2*a)/3)};
+var Y = function(a){return (0.5 + sin(3*a)/3)};
+var Z = function(a){return (0.5 + sin(8*a)/2)};
+
+var d = draw2d;
+d.font = 'bold 64pt Courier';
+
+live.juggle = function () {
+  if (!live.running) return;
+
+  var T = 1000, t = (Date.now() % T) / T;
+  clear2d();
+  for (var i=0, N=79; i < N; ++i) {
+    var a = 2 * pi * (i + t) / N;
+    d.fillStyle = 'rgba(255,255,255,' + Z(a) + ')';
+    d.fillText('.', innerWidth*X(a), innerHeight*Y(a));
+  }
+
+  after(1, live.juggle);
+};
+
+nonce live.juggle();,
+
+//==============================================================================
+// 1323134327691.js
+
+// test for text-shadow
+
+clear2d();
+var d = draw2d;
+
+N = 20;
+
+d.fillStyle = '#aaaaaa';
+d.fillRect(windowW/N, windowH/N, windowW*(1-2/N), windowH*(1-2/N));,
+
+//==============================================================================
+// 1323050746049.js
+
+// sine wave (broken)
+
+var T = 2000, t = (time % T) / T, dt = dtime / T;
+if (t < dt) { // is true once per second
+  var I = 5000;
+  var data = new Array(I); // just an array
+  for (i=0; i<I; ++i) {
+    //e = 4/(I*I) * i * (I-i);
+    data[i] = bound(0, 255, 255/2 * (1 + sin(i / 500)));
+  }
+  var wave = new RIFFWAVE(data);
+  var audio = new Audio(wave.dataURI);
+  audio.play();
+},
+
+//==============================================================================
+// 1323050721692.js
+
+// noise in a loop (broken)
+
+var T = 1000, t = (time % T) / T, dt = dtime / T;
+if (t < dt) { // is true once per second
+  var data = []; // just an array
+  for (var i=0; i<1000; i++) data[i] = round(255 * rand());
+  var wave = new RIFFWAVE(data);
+  var audio = new Audio(wave.dataURI);
+  audio.play();
+},
+
+//==============================================================================
+// 1322626006373.js
+
+var range = function (n) {
+  n = Number(n);
+  var result = new Array(n);
+  for (var i = 0; i < n; ++i) {
+    result[i] = i;
+  }
+  return result;
+};
+
+range(10)

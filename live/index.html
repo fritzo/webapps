@@ -2,12 +2,13 @@
 <html>
 <head>
 <title>Live Coder</title>
-<!-- ------------------------------------------------------------------------ -->
+<!----------------------------------------------------------------------------->
 <script type='text/javascript' src='jquery.min.js'></script> <!-- MIT,GPL -->
 <script type='text/javascript' src='jquery.timeago.js'></script> <!-- MIT -->
 <script type='text/javascript' src='jquery.caret.js'></script> <!-- MIT -->
 <script type='text/javascript' src='modernizr.js'></script> <!-- MIT,BSD -->
 <script type='text/javascript' src='livecoder.js'></script> <!-- MIT -->
+<script type='text/javascript' src='gallery.js'></script> <!-- (data) -->
 <script type='text/javascript' src='riffwave.js'></script> <!-- GPL -->
 <script type='text/javascript'>
 
@@ -44,13 +45,13 @@ ui.saveScript = function () {
 ui.loadScript = function (name) {
   live.setSource(localStorage.getItem(name));
   print('loaded ' + name);
-}
+};
 
 ui.deleteScript = function (name) {
   localStorage.removeItem(name);
   ui.buildScriptList();
   print('deleted ' + name);
-}
+};
 
 ui.listScripts = function () {
 
@@ -128,43 +129,45 @@ ui.buildScriptList = function () {
 };
 
 //------------------------------------------------------------------------------
-// Data URI Persistence
-
-ui.canImport = function () {
-  return window.File && window.FileReader && window.FileList && window.Blob;
-};
+// Import/Export
 
 ui.exportGallery = function () {
-
   var keys = ui.listScripts();
-  var time_script = {};
-  for (var i = 0; i < keys.length; ++i) {
-    var time = keys[i];
-    time_script[time] = localStorage.getItem(keys[i]);
-  }
-  var json = JSON.stringify(time_script);
-  var uri = 'data:application/json;base64,' + encodeURIComponent(json);
 
-  //window.open(uri, 'LiveCoder.gallery'); // Chrome prevents this
-  window.location.href = uri; // Chrome prevents this
+  var sep = '\n\n'
+          + '//======================================'
+          + '========================================'
+          + '\n'
+          + '// ';
+  var scripts = [];
+  for (var i = 0; i < keys.length; ++i) {
+    var name = keys[i];
+    var script = localStorage.getItem(name).trim();
+    scripts[i] = sep + name + '\n\n' + script;
+  }
+
+  return scripts.join();
 };
 
-ui.importGallery = function (fileList) {
-  console.log('importing ' + fileList.length + ' files');
-  for (var i = 0, file; file = fileList[i]; ++i) {
-    //if (!file.type.match('application/json')) continue;
-    console.log(file.type || '<no file type>'); // DEBUG
+ui.importGallery = function (concatenatedScripts) {
+  var sep = /^\/\/={40,}\n\/\/\s*(?=[0-9]+\.js$)/gm;
+  var scripts = concatenatedScripts.split(sep).slice(1);
 
-    var reader = new FileReader(file);
-    reader.onload = function (e) {
-      var json = decodeURIComponent(reader.result);
-      alert(json); // TODO
-    };
-    reader.onerror = function (e) {
-      console.log('Error: ' + e);
-    };
-    reader.readAsText(file);
+  console.log('importing ' + scripts.length + ' files');
+  for (var i = 0; i < scripts.length; ++i) {
+    try {
+      var name_script = scripts[i];
+      var name = name_script.match(/^[0-9]+\.js\b/)[0];
+      var script = name_script.slice(name.length).trim();
+
+      if (!(name in localStorage)) {
+        console.log(' importing ' + name);
+        localStorage.setItem(name, script);
+      }
+    } catch (err) { alert(err); }
   }
+
+  ui.buildScriptList();
 };
 
 //------------------------------------------------------------------------------
@@ -198,7 +201,7 @@ ui.shareHash = function () {
     window.clipboardData.setData(href);
     $('#shareBoxCopied').show();
   }
-}
+};
 
 //------------------------------------------------------------------------------
 // Hiding
@@ -234,6 +237,11 @@ ui.hideEditor = function (speed) {
 
 //------------------------------------------------------------------------------
 // Main
+
+var su = function () {
+  // turn on the ugly stuff
+  $('#importExport').show();
+};
 
 ui.blink = function ($button) {
   $button.css({opacity:0}).animate({opacity:1},'fast');
@@ -318,12 +326,12 @@ $(document).ready(function() {
   });
   $('#share').click(ui.shareHash);
 
-  if (ui.canImport()) {
-    $('#export').click(ui.exportGallery);
-    $('#import').click(function(){ $('#importFiles').click(); });
-  } else {
-    $('#export, #import').css('display', 'none');
-  }
+  $('#export').click(function(){
+        $('#galleryBox').val(ui.exportGallery);
+      });
+  $('#import').click(function(){
+        ui.importGallery($('#galleryBox').val());
+      });
 
   $('#showHelp').click(function(){
         $('#about').hide();
@@ -338,7 +346,7 @@ $(document).ready(function() {
   // initialize
 
   var initSource = (ui.popHash() || ui.getAutosave() || '').trim();
-  ui.buildScriptList();
+  ui.importGallery(gallery_jscat);
 
   // hide controls if window is an iframe
   if (window.location != window.parent.location) {
@@ -352,7 +360,7 @@ $(document).ready(function() {
 });
 
 </script>
-<!-- ------------------------------------------------------------------------ -->
+<!----------------------------------------------------------------------------->
 <style>
 
 body,
@@ -597,6 +605,24 @@ code, pre {
   font-size: x-large;
 }
 
+#galleryBox {
+  margin: 0px;
+  border: solid 2px black;
+  color: white;
+  background-color: #444444;
+  font-weight: bold;
+  font-size: medium;
+  border-radius: 4px;
+}
+#galleryBox,
+#export,
+#import {
+  vertical-align: middle;
+}
+#importExport {
+  display: none;
+}
+
 /* back-to-front */
 canvas { z-index: 0; }
 #shadow { z-index: 1; }
@@ -610,7 +636,7 @@ canvas { z-index: 0; }
 
 </style>
 </head>
-<!-- ------------------------------------------------------------------------ -->
+<!----------------------------------------------------------------------------->
 <body>
 
 <canvas id='canvas2d'></canvas>
@@ -636,11 +662,10 @@ canvas { z-index: 0; }
 </div>
 
 <div id='gallery'>
-  <div style='position:relative; left:7ex;'>
-  <button class='roundFlat' id='export'>export gallery</button><!--
-  --><button class='flatRound' id='import'>import gallery</button>
-  <input type='file' id='importFiles' accept='application/json'
-    onchange='ui.importGallery(this.files)' />
+  <div id='importExport' style='position:relative; left:7ex;'>
+  <button class='roundFlat' id='export'>export</button><!--
+  --><textarea id='galleryBox' rows=1 cols=7 spellcheck='false'>gallery</textarea><!--
+  --><button class='flatRound' id='import'>import</button>
   </div>
   <table> </table>
 </div>
@@ -659,7 +684,7 @@ canvas { z-index: 0; }
   <span id='shareBoxCopied'>Copied to clipboard!</span>
 </div>
 
-<!-- ------------------------------------------------------------------------ -->
+<!----------------------------------------------------------------------------->
 <div class='info' id='help'>
   <h1>What is LiveCoder.net</h1>
   <p>
@@ -682,7 +707,7 @@ canvas { z-index: 0; }
   </dl>
 </div>
 
-<!-- ------------------------------------------------------------------------ -->
+<!----------------------------------------------------------------------------->
 <div class='info' id='about'>
   <h1>Inspiration &amp; Related Projects</h1>
   <dl>

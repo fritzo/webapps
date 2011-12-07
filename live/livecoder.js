@@ -57,7 +57,7 @@ var mouseX = 0, mouseY = 0;   // mouse coords in pixels
 var clear2d;                  // clears drawing context
 var draw2d;                   // a 2d canvas context
 
-// Audio
+// Audio TODO get play,tone,noise working
 var sampleRate = 22.05; // in kHz
 var quantize8 = function (x) { return round(255/2 * (x+1)); };
 var quantize16 = function (x) { return round(65535/2 * (x+1)); };
@@ -90,6 +90,7 @@ var bound  = function (lb,ub,x) { return max(lb,min(ub,x)) };
 //--------
 
 var dir = function (o) {
+  o = o || window;
   var a = [], i = 0;
   for (a[i++] in o);
   return a;
