@@ -226,14 +226,14 @@ ui.shareHash = function () {
 //------------------------------------------------------------------------------
 // Hiding
 
-// these cycle between 3 states
+// these cycle between 2 states
 
-ui.showEditor = function (speed) {
+ui.showToolbar = function (speed) {
   if (speed == undefined) speed = 100;
   return function (e) {
-    $('#showEditor,#hideEditor').hide();
-    $('#editor,#toolbar').fadeIn(speed);
-    $('#source').focus();
+    $('#showToolbar').hide();
+    $('#toolbar').fadeIn(speed);
+    $('#hideToolbar').focus();
     if (e) e.preventDefault();
   };
 };
@@ -241,21 +241,9 @@ ui.showEditor = function (speed) {
 ui.hideToolbar = function (speed) {
   if (speed == undefined) speed = 100;
   return function (e) {
-    $('#showEditor').hide();
-    $('#toolbar').fadeOut('fast');
-    $('#hideEditor').show();
-    $('#hideEditor button').focus();
-    if (e) e.preventDefault();
-  };
-};
-
-ui.hideEditor = function (speed) {
-  if (speed == undefined) speed = 100;
-  return function (e) {
-    $('#hideEditor,#toolbar').hide();
-    $('#editor').fadeOut(speed);
-    $('#showEditor').show();
-    $('#showEditor button').focus();
+    $('#toolbar').fadeOut(speed);
+    $('#showToolbar').show();
+    $('#showToolbar button').focus();
     if (e) e.preventDefault();
   };
 };
@@ -390,8 +378,7 @@ $(document).ready(function() {
         ui.importGallery($('#galleryBox').val());
       });
 
-  $('#showEditor').click(ui.showEditor());
-  $('#hideEditor').click(ui.hideEditor());
+  $('#showToolbar').click(ui.showToolbar());
   $('#hideToolbar').click(ui.hideToolbar());
 
   // initialize
@@ -401,9 +388,9 @@ $(document).ready(function() {
 
   // hide controls if window is an iframe
   if (window.location != window.parent.location) {
-    ui.hideEditor(0)();
+    ui.hideToolbar(0)();
   } else {
-    ui.showEditor(0)();
+    ui.showToolbar(0)();
   }
 
   live.init($('#source'), $('#log'), initSource);
@@ -719,8 +706,7 @@ canvas { z-index: 0; }
   <textarea id='log' readonly spellcheck='false'></textarea>
 </div>
 
-<div class='toolbar' id='showEditor'> <button>+</button> </div>
-<div class='toolbar' id='hideEditor'> <button>x</button> </div>
+<div class='toolbar' id='showToolbar'> <button>+</button> </div>
 <div class='toolbar' id='toolbar'>
   <button class='roundFlat' id='su'>su</button><!--
   --><button class='flatRound' id='suReload'>reload</button>
