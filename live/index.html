@@ -76,22 +76,34 @@ ui.buildScriptLink = function (key) {
   var fullSource = $.trim(localStorage.getItem(key));
   var briefSource = fullSource.replace(/\s+/g, ' ').substr(0,60) + '...';
 
-  var brief = create('pre')
-    .append(create('code').text(briefSource))
-    .attr('title', 'click to expand')
-    .show();
+  var collapse = function () {
+    $('.fullPreview').filter(':not(:hidden)').slideUp(150)
+      .prev().slideDown(50);
+  };
+
   var full = create('pre')
     .append(create('code').text(fullSource))
-    .css({border:'solid 1px gray', padding:'2px', color:'#aaffaa'})
-    .attr('title', 'click to collapse')
+    .attr('class', 'fullPreview')
+     //.attr('title', 'click to collapse')
     .hide();
+  var brief = create('pre')
+    .append(create('code').text(briefSource))
+    .attr('class', 'briefPreview')
+    .attr('title', 'click to expand')
+    .click(function(){
+          collapse();
+          brief.hide();
+          full.slideDown(150);
+        })
+    .show();
 
   tr.append(create('td')
-      .append(brief, full)
-      .click(function(){
-            brief.slideToggle(50);
-            full.slideToggle(150);
-          }));
+      .append(brief, full));
+      // older simpler version
+      //.click(function(){
+      //      brief.slideToggle(50);
+      //      full.slideToggle(150);
+      //    }));
 
   var time_js = key.split('.');
   var time = Number(time_js[0]);
@@ -99,15 +111,19 @@ ui.buildScriptLink = function (key) {
   tr.append(create('td')
         .html(timeago)
         .attr('class', 'timeago')
-        .attr('title', 'click to load')
-        .click(function(){ ui.loadScript(key); }));
+        .attr('title', 'click to collapse')
+        .click(collapse));
 
   tr.append(create('td')
+      .attr('title', 'click to collapse')
+      .click(collapse)
       .append(create('button')
           .html('load').attr('class','roundFlat')
+          .attr('title', 'load in editor')
           .click(function(){ ui.loadScript(key); }))
       .append(create('button')
           .html('delete').attr('class','flatRound')
+          .attr('title', 'delete from local storage')
           .click(function(){
             tr.fadeOut(150, function(){ ui.deleteScript(key); });
           })));
@@ -155,7 +171,7 @@ ui.importGallery = function (concatenatedScripts) {
   var sep = /^\/\/={40,}\n\/\/\s*(?=[0-9]+\.js$)/gm;
   var scripts = concatenatedScripts.split(sep).slice(1);
 
-  console.log('importing ' + scripts.length + ' files');
+  //console.log('importing ' + scripts.length + ' files');
   for (var i = 0; i < scripts.length; ++i) {
     try {
       var name_script = scripts[i];
@@ -163,7 +179,7 @@ ui.importGallery = function (concatenatedScripts) {
       var script = name_script.slice(name.length).trim();
 
       if (!(name in localStorage)) {
-        console.log(' importing ' + name);
+        //console.log(' importing ' + name);
         localStorage.setItem(name, script);
       }
     } catch (err) { alert(err); }
@@ -211,7 +227,7 @@ ui.shareHash = function () {
 // these cycle between 3 states
 
 ui.showEditor = function (speed) {
-  if (speed == undefined) speed = 'fast';
+  if (speed == undefined) speed = 100;
 
   $('#showEditor').hide();
   $('#hideEditor').hide();
@@ -221,7 +237,7 @@ ui.showEditor = function (speed) {
 };
 
 ui.hideToolbar = function (speed) {
-  if (speed == undefined) speed = 'fast';
+  if (speed == undefined) speed = 100;
 
   $('#showEditor').hide();
   $('#toolbar').fadeOut('fast');
@@ -229,7 +245,7 @@ ui.hideToolbar = function (speed) {
 };
 
 ui.hideEditor = function (speed) {
-  if (speed == undefined) speed = 'fast';
+  if (speed == undefined) speed = 100;
 
   $('#hideEditor').hide();
   $('#toolbar').hide();
@@ -238,12 +254,22 @@ ui.hideEditor = function (speed) {
 };
 
 //------------------------------------------------------------------------------
-// Main
+// Admin
 
 var su = function () {
   // turn on the ugly stuff
-  $('#importExport').show();
+  $('#importExport, #su, #suReload').show();
+  localStorage.setItem('su', Date.now());
 };
+
+var nosu = function () {
+  // turn off the ugly stuff
+  $('#importExport, #su, #suReload').hide();
+  localStorage.removeItem('su');
+};
+
+//------------------------------------------------------------------------------
+// Main
 
 ui.blink = function ($button) {
   $button.css({opacity:0}).animate({opacity:1},'fast');
@@ -329,9 +355,19 @@ $(document).ready(function() {
             $log.css('height', height + 'px');
           });
 
-  $('#showEditor').click(ui.showEditor);
-  $('#hideEditor').click(ui.hideEditor);
-  $('#hideToolbar').click(ui.hideToolbar);
+  if ('su' in localStorage) su();
+  $('#su').click(nosu).attr('title', 'leave superuser mode');
+  $('#suReload').click(function(){ window.location.reload(); });
+
+  $('#showHelp').click(function(){
+        $('#about').hide();
+        $('#help').fadeToggle(100);
+      });
+  $('#help').click(function(){ $('#help').fadeToggle(100); });
+  $('#showAbout').click(function(){
+        $('#help').hide();
+        $('#about').fadeToggle(100);
+      });
 
   $('#save').click(ui.saveScript);
   $('#showGallery').click(function(){
@@ -347,15 +383,9 @@ $(document).ready(function() {
         ui.importGallery($('#galleryBox').val());
       });
 
-  $('#showHelp').click(function(){
-        $('#about').hide();
-        $('#help').fadeToggle(100);
-      });
-  $('#help').click(function(){ $('#help').fadeToggle(100); });
-  $('#showAbout').click(function(){
-        $('#help').hide();
-        $('#about').fadeToggle(100);
-      });
+  $('#showEditor').click(ui.showEditor);
+  $('#hideEditor').click(ui.hideEditor);
+  $('#hideToolbar').click(ui.hideToolbar);
 
   // initialize
 
@@ -425,12 +455,10 @@ pre, code, textarea {
   outline: none;
   resize: none;
   overflow: auto; 
-
-  background-color: rgba(0,0,0,0);
 }
 #source,
 #log {
-  opacity: 0.5;
+  opacity: 0.666;
   /*
   text-shadow: 1px 1px 0ex black,
                1px -1px 0ex black,
@@ -457,6 +485,7 @@ pre, code, textarea {
   width: 99%;
 
   color: #aaffaa;
+  background-color: rgba(0,0,0,0);
 }
 #shadow {
   color: black;
@@ -464,12 +493,14 @@ pre, code, textarea {
 }
 #log {
   height: 10ex;
-  bottom: 2ex;
+  bottom: 0ex;
   left: 1%;
   width: 99%;
   resize: vertical;
 
+
   color: #ffff00;
+  background-color: rgb(0,0,0);
 }
 
 .info {
@@ -577,10 +608,22 @@ button.flatFlat {
   padding-right: 0.5em;
 }
 
-code, pre {
+#su,
+#suReload {
+  display: none;
+}
+
+.briefPreview {
   font-size: small;
-  margin: 0px;
   border: 0px;
+  margin: 0px;
+}
+.fullPreview {
+  font-size: small;
+  border: solid 1px gray;
+  padding:2px;
+  margin: 0px;
+  color: #aaffaa;
 }
 .timeago {
   font-size: small;
@@ -672,6 +715,9 @@ canvas { z-index: 0; }
 <div class='toolbar' id='showEditor'> <button>+</button> </div>
 <div class='toolbar' id='hideEditor'> <button>x</button> </div>
 <div class='toolbar' id='toolbar'>
+  <button class='roundFlat' id='su'>su</button><!--
+  --><button class='flatRound' id='suReload'>reload</button>
+  &nbsp;
   <button class='roundFlat' id='showHelp' title='shortcut = F1'>help</button><!--
   --><button class='flatRound' id='showAbout'>about</button>
   &nbsp;
