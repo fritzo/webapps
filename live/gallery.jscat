@@ -1,17 +1,16 @@
 
 //==============================================================================
-// 1323266623464.js
+// 1323297175694.js
 
-// syncopators
+// simple continuous-time task manager
 
-live.Synco = function (action, delay) { // TODO mass, sharpness, phase
+live.Task = function (action, delay) { // TODO mass, sharpness, phase
   this.action = action;
   this.delay = delay;
   this.remaining = delay;
   live.add(this);
 };
-
-live.sync = function () {
+live.Task.updateAll = function () {
   var tasks = live.tasks;
   var dt = now() - live.time;
   live.time = now();
@@ -25,8 +24,199 @@ live.sync = function () {
     }
   }
 
-  after(20, live.sync);
+  after(20, live.Task.updateAll);
 };
+once live.Task.updateAll(); // start
+
+once {
+  live.counter = 0;
+  live.tasks = {};
+  live.time = now();
+  live.add = function (task) {
+    live.tasks[live.counter++] = task;
+    print(live.counter); // DEBUG
+  };
+}
+
+// an example
+live.blip = function () {
+  clear2d();
+  draw2d.fillStyle = '#222';
+  draw2d.fillRect(
+    0,0,
+    windowW * rand(),
+    windowH * rand());
+
+  //after(100, live.blip);
+  new live.Task(live.blip, 500);
+};
+once live.blip();
+
+//print(live.counter);
+//print(live.tasks[0]);
+
+//==============================================================================
+// 1323296857679.js
+
+// syncopators
+
+var nan = 0/0; // TODO add to library
+
+live.Complex = function (x,y) {
+  this.x = x;
+  this.y = y;
+};
+live.Complex.prototype = {
+  scale : function (t) {
+    return new Complex(t*this.x, t*this.y);
+  },
+  iadd : function (other) {
+    this.x += other.x;
+    this.y += other.y;
+  },
+
+  angle : function () {
+    return atan2(this.y, this.x);
+  },
+  norm : function () {
+    return this.x*this.x + this.y*this.y;
+  }
+};
+live.Complex.dot = function(u,v) {
+  return u.x*v.x + u.y*v.y;
+};
+live.Complex.cross = function(u,v) {
+  // cross(u,v) = dot(i u, v)
+  return u.x*v.y - u.y*v.x;
+};
+
+live.Poll = function (mass, force) {
+  if (mass === undefined) {
+    this.mass = 0;
+    this.mass2 = 0;
+    this.force = Complex(2,2);
+  } else {
+    this.mass = mass;
+    this.mass2 = mass * mass;
+    this.force = force;
+  }
+};
+live.Poll.prototype = {
+
+  iadd : function (other) {
+    this.mass += other.mass;
+    this.mass2 += other.mass2;
+    this.force.iadd(other.force);
+  },
+
+  mean : function () {
+    var minMass = 0.01; // hand tweaked
+    var M = max(minMass, this.mass);
+    var M2 = max(minMass*minMass, this.mass2);
+    var BesselsCorrection = max(0, 1 - M2 / (M*M));
+    return this.force.scale(Bessels_correction / M);
+  }
+};
+
+// TODO figure out phase vs offset
+// TODO would cartesian phase be better than polar?
+live.Synco = function (action, params) {
+
+  this.action = action;
+  this.delay = params.delay;
+
+  var mass = params.mass || 1.0;
+  var acuity = params.acuity || 3.0; // hand-tuned
+  var offset = params.syncopate || 0.0;
+  var beginPhase = params.beginPhase || 0.0;
+  var endPhase = params.endPhase || 1.0;
+
+  assert(0 < params.delay, 'invalid delay: ' + params.delay);
+  assert(0 < mass, 'invalid mass: ' + mass);
+  assert(0 < acuity, 'invalid acuity: ' + acuity);
+  assert(0 <= offset && offset <= 1,
+      'invalid syncopation offset: ' + offset);
+  assert(0 <= beginPhase && beginPhase < endPhase,
+      'invalid begin,end phases: ' + beginPhase + ',' + endPhase);
+
+  this.mass = mass;
+  this.acuity = acuity;
+  this.freq = (endPhase - beginPhase) / params.delay;
+  this.offset = offset;
+  this.phase = beginPhase;
+  this.endPhase = endPhase;
+
+  this._initBeat();
+
+  live.add(this);
+};
+live.Synco.prototype = {
+
+  _initBeat : function () {
+
+    // let f(theta) = max(0, cos(theta) - cos(a))
+    // we compute mean and variance of f
+    var a = pi / this.acuity;
+    var sin_a = sin(a), cos_a = cos(a);
+    var Ef = (sin_a - a*cos_a) / pi;
+    var Ef2 = (a - 3*sin_a*cos_a + 2*a*cos_a*cos_a) / (2*pi);
+    var Vf = Ef2 - Ef*Ef;
+
+    this.beatFloor = cos_a;
+    this.beatScale = sqrt(2.0 / Vf); // the 2.0 is hand-tuned
+
+    var a = 2*pi*this.phase;
+    this.beat = this.beatScale * max(0, cos(a) - this.beatFloor);
+  },
+
+  poll : function () {
+    var m = this.mass;
+    var mb = m * this.beat;
+    var a = 2 * pi * (this.phase + this.offset);
+    var f = new Complex(mb * cos(a), mb * sin(a));
+    return new Poll(m, f);
+  },
+
+  update : function (dt, force) {
+    var a = 2*pi*this.phase;
+    var z = new Complex(cos(a), sin(a));
+    var bend = this.beat * Complex.cross(z, force);
+    var minDphase = 0.1; // hand-tuned
+    var dphase = this.freq * max(minPhase, 1 + bend) * dt;
+    var phase = this.phase += dphase;
+
+    if (phase < this.endPhase) {
+      a = 2*pi*this.phase;
+      this.beat = this.beatScale * max(0, cos(a) - this.beatFloor);
+      return false;
+    } else {
+      try { this.action(); }
+      catch (err) { print(err); } // XXX should be live.error(err)
+      return true;
+    }
+  }
+};
+live.Synco.updateAll = function () {
+  var tasks = live.tasks;
+  var dt = now() - live.time;
+  live.time = now();
+
+  var poll = new live.Poll();
+  for (var i in tasks) {
+    poll.iadd(tasks[i].poll());
+  }
+  var force = poll.mean();
+
+  for (var i in tasks) {
+    if (tasks[i].update(dt, force)) {
+      delete tasks[i];
+    }
+  }
+
+  after(20, live.Synco.updateAll); // TODO tune update rate
+};
+nonce Synco.updateAll(); // start
+
 nonce {
   live.counter = 0;
   live.tasks = {};
@@ -36,7 +226,6 @@ nonce {
     print(live.counter); // DEBUG
   };
 }
-nonce live.sync(); // start
 
 // an example
 live.blip = function () {
@@ -54,6 +243,16 @@ nonce live.blip();
 
 //print(live.counter);
 //print(live.tasks[0]);
+
+//print('test');
+
+/* TODO ------------------------------------
+ * remove/show trailing whitespace
+ * ignore compile after whitespace expansion
+ * $source.focus(setCaretToPreviousPosition)
+ * line numbers in error messages (how?)
+ * two-pane editor view for wide screens
+ */
 
 //==============================================================================
 // 1323266203562.js
