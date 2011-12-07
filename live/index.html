@@ -18,6 +18,7 @@ var ui = {};
 //------------------------------------------------------------------------------
 // LocalStorage Persistence
 
+// WARNING if multiple windows/tabs are open, only the latest will autosave
 ui.getAutosave = function () {
 
   var changed = false;
@@ -51,6 +52,7 @@ ui.deleteScript = function (name) {
   localStorage.removeItem(name);
   ui.buildScriptList();
   print('deleted ' + name);
+  $('#gallery td button').first().focus();
 };
 
 ui.listScripts = function () {
@@ -228,29 +230,34 @@ ui.shareHash = function () {
 
 ui.showEditor = function (speed) {
   if (speed == undefined) speed = 100;
-
-  $('#showEditor').hide();
-  $('#hideEditor').hide();
-  $('#editor').fadeIn(speed);
-  $('#toolbar').fadeIn(speed);
-  $('#source').focus();
+  return function (e) {
+    $('#showEditor,#hideEditor').hide();
+    $('#editor,#toolbar').fadeIn(speed);
+    $('#source').focus();
+    if (e) e.preventDefault();
+  };
 };
 
 ui.hideToolbar = function (speed) {
   if (speed == undefined) speed = 100;
-
-  $('#showEditor').hide();
-  $('#toolbar').fadeOut('fast');
-  $('#hideEditor').show();
+  return function (e) {
+    $('#showEditor').hide();
+    $('#toolbar').fadeOut('fast');
+    $('#hideEditor').show();
+    $('#hideEditor button').focus();
+    if (e) e.preventDefault();
+  };
 };
 
 ui.hideEditor = function (speed) {
   if (speed == undefined) speed = 100;
-
-  $('#hideEditor').hide();
-  $('#toolbar').hide();
-  $('#editor').fadeOut(speed);
-  $('#showEditor').show();
+  return function (e) {
+    $('#hideEditor,#toolbar').hide();
+    $('#editor').fadeOut(speed);
+    $('#showEditor').show();
+    $('#showEditor button').focus();
+    if (e) e.preventDefault();
+  };
 };
 
 //------------------------------------------------------------------------------
@@ -383,9 +390,9 @@ $(document).ready(function() {
         ui.importGallery($('#galleryBox').val());
       });
 
-  $('#showEditor').click(ui.showEditor);
-  $('#hideEditor').click(ui.hideEditor);
-  $('#hideToolbar').click(ui.hideToolbar);
+  $('#showEditor').click(ui.showEditor());
+  $('#hideEditor').click(ui.hideEditor());
+  $('#hideToolbar').click(ui.hideToolbar());
 
   // initialize
 
@@ -394,13 +401,13 @@ $(document).ready(function() {
 
   // hide controls if window is an iframe
   if (window.location != window.parent.location) {
-    ui.hideEditor(0);
+    ui.hideEditor(0)();
   } else {
-    ui.showEditor(0);
+    ui.showEditor(0)();
   }
 
   live.init($('#source'), $('#log'), initSource);
-  //live.initShadow($('#shadow'));
+  live.initShadow($('#shadow'));
 });
 
 </script>

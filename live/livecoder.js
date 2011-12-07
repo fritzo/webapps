@@ -189,19 +189,38 @@ window.livecoder = (function(){
   //----------------------------------------------------------------------------
   // Shadow
 
-  live.updateShadow = undefined;
-
   live.initShadow = function ($shadow) {
 
+    // Version 1. shadow
     live.updateShadow = function () {
       $shadow.val(live.$source.val().replace(/./g, '\u2588'));
     };
 
+    /* Version 2. cursor
+    var moveDown = [], moveRight = [];
+    for (var i = 0; i < 10000; ++i) {
+      moveDown[i] = '\n';
+      moveRight[i] = '\u2588';
+    }
+    moveDown = moveDown.join('');
+    moveRight = moveRight.join('');
+    live.updateShadow = function () {
+      var pos = live.$source.getCaretPos();
+      //console.log(JSON.stringify(pos));
+      $shadow.val(moveDown.slice(0,pos.y) + moveRight.slice(0,pos.x));
+    };
+    */
+
     live.$source
         .on('keyup', live.updateShadow)
+        .on('keypress', live.updateShadow)
         .on('click', live.updateShadow)
         .on('change', live.updateShadow)
-        .change();
+        .on('scroll', function(){
+              $shadow.scrollTop(live.$source.scrollTop());
+            })
+        .change()
+        .scroll()
   };
 
   //----------------------------------------------------------------------------

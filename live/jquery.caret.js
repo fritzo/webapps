@@ -53,6 +53,15 @@ new function ($) {
 
       return $this;
     }
-  }
+  };
+
+  $.fn.getCaretPos = function () {
+    $this = $(this);
+    var n = $this.caret();
+    var text = $this.val().slice(0,n);
+    var x = text.match(/.*$/)[0].length;
+    var y = (text.match(/\n/g) || []).length;
+    return {n:n, x:x, y:y};
+  };
 }(jQuery);
 

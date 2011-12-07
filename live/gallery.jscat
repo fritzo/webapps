@@ -1,5 +1,79 @@
 
 //==============================================================================
+// 1323266623464.js
+
+// syncopators
+
+live.Synco = function (action, delay) { // TODO mass, sharpness, phase
+  this.action = action;
+  this.delay = delay;
+  this.remaining = delay;
+  live.add(this);
+};
+
+live.sync = function () {
+  var tasks = live.tasks;
+  var dt = now() - live.time;
+  live.time = now();
+
+  for (var i in tasks) {
+    var task = tasks[i];
+    if (task.remaining -= dt < 0) {
+      try { task.action(); }
+      catch (err) { print(err); } // XXX should be live.error(err)
+      delete tasks[i];
+    }
+  }
+
+  after(20, live.sync);
+};
+nonce {
+  live.counter = 0;
+  live.tasks = {};
+  live.time = now();
+  live.add = function (task) {
+    live.tasks[live.counter++] = task;
+    print(live.counter); // DEBUG
+  };
+}
+nonce live.sync(); // start
+
+// an example
+live.blip = function () {
+  clear2d();
+  draw2d.fillStyle = '#111';
+  draw2d.fillRect(
+    0,0,
+    windowW * rand(),
+    windowH * rand());
+
+  //after(100, live.blip);
+  new live.Synco(live.blip, 500);
+};
+nonce live.blip();
+
+//print(live.counter);
+//print(live.tasks[0]);
+
+//==============================================================================
+// 1323266203562.js
+
+/* TODO list ( X = resolved, W = won't fix )
+ * search & replace
+ * make leading whitespace visible
+ * auto matching paren
+ * auto indent
+ * tab to indent (somehow...)
+ W make caret more visible
+ W autosave with multiple windows
+ X move focus when deleting scripts
+ X make error messages more visible (bg)
+ X move focus to buttons when hide-cycling
+ X add window reload button in su mode
+ X allow error message window to resize to 1.5 lines
+ */
+
+//==============================================================================
 // 1323230367141.js
 
 // Hello World
