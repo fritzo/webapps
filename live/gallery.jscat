@@ -1,5 +1,29 @@
 
 //==============================================================================
+// 1323367681157.js
+
+// Hello World
+// i am live code
+// try changing me
+
+var d = draw2d();
+d.font = 'bold 64pt Courier';
+d.fillStyle = '#55aa55';
+d.textAlign = 'center';
+
+live.hello = function () {
+  draw2d().fillText(
+      'Hello World!',
+      1/8 * mouseX + 3/8 * windowW,
+      1/8 * mouseY + 3/8 * windowH);
+
+  after(0, live.hello); // to stop, comment out
+};
+
+once live.hello(); // to start, erase the 'n'
+nonce clear();      // to stop, erase the 'n'
+
+//==============================================================================
 // 1323324421097.js
 
 // petri net rhythm
@@ -183,28 +207,6 @@ once live.blip();
 
 //print(live.counter);
 //print(live.tasks[0]);
-
-//==============================================================================
-// 1323230367141.js
-
-// Hello World
-// i am live code
-// try changing me
-
-var d = draw2d();
-d.font = 'bold 64pt Courier';
-d.fillStyle = '#55aa55';
-d.textAlign = 'center';
-
-live.hello = function () {
-  draw2d().fillText(
-      'Hello World!',
-      1/8 * mouseX + 3/8 * windowW,
-      1/8 * mouseY + 3/8 * windowH);
-
-  after(0, live.hello); // to stop, comment out
-};
-once live.hello(); // to restart, erase the n
 
 //==============================================================================
 // 1323226133754.js

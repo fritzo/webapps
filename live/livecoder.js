@@ -63,8 +63,7 @@ var live = (function(){
 
     _initGraphics(canvas2d);
 
-    _compiling = false;
-    _toggleCompiling();
+    _startCompiling();
   };
 
   live.logo = [
@@ -85,7 +84,9 @@ var live = (function(){
       "",
       "  after(0, live.hello); // to stop, comment out",
       "};",
-      "once live.hello(); // to restart, erase the n",
+      "",
+      "once live.hello(); // to start, erase the 'n'",
+      "nonce clear();      // to stop, erase the 'n'",
       ""
   ].join('\n');
 
@@ -108,9 +109,7 @@ var live = (function(){
   var _clear = function () {
     _after.clear();
     _sync.clear();
-    for (var key in _workspace) {
-      delete _workspace[key];
-    }
+    _clearWorkspace();
     _draw2d();
   };
 
@@ -118,8 +117,7 @@ var live = (function(){
     _$source.val(val);
     _clear();
 
-    _compiling = false;
-    _toggleCompiling();
+    _startCompiling();
     _$source.change().focus();
   };
   live.getSource = function (val) {
@@ -150,107 +148,128 @@ var live = (function(){
   //----------------------------------------------------------------------------
   // Evaluation
 
-  var _compiling = false;
-  var _workspace = {};
   var _evalTime = Date.now();
-  now = function() { return _evalTime; };
 
-  var _compileHandlers = [];
-  live.oncompile = function (handler) {
-    _compileHandlers.push(handler);
-  };
+  var _compileSource;
+  var _compileIfChanged;
+  var _startCompiling;
+  var _toggleCompiling;
+  var _clearWorkspace;
 
-  var _compileSource = function () {
-    if (!_compiling) {
-      _warn('hit escape to compile');
-      return;
-    }
+  (function(){
 
-    var source = _$source.val();
-    var compiled;
-    try {
-      compiled = globalEval(
-          '"use strict";\n' +
-          //'with(Math);\n' +
-          '(function(live){\n' +
-              source
-                .replace(/\bonce\b/g, 'if(1)')
-                .replace(/\bnonce\b/g, 'if(0)')
-                .replace(/\bfun\b/g, 'function') +
-          '\n/**/})');
-    } catch (err) {
-      _warn(err);
-      return;
-    }
+    var compiling = false;
+    var workspace = {};
 
-    if (source.match(/\bonce\b/)) {
-      var pos = _$source.caret() + 1;
-      _$source.val(source.replace(/\bonce\b/g, 'nonce')).caret(pos);
-    }
+    var compileHandlers = [];
+    live.oncompile = function (handler) {
+      compileHandlers.push(handler);
+    };
 
-    _success();
-
-    try {
-      _evalTime = Date.now();
-      compiled(_workspace);
-    } catch (err) {
-      _error(err);
-      return;
-    }
-
-    for (var i = 0; i < _compileHandlers.length; ++i) {
-      _compileHandlers[i]();
-    }
-  };
-
-  var _compileIfChanged = function (keyup) {
-    if (!_compiling) {
-      _warn('hit escape to compile');
-      return;
-    }
-
-    var delay = false;
-
-    // see eg
-    // http://www.cambiaresearch.com/articles/15/javascript-char-codes-key-codes
-    switch (keyup.which) {
-
-      // ignore control keys
-      case 16: case 17: case 18: case 19: case 20: case 27: case 33:
-      case 34: case 35: case 36: case 37: case 38: case 39: case 40:
+    _compileSource = function () {
+      if (!compiling) {
+        _warn('hit escape to compile');
         return;
+      }
 
-      // be careful with comment markers // by delaying compile
-      case 191: // slash
-        delay = true;
-        break;
-      case 8: // backspace
-        delay = (_$source.val().charAt(_$source.caret()-1) === '/')
-        break
-      case 46: // delete
-        delay = (_$source.val().charAt(_$source.caret()) === '/')
-        break
+      var source = _$source.val();
+      var compiled;
+      try {
+        compiled = globalEval(
+            '"use strict";\n' +
+            //'with(Math);\n' +
+            '(function(live){\n' +
+                source
+                  .replace(/\bonce\b/g, 'if(1)')
+                  .replace(/\bnonce\b/g, 'if(0)')
+                  .replace(/\bfun\b/g, 'function') +
+            '\n/**/})');
+      } catch (err) {
+        _warn(err);
+        return;
+      }
 
-      // TODO insert matching delimiters (),{},[],',"
-      // TODO allow block indent and outdent
-    }
+      if (source.match(/\bonce\b/)) {
+        var pos = _$source.caret() + 1;
+        _$source.val(source.replace(/\bonce\b/g, 'nonce')).caret(pos);
+      }
 
-    if (delay) setTimeout(_compileSource, 200);
-    else _compileSource();
-  };
-
-  var _toggleCompiling = function () {
-
-    if (_compiling) {
-      _compiling = false;
-      _warn('hit escape to compile');
-    }
-    else {
-      _compiling = true;
       _success();
-      _$source.change();
-    }
-  };
+
+      try {
+        _evalTime = Date.now();
+        compiled(workspace);
+      } catch (err) {
+        _error(err);
+        return;
+      }
+
+      for (var i = 0; i < compileHandlers.length; ++i) {
+        compileHandlers[i]();
+      }
+    };
+
+    _compileIfChanged = function (keyup) {
+      if (!compiling) {
+        _warn('hit escape to compile');
+        return;
+      }
+
+      var delay = false;
+
+      // see eg
+      // http://www.cambiaresearch.com/articles/15
+      switch (keyup.which) {
+
+        // ignore control keys
+        case 16: case 17: case 18: case 19: case 20: case 27: case 33:
+        case 34: case 35: case 36: case 37: case 38: case 39: case 40:
+          return;
+
+        // be careful with comment markers // by delaying compile
+        case 191: // slash
+          delay = true;
+          break;
+        case 8: // backspace
+          delay = (_$source.val().charAt(_$source.caret()-1) === '/')
+          break
+        case 46: // delete
+          delay = (_$source.val().charAt(_$source.caret()) === '/')
+          break
+
+        // TODO insert matching delimiters (),{},[],',"
+        // TODO allow block indent and outdent
+      }
+
+      if (delay) setTimeout(_compileSource, 200);
+      else _compileSource();
+    };
+
+    _toggleCompiling = function () {
+
+      if (compiling) {
+        compiling = false;
+        _warn('hit escape to compile');
+      }
+      else {
+        compiling = true;
+        _success();
+        _$source.change();
+      }
+    };
+
+    _startCompiling = function () {
+      compiling = false;
+      _toggleCompiling();
+    };
+
+    _clearWorkspace = function () {
+      for (var key in workspace) {
+        delete workspace[key];
+      }
+    };
+
+  })();
 
   //----------------------------------------------------------------------------
   // Scheduling drift-free tasks
