@@ -1,5 +1,58 @@
 
 //==============================================================================
+// 1323324421097.js
+
+// petri net rhythm
+
+var noise = function (duration, gain) {
+  var data = []; // just an array
+  for (var i=0, I=duration*sampleRate; i < I; ++i) {
+    var env = (I - i) / I;
+    data[i] = quantize8((2*rand()-1) * gain * env);
+  }
+  return (new RIFFWAVE(data)).dataURI;
+}
+
+var play = function (sound) {
+  (new Audio(sound)).play();
+};
+
+var T = 3000;
+
+nonce { // generate samples
+  window.long = noise(T/4, 0.05);
+  window.short = noise(T/32, 0.1);
+}
+
+var show = function (symbol) {
+  var chain = symbol + (live.chain || '');
+  print(live.chain = chain.slice(0,80));
+};
+
+live.L1 = function () {
+  play(window.long);
+  show('|');
+  sync({delay:T/2,acuity:7}, live.L1);
+};
+
+live.S1 = function () {
+  play(window.short);
+  show('o');
+  sync({delay:T/5}, rand() > 5/12 ? live.S2 : live.S1);
+};
+
+live.S2 = function () {
+  play(window.short);
+  show('-');
+  sync({delay:T/7}, rand() > 5/12 ? live.S2 : live.S1);
+};
+
+nonce live.L1(); // start one of these
+nonce live.S1(); // and a few of these
+
+nonce sync.clear(); // uncomment to stop
+
+//==============================================================================
 // 1323319581185.js
 
 /* TODO list ---------------------------------------

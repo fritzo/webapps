@@ -162,6 +162,7 @@ var live = (function(){
   };
 
   clear = live.clear = function () {
+    _sync.clear();
     for (var key in _workspace) {
       delete _workspace[key];
     }
@@ -496,6 +497,13 @@ var live = (function(){
     new Task(params, action);
     if (_initTasks) _initTasks();
   };
+
+  _sync.clear = function () {
+    for (var i in _taskList) {
+      delete _taskList[i];
+    }
+  };
+
 
   //----------------------------------------------------------------------------
   // Graphics
