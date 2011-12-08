@@ -12,7 +12,6 @@
 <script type='text/javascript' src='riffwave.js'></script> <!-- GPL -->
 <script type='text/javascript'>
 
-var live = livecoder;
 var ui = {};
 
 //------------------------------------------------------------------------------
@@ -393,7 +392,8 @@ $(document).ready(function() {
     ui.showToolbar(0)();
   }
 
-  live.init($('#source'), $('#log'), initSource);
+  var canvas2d = document.getElementById('canvas2d');
+  live.init($('#source'), $('#log'), canvas2d, initSource);
   live.initShadow($('#shadow'));
 });
 

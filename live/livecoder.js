@@ -2,7 +2,7 @@
  * livecoder: version (2011-12-05)
  * http://livecoder.net
  *
- * Livecoder is tool to make browser-based javascript live coding easy.
+ * Livecoder is toolset to make browser-based javascript live coding easy.
  * It includes a language extension, a live coding editor, a task scheduler,
  * and a few math/graphics/audio tools for live coding of art.
  *
@@ -11,6 +11,7 @@
  * - jquery.caret.js
  * - a textarea for source editing
  * - a textarea for error logging
+ * - a canvas for 2d drawing
  *
  * Provides:
  * - an obect 'livecoder'
@@ -46,10 +47,14 @@ function assert (condition, message) {
 // once{...} evaluates once, then decays to the inert nonce{...}
 // var live; // a place store variables while live coding
 var now;//() time of event evaluation (a little before Date.now())
-var after;//(duration, action); schedule an event
+var after;//(delay, action); schedule an event
+var sync;//({delay,syncopate=0,mass=1,acuity=3}, action)
+         //  schedule a coupled event
 
 // Utility
-var print;//(message) logs message
+var print;//(message) logs normal message
+var error;//(message) logs error message
+var help;//(object) gets help about object
 var dir;//(object) lists properties of an object
 var clear;//() clears workspace and canvas
 
@@ -64,8 +69,8 @@ var sampleRate = 22.05; // in kHz
 var quantize8 = function (x) { return round(255/2 * (x+1)); };
 var quantize16 = function (x) { return round(65535/2 * (x+1)); };
 var play;//(seq:Uint8Array) plays an audio sequence (mono 8bit 22050Hz)
-var tone;//(freqHz, durationSec) returns a sequence for a single tone
-var noise;
+var tone;//(freqkHz, durationMs) returns a sequence for a single tone
+var noise; // TODO
 
 // math functions & constants
 var pow   = Math.pow;      var e       = Math.E;
@@ -84,28 +89,22 @@ var min   = Math.min;
 var abs   = Math.abs;      var rand    = Math.random;
 
 var inf = 1 / 0;
+var nan = 0 / 0;
 var sin2pi = function (t) { return sin(2*pi*t) };
 var cos2pi = function (t) { return cos(2*pi*t) };
 var tan2pi = function (t) { return tan(2*pi*t) };
 var bound  = function (lb,ub,x) { return max(lb,min(ub,x)) };
 
-//--------
-
-var dir = function (o) {
-  o = o || window;
-  var a = [], i = 0;
-  for (a[i++] in o);
-  return a;
-};
-
 //------------------------------------------------------------------------------
 // Live module
 
-window.livecoder = (function(){
+var live = (function(){
 
   var live = {};
 
-  live.init = function ($source, $log, initSource) {
+  // TODO move _compiling, _workspace etc. here
+
+  live.init = function ($source, $log, canvas2d, initSource) {
 
     live.$log = $log;
     live.$source = $source;
@@ -117,11 +116,10 @@ window.livecoder = (function(){
         .on('click', live.compileSource)
         .on('change', live.compileSource);
 
-    live.initGraphics();
+    live.initGraphics(canvas2d);
 
     live.compiling = false;
     live.toggleCompiling();
-    live.scheduler();
   };
 
   live.logo = [
@@ -147,11 +145,11 @@ window.livecoder = (function(){
       ""
   ].join('\n');
 
-  print = function (message) {
+  live.print = function (message) {
     live.$log.val('> ' + message).css('color', '#aaaaff').show();
   };
-  live.log = function (message) {
-    live.$log.val(String(message)).css('color', '#aaaaff').show();
+  live.success = function () {
+    live.$log.val('').hide();
     live.$source.css('color', '#aaffaa');
   };
   live.warn = function (message) {
@@ -162,21 +160,17 @@ window.livecoder = (function(){
     live.$log.val(String(message)).css('color', '#ff7777').show();
     live.$source.css('color', '#dddddd');
   };
-  live.success = function () {
-    live.$log.val('').hide();
-    live.$source.css('color', '#aaffaa');
-  };
 
-  clear = function () {
+  clear = live.clear = function () {
     for (var key in live.workspace) {
       delete live.workspace[key];
     }
-    clear2d();
+    live.clear2d();
   };
 
   live.setSource = function (val) {
     live.$source.val(val);
-    clear();
+    live.clear();
 
     live.compiling = false;
     live.toggleCompiling();
@@ -191,25 +185,9 @@ window.livecoder = (function(){
 
   live.initShadow = function ($shadow) {
 
-    // Version 1. shadow
     live.updateShadow = function () {
       $shadow.val(live.$source.val().replace(/./g, '\u2588'));
     };
-
-    /* Version 2. cursor
-    var moveDown = [], moveRight = [];
-    for (var i = 0; i < 10000; ++i) {
-      moveDown[i] = '\n';
-      moveRight[i] = '\u2588';
-    }
-    moveDown = moveDown.join('');
-    moveRight = moveRight.join('');
-    live.updateShadow = function () {
-      var pos = live.$source.getCaretPos();
-      //console.log(JSON.stringify(pos));
-      $shadow.val(moveDown.slice(0,pos.y) + moveRight.slice(0,pos.x));
-    };
-    */
 
     live.$source
         .on('keyup', live.updateShadow)
@@ -224,65 +202,12 @@ window.livecoder = (function(){
   };
 
   //----------------------------------------------------------------------------
-  // Task Scheduling
-
-  live.time = Date.now();
-  now = function() { return live.time; };
-
-  after = function (delay, action) {
-
-    if (!(delay >= 0)) {
-      live.error('ignoring task scheduled after ' + delay);
-      return;
-    }
-    var actionTime = live.time + delay;
-
-    var safeAction = function () {
-      try {
-        live.time = actionTime; // Date.now() would cause drift
-        action();
-      } catch (err) {
-        live.error(err);
-      }
-    };
-      
-    setTimeout(safeAction, delay + live.time - Date.now());
-  };
-
-  live.scheduler = function () {
-    /*
-    var tasks = live.taskList;
-    if (tasks.length == 0) return;
-
-    // TODO update tasks
-
-    setTimeout(live.scheduler, 1);
-    */
-  };
-
-  /* another attempt
-  live.scheduler = (function () {
-
-      var Task = function () {
-      };
-
-      var tasks = [];
-
-      // interface
-      return {
-        after = after,
-
-        none:null,
-        };
-  })();
-  */
-
-  //----------------------------------------------------------------------------
   // Evaluation
 
   live.compiling = false;
   live.workspace = {};
-  live.taskList = [];
+  live.time = Date.now();
+  live.now = function() { return time; };
 
   live.compileHandlers = [];
   live.oncompile = function (handler) {
@@ -321,7 +246,7 @@ window.livecoder = (function(){
 
     try {
       live.time = Date.now();
-      live.compiled(live.workspace, function(){ return live.time; });
+      live.compiled(live.workspace);
     } catch (err) {
       live.error(err);
       return;
@@ -383,30 +308,220 @@ window.livecoder = (function(){
   };
 
   //----------------------------------------------------------------------------
+  // Scheduling drift-free tasks
+
+  live.after = function (delay, action) {
+
+    if (!(delay >= 0)) {
+      live.error('ignoring task scheduled after ' + delay);
+      return;
+    }
+    var actionTime = live.time + delay;
+
+    var safeAction = function () {
+      try {
+        live.time = actionTime; // Date.now() would cause drift
+        action();
+      } catch (err) {
+        live.error(err);
+      }
+    };
+      
+    setTimeout(safeAction, delay + live.time - Date.now());
+  };
+
+  //----------------------------------------------------------------------------
+  // Scheduling coupled tasks
+
+  //------------------------------------
+  // Math
+
+  var sin = Math.sin;
+  var cos = Math.cos;
+  var pi = Math.PI;
+  var sqrt = Math.sqrt;
+  var max = Math.max;
+  var min = Math.min;
+
+  //------------------------------------
+  // Complex numbers
+
+  var Complex = function (x,y) { this.x = x; this.y = y; };
+
+  Complex.prototype = {
+    scale : function (t) { return new Complex(t*this.x, t*this.y); },
+    iadd : function (other) { this.x += other.x; this.y += other.y; },
+  };
+
+  // cross(u,v) = dot(i u, v)
+  Complex.dot = function(u,v) { return u.x*v.x + u.y*v.y; };
+  Complex.cross = function(u,v) { return u.x*v.y - u.y*v.x; };
+
+  //------------------------------------
+  // Voting
+
+  var Poll = function (mass, force) {
+    if (mass === undefined) {
+      this.mass = 0;
+      this.mass2 = 0;
+      this.force = Complex(2,2);
+    } else {
+      this.mass = mass;
+      this.mass2 = mass * mass;
+      this.force = force;
+    }
+  };
+
+  Poll.prototype = {
+
+    iadd : function (other) {
+      this.mass += other.mass;
+      this.mass2 += other.mass2;
+      this.force.iadd(other.force);
+    },
+
+    mean : function () {
+      var minMass = 0.01; // hand-tuned
+      var M = max(minMass, this.mass);
+      var M2 = max(minMass*minMass, this.mass2);
+      var BesselsCorrection = max(0, 1 - M2 / (M*M));
+      return this.force.scale(Bessels_correction / M);
+    }
+  };
+
+  //------------------------------------
+  // Coupled tasks
+
+  var _taskCount = 0;
+  var _taskList = {};
+
+  var _Task = function (params, action) {
+
+    var mass = params.mass || 1.0;
+    var acuity = params.acuity || 3.0; // hand-tuned
+    var offset = params.syncopate || 0.0;
+
+    assert(0 < params.delay, 'invalid delay: ' + params.delay);
+    assert(0 < mass, 'invalid mass: ' + mass);
+    assert(0 < acuity, 'invalid acuity: ' + acuity);
+
+    this.time = now();
+    this.action = action;
+    this.freq = 1 / params.delay;
+    this.mass = mass;
+    this.acuity = acuity;
+    this.offset = offset;
+    this.phase = 0;
+
+    this._initBeat();
+
+    _taskList[this._id = _taskCount++] = this;
+    console.log('created task ' + _taskCount); // DEBUG
+  };
+
+  _Task.prototype = {
+
+    _initBeat : function () {
+
+      // let f(theta) = max(0, cos(theta) - cos(a))
+      // we compute mean and variance of f
+      var a = pi / this.acuity;
+      var sin_a = sin(a), cos_a = cos(a);
+      var Ef = (sin_a - a*cos_a) / pi;
+      var Ef2 = (a - 3*sin_a*cos_a + 2*a*cos_a*cos_a) / (2*pi);
+      var Vf = Ef2 - Ef*Ef;
+
+      this.beatFloor = cos_a;
+      this.beatScale = sqrt(2.0 / Vf); // the 2.0 is hand-tuned
+
+      var a = 2*pi*this.phase;
+      this.beat = this.beatScale * max(0, cos(a) - this.beatFloor);
+    },
+
+    poll : function () {
+      var m = this.mass;
+      var mb = m * this.beat;
+      var a = 2 * pi * (this.phase + this.offset);
+      var f = new Complex(mb * cos(a), mb * sin(a));
+      return new Poll(m, f);
+    },
+
+    update : function (time, force) {
+
+      var newTime = now();
+      var dt = newTime - this.time;
+      this.time = newTime;
+
+      var a = 2 * pi * this.phase;
+      var z = new Complex(cos(a), sin(a));
+      var bend = this.beat * Complex.cross(z, force);
+
+      var minDphase = 0.1; // hand-tuned
+      var dphase = this.freq * max(minPhase, 1 + bend) * dt;
+      var phase = this.phase += dphase;
+
+      if (phase < 1) {
+        a = 2 * pi * phase;
+        this.beat = this.beatScale * max(0, cos(a) - this.beatFloor);
+      } else {
+        try { this.action(); }
+        catch (err) { live.error(err); }
+      }
+    }
+  };
+
+  var _updateTasks = function () {
+    var tasks = _taskList;
+
+    var poll = new Poll();
+    for (var i in tasks) {
+      poll.iadd(tasks[i].poll());
+    }
+    var force = poll.mean();
+
+    live.time = Date.now();
+    for (var i in tasks) {
+      tasks[i].update(force);
+    }
+
+    setTimeout(_updateTasks, 20); // TODO tune update rate
+  };
+
+  var _initTasks = function () {
+    _initTasks = undefined;
+    _updateTasks();
+  };
+
+  live.sync = function (params, action) {
+    new _Task(params, action);
+    if (_initTasks) _initTasks();
+  };
+
+  //----------------------------------------------------------------------------
   // Graphics
 
-  window.clear2d = function (keep) {
-    var d = draw2d;
+  clear2d = live.clear2d = function (keep) {
+    var d = live.draw2d;
     d.clearRect(0, 0, d.canvas.width, d.canvas.height);
   };
 
-  live.resize = function () {
-    windowW = draw2d.canvas.width = window.innerWidth;
-    windowH = draw2d.canvas.height = window.innerHeight;
-  };
-
-  live.initGraphics = function () {
+  live.initGraphics = function (canvas2d) {
 
     try {
-      draw2d = document.getElementById('canvas2d').getContext('2d');
+      draw2d = live.draw2d = canvas2d.getContext('2d');
       assert(draw2d, 'failed to get 2d canvas context');
+
+      $(window).resize(function(){
+            windowW = draw2d.canvas.width = window.innerWidth;
+            windowH = draw2d.canvas.height = window.innerHeight;
+          }).resize();
     }
     catch (err) {
-      live.error(err);
-      draw2d = undefined;
+      error(err);
+      console.log(err);
+      draw2d = live.draw2d = undefined;
     }
 
-    $(window).resize(live.resize).resize();
     $(document).mousemove(function(e){
           window.mouseX = e.pageX;
           window.mouseY = e.pageY;
@@ -414,10 +529,61 @@ window.livecoder = (function(){
   };
 
   //----------------------------------------------------------------------------
-  // Audio (mono 8bit 22050 Hz -- hey, it's just a browser)
-  // see http://davidflanagan.com/Talks/jsconf11/BytesAndBlobs.html
+  // Module interface
 
-  // typed arrays are not universally supported
+  return {
+
+    init: live.init,
+    initShadow: live.initShadow,
+
+    setSource: live.setSource,
+    getSource: live.getSource,
+
+    print: live.print,
+    error: live.error,
+
+    toggleCompiling: live.toggleCompiling,
+    oncompile: live.oncompile,
+
+    now: live.now,
+    after: live.after,
+    sync: live.sync,
+
+    none: undefined,
+  };
+})();
+
+//------------------------------------------------------------------------------
+// Utilities
+
+var print = live.print;
+var error = live.error;
+
+var dir = function (o) {
+  o = o || window;
+  var a = [], i = 0;
+  for (a[i++] in o);
+  return a;
+};
+
+var help = function (o) {
+  o = o || help;
+  print((help in o ? o.help + '\n\n' : '')
+      + dir(o) + '\n\n'
+      + o.toString());
+};
+
+var now = live.now;
+var after = live.after;
+var sync = live.sync;
+
+//------------------------------------------------------------------------------
+// Audio (mono 8bit 22050 Hz -- hey, it's just a browser)
+// see http://davidflanagan.com/Talks/jsconf11/BytesAndBlobs.html
+
+// typed arrays are not universally supported
+
+(function(){
 
   try {
 
@@ -428,7 +594,7 @@ window.livecoder = (function(){
       window.URL = window.webkitURL;
     }
 
-    live.riffHeader = new Uint8Array([
+    var _riffHeader = new Uint8Array([
           0x52,0x49,0x46,0x46, // "RIFF"
           0, 0, 0, 0,          // total file size = FILLME
           0x57,0x41,0x56,0x45, // "WAVE"
@@ -444,23 +610,23 @@ window.livecoder = (function(){
           0, 0, 0, 0           // data size in bytes = FILLME
         ]).buffer;  // Note: we just want the ArrayBuffer
 
-    live.makeWav = function (samples) {
+    var _makeWav = function (samples) {
 
       // overwrite the header each time we make a wav
-      var dv = new DataView(live.riffHeader);
+      var dv = new DataView(_riffHeader);
       dv.setInt32(4, 36 + samples.length, true);
       dv.setInt32(40, samples.length, true);
 
       var bb = new BlobBuilder();
-      bb.append(live.riffHeader);
+      bb.append(_riffHeader);
       bb.append(samples.buffer);
       return bb.getBlob("audio/wav");
     };
 
-    window.tone = function (frequency, duration) {
+    tone = function (frequency, duration) {
 
-      var samplespercycle = 22050 / frequency;
-      var samples = new Uint8Array(22050 * duration);
+      var samplespercycle = sampleRate / frequency;
+      var samples = new Uint8Array(sampleRate * duration);
 
       var phase = 0, dphase = 2 * pi / samplespercycle;
       for(var i = 0, I = samples.length, phase = 0; i < I; ++i) {
@@ -471,9 +637,9 @@ window.livecoder = (function(){
       return samples;
     };
 
-    window.play = function (samples) {
+    play = function (samples) {
 
-      var blob = live.makeWav(samples);
+      var blob = _makeWav(samples);
       var url = URL.createObjectURL(blob);
       var player = new Audio(url);
       player.play();
@@ -486,21 +652,5 @@ window.livecoder = (function(){
     alert(err);
   }
 
-  //----------------------------------------------------------------------------
-  // Module interface
-
-  return {
-
-    init: live.init,
-    initShadow: live.initShadow,
-
-    setSource: live.setSource,
-    getSource: live.getSource,
-
-    toggleCompiling: live.toggleCompiling,
-    oncompile: live.oncompile,
-
-    none: undefined,
-  };
 })();
 

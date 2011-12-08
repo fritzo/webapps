@@ -60,8 +60,6 @@ once live.blip();
 
 // syncopators
 
-var nan = 0/0; // TODO add to library
-
 live.Complex = function (x,y) {
   this.x = x;
   this.y = y;
