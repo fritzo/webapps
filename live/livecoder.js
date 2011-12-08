@@ -86,7 +86,7 @@ var atan  = Math.atan;     var floor   = Math.floor;
 var atan2 = Math.atan2;    var ceil    = Math.ceil; 
 var max   = Math.max;      var round   = Math.round;
 var min   = Math.min;
-var abs   = Math.abs;      var rand    = Math.random;
+var abs   = Math.abs;      var random  = Math.random;
 
 var inf = 1 / 0;
 var nan = 0 / 0;
@@ -584,6 +584,19 @@ var help = function (o) {
 var now = live.now;
 var after = live.after;
 var sync = live.sync;
+
+random.index = function (/* likelihoods */) {
+  var total = 0;
+  for (var i=0; i < arguments.length; ++i) {
+    total += arguments[i];
+  }
+  while (true) { // accomodate round-off error
+    var t = random() * total;
+    for (var i=0; i < arguments.length; ++i) {
+      if ((t -= arguments[i]) < 0) return i;
+    }
+  }
+};
 
 //------------------------------------------------------------------------------
 // Audio (mono 8bit 22050 Hz -- hey, it's just a browser)
