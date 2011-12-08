@@ -349,7 +349,7 @@ var live = (function(){
 
   Complex.prototype = {
     scale : function (t) { return new Complex(t*this.x, t*this.y); },
-    iadd : function (other) { this.x += other.x; this.y += other.y; },
+    iadd : function (other) { this.x += other.x; this.y += other.y; }
   };
 
   // cross(u,v) = dot(i u, v)
@@ -363,7 +363,7 @@ var live = (function(){
     if (mass === undefined) {
       this.mass = 0;
       this.mass2 = 0;
-      this.force = Complex(2,2);
+      this.force = new Complex(2,2);
     } else {
       this.mass = mass;
       this.mass2 = mass * mass;
@@ -384,7 +384,7 @@ var live = (function(){
       var M = max(minMass, this.mass);
       var M2 = max(minMass*minMass, this.mass2);
       var BesselsCorrection = max(0, 1 - M2 / (M*M));
-      return this.force.scale(Bessels_correction / M);
+      return this.force.scale(BesselsCorrection / M);
     }
   };
 
@@ -415,7 +415,7 @@ var live = (function(){
     this._initBeat();
 
     _taskList[this._id = _taskCount++] = this;
-    console.log('created task ' + _taskCount); // DEBUG
+    //console.log('created task ' + _taskCount);
   };
 
   Task.prototype = {
@@ -455,13 +455,14 @@ var live = (function(){
       var bend = this.beat * Complex.cross(z, force);
 
       var minDphase = 0.1; // hand-tuned
-      var dphase = this.freq * max(minPhase, 1 + bend) * dt;
+      var dphase = this.freq * max(minDphase, 1 + bend) * dt;
       var phase = this.phase += dphase;
 
       if (phase < 1) {
         a = 2 * pi * phase;
         this.beat = this.beatScale * max(0, cos(a) - this.beatFloor);
       } else {
+        delete _taskList[this._id];
         try { this.action(); }
         catch (err) { _error(err); }
       }
@@ -469,20 +470,21 @@ var live = (function(){
   };
 
   var _updateTasks = function () {
-    if (!_taskList.length) return;
+    if (!$.isEmptyObject(_taskList)) {
 
-    var poll = new Poll();
-    for (var i in _taskList) {
-      poll.iadd(_taskList[i].poll());
+      var poll = new Poll();
+      for (var i in _taskList) {
+        poll.iadd(_taskList[i].poll());
+      }
+      var force = poll.mean();
+
+      _evalTime = Date.now();
+      for (var i in _taskList) {
+        _taskList[i].update(force);
+      }
     }
-    var force = poll.mean();
 
-    _evalTime = Date.now();
-    for (var i in _taskList) {
-      _taskList[i].update(force);
-    }
-
-    setTimeout(_updateTasks, 20); // TODO tune update rate
+    setTimeout(_updateTasks, 8); // TODO tune update rate
   };
 
   var _initTasks = function () {

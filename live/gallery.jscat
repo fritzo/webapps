@@ -1,5 +1,81 @@
 
 //==============================================================================
+// 1323319581185.js
+
+/* TODO list ---------------------------------------
+   ( X = resolved, W = won't fix )
+ * remove/show trailing whitespace
+ * ignore compile after whitespace expansion
+ * $source.focus(setCaretToPreviousPosition)
+ * line numbers in error messages (how?)
+ * two-pane editor view for wide screens
+ * search & replace
+ * make leading whitespace visible
+ * auto matching paren
+ * auto indent
+ * tab to indent (somehow...)
+ W make caret more visible
+ W autosave with multiple windows
+ X move focus when deleting scripts
+ X make error messages more visible (bg)
+ X move focus to buttons when hide-cycling
+ X add window reload button in su mode
+ X allow error message window to resize to 1.5 lines
+ */
+
+//==============================================================================
+// 1323319306053.js
+
+// syncopated rhythm
+
+var noise = function (duration, gain) {
+  var data = []; // just an array
+  for (var i=0, I=duration*sampleRate; i < I; ++i) {
+    var env = (I - i) / I;
+    data[i] = quantize8((2*rand()-1) * gain * env);
+  }
+  return (new RIFFWAVE(data)).dataURI;
+}
+
+var play = function (sound) {
+  (new Audio(sound)).play();
+};
+
+var T = 3000;
+
+once { // generate samples
+  window.long = noise(T/2, 0.05);
+  window.short = noise(T/64, 0.1);
+}
+
+live.running = 10;
+
+live.L1 = function () {
+  if (!live.running) return;
+  play(window.long);
+  console.log('L1');
+  sync({delay:T/2,syncopate:-1/12}, live.L1);
+};
+
+live.S1 = function () {
+  if (!live.running) return;
+  play(window.short);
+  console.log('S1');
+  sync({delay:T/3}, live.S1);
+};
+
+live.S2 = function () {
+  if (!live.running) return;
+  play(window.short);
+  console.log('S2');
+  sync({delay:T/6}, live.S2);
+};
+
+once live.L1();
+once live.S1();
+once live.S2();
+
+//==============================================================================
 // 1323297175694.js
 
 // simple continuous-time task manager
@@ -54,221 +130,6 @@ once live.blip();
 
 //print(live.counter);
 //print(live.tasks[0]);
-
-//==============================================================================
-// 1323296857679.js
-
-// syncopators
-
-live.Complex = function (x,y) {
-  this.x = x;
-  this.y = y;
-};
-live.Complex.prototype = {
-  scale : function (t) {
-    return new Complex(t*this.x, t*this.y);
-  },
-  iadd : function (other) {
-    this.x += other.x;
-    this.y += other.y;
-  },
-
-  angle : function () {
-    return atan2(this.y, this.x);
-  },
-  norm : function () {
-    return this.x*this.x + this.y*this.y;
-  }
-};
-live.Complex.dot = function(u,v) {
-  return u.x*v.x + u.y*v.y;
-};
-live.Complex.cross = function(u,v) {
-  // cross(u,v) = dot(i u, v)
-  return u.x*v.y - u.y*v.x;
-};
-
-live.Poll = function (mass, force) {
-  if (mass === undefined) {
-    this.mass = 0;
-    this.mass2 = 0;
-    this.force = Complex(2,2);
-  } else {
-    this.mass = mass;
-    this.mass2 = mass * mass;
-    this.force = force;
-  }
-};
-live.Poll.prototype = {
-
-  iadd : function (other) {
-    this.mass += other.mass;
-    this.mass2 += other.mass2;
-    this.force.iadd(other.force);
-  },
-
-  mean : function () {
-    var minMass = 0.01; // hand tweaked
-    var M = max(minMass, this.mass);
-    var M2 = max(minMass*minMass, this.mass2);
-    var BesselsCorrection = max(0, 1 - M2 / (M*M));
-    return this.force.scale(Bessels_correction / M);
-  }
-};
-
-// TODO figure out phase vs offset
-// TODO would cartesian phase be better than polar?
-live.Synco = function (action, params) {
-
-  this.action = action;
-  this.delay = params.delay;
-
-  var mass = params.mass || 1.0;
-  var acuity = params.acuity || 3.0; // hand-tuned
-  var offset = params.syncopate || 0.0;
-  var beginPhase = params.beginPhase || 0.0;
-  var endPhase = params.endPhase || 1.0;
-
-  assert(0 < params.delay, 'invalid delay: ' + params.delay);
-  assert(0 < mass, 'invalid mass: ' + mass);
-  assert(0 < acuity, 'invalid acuity: ' + acuity);
-  assert(0 <= offset && offset <= 1,
-      'invalid syncopation offset: ' + offset);
-  assert(0 <= beginPhase && beginPhase < endPhase,
-      'invalid begin,end phases: ' + beginPhase + ',' + endPhase);
-
-  this.mass = mass;
-  this.acuity = acuity;
-  this.freq = (endPhase - beginPhase) / params.delay;
-  this.offset = offset;
-  this.phase = beginPhase;
-  this.endPhase = endPhase;
-
-  this._initBeat();
-
-  live.add(this);
-};
-live.Synco.prototype = {
-
-  _initBeat : function () {
-
-    // let f(theta) = max(0, cos(theta) - cos(a))
-    // we compute mean and variance of f
-    var a = pi / this.acuity;
-    var sin_a = sin(a), cos_a = cos(a);
-    var Ef = (sin_a - a*cos_a) / pi;
-    var Ef2 = (a - 3*sin_a*cos_a + 2*a*cos_a*cos_a) / (2*pi);
-    var Vf = Ef2 - Ef*Ef;
-
-    this.beatFloor = cos_a;
-    this.beatScale = sqrt(2.0 / Vf); // the 2.0 is hand-tuned
-
-    var a = 2*pi*this.phase;
-    this.beat = this.beatScale * max(0, cos(a) - this.beatFloor);
-  },
-
-  poll : function () {
-    var m = this.mass;
-    var mb = m * this.beat;
-    var a = 2 * pi * (this.phase + this.offset);
-    var f = new Complex(mb * cos(a), mb * sin(a));
-    return new Poll(m, f);
-  },
-
-  update : function (dt, force) {
-    var a = 2*pi*this.phase;
-    var z = new Complex(cos(a), sin(a));
-    var bend = this.beat * Complex.cross(z, force);
-    var minDphase = 0.1; // hand-tuned
-    var dphase = this.freq * max(minPhase, 1 + bend) * dt;
-    var phase = this.phase += dphase;
-
-    if (phase < this.endPhase) {
-      a = 2*pi*this.phase;
-      this.beat = this.beatScale * max(0, cos(a) - this.beatFloor);
-      return false;
-    } else {
-      try { this.action(); }
-      catch (err) { print(err); } // XXX should be live.error(err)
-      return true;
-    }
-  }
-};
-live.Synco.updateAll = function () {
-  var tasks = live.tasks;
-  var dt = now() - live.time;
-  live.time = now();
-
-  var poll = new live.Poll();
-  for (var i in tasks) {
-    poll.iadd(tasks[i].poll());
-  }
-  var force = poll.mean();
-
-  for (var i in tasks) {
-    if (tasks[i].update(dt, force)) {
-      delete tasks[i];
-    }
-  }
-
-  after(20, live.Synco.updateAll); // TODO tune update rate
-};
-nonce Synco.updateAll(); // start
-
-nonce {
-  live.counter = 0;
-  live.tasks = {};
-  live.time = now();
-  live.add = function (task) {
-    live.tasks[live.counter++] = task;
-    print(live.counter); // DEBUG
-  };
-}
-
-// an example
-live.blip = function () {
-  clear2d();
-  draw2d.fillStyle = '#111';
-  draw2d.fillRect(
-    0,0,
-    windowW * rand(),
-    windowH * rand());
-
-  //after(100, live.blip);
-  new live.Synco(live.blip, 500);
-};
-nonce live.blip();
-
-//print(live.counter);
-//print(live.tasks[0]);
-
-//print('test');
-
-/* TODO ------------------------------------
- * remove/show trailing whitespace
- * ignore compile after whitespace expansion
- * $source.focus(setCaretToPreviousPosition)
- * line numbers in error messages (how?)
- * two-pane editor view for wide screens
- */
-
-//==============================================================================
-// 1323266203562.js
-
-/* TODO list ( X = resolved, W = won't fix )
- * search & replace
- * make leading whitespace visible
- * auto matching paren
- * auto indent
- * tab to indent (somehow...)
- W make caret more visible
- W autosave with multiple windows
- X move focus when deleting scripts
- X make error messages more visible (bg)
- X move focus to buttons when hide-cycling
- X add window reload button in su mode
- X allow error message window to resize to 1.5 lines
- */
 
 //==============================================================================
 // 1323230367141.js
@@ -358,7 +219,7 @@ live.juggle = function () {
   after(1, live.juggle);
 };
 
-nonce live.juggle();
+once live.juggle();
 
 //==============================================================================
 // 1323134327691.js
