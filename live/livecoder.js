@@ -469,17 +469,17 @@ var live = (function(){
   };
 
   var _updateTasks = function () {
-    var tasks = _taskList;
+    if (!_taskList.length) return;
 
     var poll = new Poll();
-    for (var i in tasks) {
-      poll.iadd(tasks[i].poll());
+    for (var i in _taskList) {
+      poll.iadd(_taskList[i].poll());
     }
     var force = poll.mean();
 
     _evalTime = Date.now();
-    for (var i in tasks) {
-      tasks[i].update(force);
+    for (var i in _taskList) {
+      _taskList[i].update(force);
     }
 
     setTimeout(_updateTasks, 20); // TODO tune update rate
