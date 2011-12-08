@@ -4,11 +4,13 @@ import sys
 import json
 
 if __name__ == '__main__':
-  if len(sys.argv) != 2:
-    print 'usage: python jscat2js.py EXAMPLE.jscat EXAMPLE.js'
-    sys.exit(1)
-
-  stem = sys.argv[1]
+  if len(sys.argv) < 2:
+    stem = 'gallery'
+  else:
+    stem = sys.argv[1]
+    if stem in ['help', '-h', '--help']:
+      print 'usage: python jscat2js.py EXAMPLE.jscat EXAMPLE.js'
+      sys.exit(1)
 
   jscat = open(stem + '.jscat')
   js = open(stem + '.js', 'w')

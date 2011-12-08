@@ -162,6 +162,7 @@ var live = (function(){
   };
 
   clear = live.clear = function () {
+    _after.clear();
     _sync.clear();
     for (var key in _workspace) {
       delete _workspace[key];
@@ -310,122 +311,132 @@ var live = (function(){
   //----------------------------------------------------------------------------
   // Scheduling drift-free tasks
 
-  var _after = function (delay, action) {
+  var _after;
+  (function(){
 
-    if (!(delay >= 0)) {
-      _error('ignoring task scheduled after ' + delay);
-      return;
-    }
-    var actionTime = _evalTime + delay;
+    var taskCount = 0;
+    var tasks = {};
 
-    var safeAction = function () {
-      try {
-        _evalTime = actionTime; // Date.now() would cause drift
-        action();
-      } catch (err) {
-        _error(err);
+    _after = function (delay, action) {
+
+      if (!(delay >= 0)) {
+        _error('ignoring task scheduled after ' + delay);
+        return;
+      }
+      var id = taskCount++;
+      var actionTime = _evalTime + delay;
+
+      var safeAction = function () {
+        try {
+          _evalTime = actionTime; // Date.now() would cause drift
+          action();
+        } catch (err) {
+          _error(err);
+        }
+        delete tasks[id];
+      };
+
+      tasks[id] = setTimeout(safeAction, delay + _evalTime - Date.now());
+    };
+
+    _after.clear = function () {
+      for (var i in tasks) {
+        clearTimeout(tasks[i]);
+        delete tasks[i];
       }
     };
-      
-    setTimeout(safeAction, delay + _evalTime - Date.now());
-  };
+
+  })();
 
   //----------------------------------------------------------------------------
   // Scheduling coupled tasks
 
-  //------------------------------------
-  // Math
+  var _sync;
+  (function(){
 
-  var sin = Math.sin;
-  var cos = Math.cos;
-  var pi = Math.PI;
-  var sqrt = Math.sqrt;
-  var max = Math.max;
-  var min = Math.min;
+    //------------------------------------
+    // Math
 
-  //------------------------------------
-  // Complex numbers
+    var sin = Math.sin;
+    var cos = Math.cos;
+    var pi = Math.PI;
+    var sqrt = Math.sqrt;
+    var max = Math.max;
+    var min = Math.min;
 
-  var Complex = function (x,y) { this.x = x; this.y = y; };
+    //------------------------------------
+    // Complex numbers
 
-  Complex.prototype = {
-    scale : function (t) { return new Complex(t*this.x, t*this.y); },
-    iadd : function (other) { this.x += other.x; this.y += other.y; }
-  };
+    var Complex = function (x,y) { this.x = x; this.y = y; };
 
-  // cross(u,v) = dot(i u, v)
-  Complex.dot = function(u,v) { return u.x*v.x + u.y*v.y; };
-  Complex.cross = function(u,v) { return u.x*v.y - u.y*v.x; };
+    Complex.prototype = {
+      scale : function (t) { return new Complex(t*this.x, t*this.y); },
+      iadd : function (other) { this.x += other.x; this.y += other.y; }
+    };
 
-  //------------------------------------
-  // Voting
+    // cross(u,v) = dot(i u, v)
+    Complex.dot = function(u,v) { return u.x*v.x + u.y*v.y; };
+    Complex.cross = function(u,v) { return u.x*v.y - u.y*v.x; };
 
-  var Poll = function (mass, force) {
-    if (mass === undefined) {
-      this.mass = 0;
-      this.mass2 = 0;
-      this.force = new Complex(2,2);
-    } else {
+    //------------------------------------
+    // Voting
+
+    var Poll = function (mass, force) {
+      if (mass === undefined) {
+        this.mass = 0;
+        this.mass2 = 0;
+        this.force = new Complex(2,2);
+      } else {
+        this.mass = mass;
+        this.mass2 = mass * mass;
+        this.force = force;
+      }
+    };
+
+    Poll.prototype = {
+
+      iadd : function (other) {
+        this.mass += other.mass;
+        this.mass2 += other.mass2;
+        this.force.iadd(other.force);
+      },
+
+      mean : function () {
+        var minMass = 0.01; // hand-tuned
+        var M = max(minMass, this.mass);
+        var M2 = max(minMass*minMass, this.mass2);
+        var BesselsCorrection = max(0, 1 - M2 / (M*M));
+        return this.force.scale(BesselsCorrection / M);
+      }
+    };
+
+    //------------------------------------
+    // Coupled tasks
+
+    var taskCount = 0;
+    var tasks = {};
+
+    var Task = function (params, action) {
+
+      var mass = params.mass || 1.0;
+      var acuity = params.acuity || 3.0; // hand-tuned
+      var offset = params.syncopate || 0.0;
+
+      assert(0 < params.delay, 'invalid delay: ' + params.delay);
+      assert(0 < mass, 'invalid mass: ' + mass);
+      assert(0 < acuity, 'invalid acuity: ' + acuity);
+
+      this.time = _evalTime;
+      this.action = action;
+      this.freq = 1 / params.delay;
       this.mass = mass;
-      this.mass2 = mass * mass;
-      this.force = force;
-    }
-  };
-
-  Poll.prototype = {
-
-    iadd : function (other) {
-      this.mass += other.mass;
-      this.mass2 += other.mass2;
-      this.force.iadd(other.force);
-    },
-
-    mean : function () {
-      var minMass = 0.01; // hand-tuned
-      var M = max(minMass, this.mass);
-      var M2 = max(minMass*minMass, this.mass2);
-      var BesselsCorrection = max(0, 1 - M2 / (M*M));
-      return this.force.scale(BesselsCorrection / M);
-    }
-  };
-
-  //------------------------------------
-  // Coupled tasks
-
-  var _taskCount = 0;
-  var _taskList = {};
-
-  var Task = function (params, action) {
-
-    var mass = params.mass || 1.0;
-    var acuity = params.acuity || 3.0; // hand-tuned
-    var offset = params.syncopate || 0.0;
-
-    assert(0 < params.delay, 'invalid delay: ' + params.delay);
-    assert(0 < mass, 'invalid mass: ' + mass);
-    assert(0 < acuity, 'invalid acuity: ' + acuity);
-
-    this.time = _evalTime;
-    this.action = action;
-    this.freq = 1 / params.delay;
-    this.mass = mass;
-    this.acuity = acuity;
-    this.offset = offset;
-    this.phase = 0;
-
-    this._initBeat();
-
-    _taskList[this._id = _taskCount++] = this;
-    //console.log('created task ' + _taskCount);
-  };
-
-  Task.prototype = {
-
-    _initBeat : function () {
+      this.acuity = acuity;
+      this.offset = offset;
+      this.phase = 0;
 
       // let f(theta) = max(0, cos(theta) - cos(a))
       // we compute mean and variance of f
-      var a = pi / this.acuity;
+      var a = pi / acuity;
       var sin_a = sin(a), cos_a = cos(a);
       var Ef = (sin_a - a*cos_a) / pi;
       var Ef2 = (a - 3*sin_a*cos_a + 2*a*cos_a*cos_a) / (2*pi);
@@ -436,74 +447,80 @@ var live = (function(){
 
       var a = 2*pi*this.phase;
       this.beat = this.beatScale * max(0, cos(a) - this.beatFloor);
-    },
 
-    poll : function () {
-      var m = this.mass;
-      var mb = m * this.beat;
-      var a = 2 * pi * (this.phase + this.offset);
-      var f = new Complex(mb * cos(a), mb * sin(a));
-      return new Poll(m, f);
-    },
+      tasks[this._id = taskCount++] = this;
+      //console.log('created task ' + taskCount);
+    };
 
-    update : function (force) {
+    Task.prototype = {
 
-      var dt = bound(1, 1000, _evalTime - this.time);
-      this.time = _evalTime;
+      poll : function () {
+        var m = this.mass;
+        var mb = m * this.beat;
+        var a = 2 * pi * (this.phase + this.offset);
+        var f = new Complex(mb * cos(a), mb * sin(a));
+        return new Poll(m, f);
+      },
 
-      var a = 2 * pi * this.phase;
-      var z = new Complex(cos(a), sin(a));
-      var bend = this.beat * Complex.cross(z, force);
+      update : function (force) {
 
-      var minDphase = 0.1; // hand-tuned
-      var dphase = this.freq * max(minDphase, 1 + bend) * dt;
-      var phase = this.phase += dphase;
+        var dt = bound(1, 1000, _evalTime - this.time);
+        this.time = _evalTime;
 
-      if (phase < 1) {
-        a = 2 * pi * phase;
-        this.beat = this.beatScale * max(0, cos(a) - this.beatFloor);
-      } else {
-        delete _taskList[this._id];
-        try { this.action(); }
-        catch (err) { _error(err); }
+        var a = 2 * pi * this.phase;
+        var z = new Complex(cos(a), sin(a));
+        var bend = this.beat * Complex.cross(z, force);
+
+        var minDphase = 0.1; // hand-tuned
+        var dphase = this.freq * max(minDphase, 1 + bend) * dt;
+        var phase = this.phase += dphase;
+
+        if (phase < 1) {
+          a = 2 * pi * phase;
+          this.beat = this.beatScale * max(0, cos(a) - this.beatFloor);
+        } else {
+          delete tasks[this._id];
+          try { this.action(); }
+          catch (err) { _error(err); }
+        }
       }
-    }
-  };
+    };
 
-  var _updateTasks = function () {
-    if (!$.isEmptyObject(_taskList)) {
+    var updateTasks = function () {
+      if (!$.isEmptyObject(tasks)) {
 
-      var poll = new Poll();
-      for (var i in _taskList) {
-        poll.iadd(_taskList[i].poll());
+        var poll = new Poll();
+        for (var i in tasks) {
+          poll.iadd(tasks[i].poll());
+        }
+        var force = poll.mean();
+
+        _evalTime = Date.now();
+        for (var i in tasks) {
+          tasks[i].update(force);
+        }
       }
-      var force = poll.mean();
 
-      _evalTime = Date.now();
-      for (var i in _taskList) {
-        _taskList[i].update(force);
+      setTimeout(updateTasks, 1);
+    };
+
+    var initUpdating = function () {
+      initUpdating = undefined;
+      updateTasks();
+    };
+
+    _sync = function (params, action) {
+      new Task(params, action);
+      if (initUpdating) initUpdating();
+    };
+
+    _sync.clear = function () {
+      for (var i in tasks) {
+        delete tasks[i];
       }
-    }
+    };
 
-    setTimeout(_updateTasks, 8); // TODO tune update rate
-  };
-
-  var _initTasks = function () {
-    _initTasks = undefined;
-    _updateTasks();
-  };
-
-  var _sync = function (params, action) {
-    new Task(params, action);
-    if (_initTasks) _initTasks();
-  };
-
-  _sync.clear = function () {
-    for (var i in _taskList) {
-      delete _taskList[i];
-    }
-  };
-
+  })();
 
   //----------------------------------------------------------------------------
   // Graphics
