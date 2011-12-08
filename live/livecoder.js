@@ -41,61 +41,6 @@ function assert (condition, message) {
 }
 
 //------------------------------------------------------------------------------
-// Global tools for livecoding
-
-// Time - units are milliseconds and kHz
-// once{...} evaluates once, then decays to the inert nonce{...}
-// var live; // a place store variables while live coding
-var now;//() time of event evaluation (a little before Date.now())
-var after;//(delay, action); schedule an event
-var sync;//({delay,syncopate=0,mass=1,acuity=3}, action)
-         //  schedule a coupled event
-
-// Utility
-var print;//(message) logs normal message
-var error;//(message) logs error message
-var help;//(object) gets help about object
-var dir;//(object) lists properties of an object
-var clear;//() clears workspace and canvas
-
-// Graphics
-var windowW = 0, windowH = 0; // window inner width,height in pixels
-var mouseX = 0, mouseY = 0;   // mouse coords in pixels
-var clear2d;                  // clears drawing context
-var draw2d;                   // a 2d canvas context
-
-// Audio TODO get play,tone,noise working
-var sampleRate = 22.05; // in kHz
-var quantize8 = function (x) { return round(255/2 * (x+1)); };
-var quantize16 = function (x) { return round(65535/2 * (x+1)); };
-var play;//(seq:Uint8Array) plays an audio sequence (mono 8bit 22050Hz)
-var tone;//(freqkHz, durationMs) returns a sequence for a single tone
-var noise; // TODO
-
-// math functions & constants
-var pow   = Math.pow;      var e       = Math.E;
-var sqrt  = Math.sqrt;     var pi      = Math.PI;
-var exp   = Math.exp;      var sqrt2   = Math.SQRT2;
-var log   = Math.log;      var sqrt1_2 = Math.SQRT1_2;
-var sin   = Math.sin;      var ln2     = Math.LN2;
-var cos   = Math.cos;      var ln10    = Math.LN10;
-var tan   = Math.tan;      var log2e   = Math.LOG2E;
-var asin  = Math.asin;     var log10e  = Math.LOG10E;
-var acos  = Math.acos;
-var atan  = Math.atan;     var floor   = Math.floor;
-var atan2 = Math.atan2;    var ceil    = Math.ceil; 
-var max   = Math.max;      var round   = Math.round;
-var min   = Math.min;
-var abs   = Math.abs;      var random  = Math.random;
-
-var inf = 1 / 0;
-var nan = 0 / 0;
-var sin2pi = function (t) { return sin(2*pi*t) };
-var cos2pi = function (t) { return cos(2*pi*t) };
-var tan2pi = function (t) { return tan(2*pi*t) };
-var bound  = function (lb,ub,x) { return max(lb,min(ub,x)) };
-
-//------------------------------------------------------------------------------
 // Live module
 
 var live = (function(){
@@ -116,7 +61,7 @@ var live = (function(){
         .on('click', _compileSource)
         .on('change', _compileSource);
 
-    live.initGraphics(canvas2d);
+    _initGraphics(canvas2d);
 
     _compiling = false;
     _toggleCompiling();
@@ -127,14 +72,13 @@ var live = (function(){
       "// i am live code",
       "// try changing me",
       "",
-      "var d = draw2d;",
+      "var d = draw2d();",
       "d.font = 'bold 64pt Courier';",
       "d.fillStyle = '#55aa55';",
       "d.textAlign = 'center';",
       "",
       "live.hello = function () {",
-      "  clear2d();",
-      "  draw2d.fillText(",
+      "  draw2d().fillText(",
       "      'Hello World!',",
       "      1/8 * mouseX + 3/8 * windowW,",
       "      1/8 * mouseY + 3/8 * windowH);",
@@ -161,18 +105,18 @@ var live = (function(){
     _$source.css('color', '#dddddd');
   };
 
-  clear = live.clear = function () {
+  var _clear = function () {
     _after.clear();
     _sync.clear();
     for (var key in _workspace) {
       delete _workspace[key];
     }
-    live.clear2d();
+    _draw2d();
   };
 
   live.setSource = function (val) {
     _$source.val(val);
-    live.clear();
+    _clear();
 
     _compiling = false;
     _toggleCompiling();
@@ -525,26 +469,29 @@ var live = (function(){
   //----------------------------------------------------------------------------
   // Graphics
 
-  clear2d = live.clear2d = function (keep) {
-    var d = live.draw2d;
+  var _context2d;
+
+  var _draw2d = function () {
+    var d = _context2d;
     d.clearRect(0, 0, d.canvas.width, d.canvas.height);
+    return d;
   };
 
-  live.initGraphics = function (canvas2d) {
+  var _initGraphics = function (canvas2d) {
 
     try {
-      draw2d = live.draw2d = canvas2d.getContext('2d');
-      assert(draw2d, 'failed to get 2d canvas context');
+      _context2d = canvas2d.getContext('2d');
+      assert(_context2d, 'failed to get 2d canvas context');
 
       $(window).resize(function(){
-            windowW = draw2d.canvas.width = window.innerWidth;
-            windowH = draw2d.canvas.height = window.innerHeight;
+            windowW = _context2d.canvas.width = window.innerWidth;
+            windowH = _context2d.canvas.height = window.innerHeight;
           }).resize();
     }
     catch (err) {
       error(err);
       console.log(err);
-      draw2d = live.draw2d = undefined;
+      _context2d = undefined;
     }
 
     $(document).mousemove(function(e){
@@ -574,15 +521,23 @@ var live = (function(){
     after: _after,
     sync: _sync,
 
+    draw2d: _draw2d,
+
     none: undefined,
   };
 })();
 
 //------------------------------------------------------------------------------
-// Utilities
+// Glogal utilities
 
 var print = live.print;
 var error = live.error;
+
+var clear = live.clear;
+
+var now = live.now;
+var after = live.after;
+var sync = live.sync;
 
 var dir = function (o) {
   o = o || window;
@@ -598,10 +553,61 @@ var help = function (o) {
       + o.toString());
 };
 
-var now = live.now;
-var after = live.after;
-var sync = live.sync;
+var draw2d = live.draw2d;
 
+//------------------------------------------------------------------------------
+// Global tools for livecoding
+
+// Time - units are milliseconds and kHz
+// once{...} evaluates once, then decays to the inert nonce{...}
+// var live; // a place store variables while live coding
+var now;//() time of event evaluation (a little before Date.now())
+var after;//(delay, action); schedule an event
+var sync;//({delay,syncopate=0,mass=1,acuity=3}, action)
+         //  schedule a coupled event
+
+// Utility
+var print;//(message) logs normal message
+var error;//(message) logs error message
+var help;//(object) gets help about object
+var dir;//(object) lists properties of an object
+var clear;//() clears workspace and canvas
+
+// Graphics
+var windowW = 0, windowH = 0; // window inner width,height in pixels
+var mouseX = 0, mouseY = 0;   // mouse coords in pixels
+var draw2d;                   // clears & returns the 2d canvas context
+
+// Audio TODO get play,tone,noise working
+var sampleRate = 22.05; // in kHz
+var quantize8 = function (x) { return round(255/2 * (x+1)); };
+var quantize16 = function (x) { return round(65535/2 * (x+1)); };
+var play;//(seq:Uint8Array) plays an audio sequence (mono 8bit 22050Hz)
+var tone;//(freqkHz, durationMs) returns a sequence for a single tone
+var noise; // TODO
+
+// math functions & constants
+var pow   = Math.pow;      var e       = Math.E;
+var sqrt  = Math.sqrt;     var pi      = Math.PI;
+var exp   = Math.exp;      var sqrt2   = Math.SQRT2;
+var log   = Math.log;      var sqrt1_2 = Math.SQRT1_2;
+var sin   = Math.sin;      var ln2     = Math.LN2;
+var cos   = Math.cos;      var ln10    = Math.LN10;
+var tan   = Math.tan;      var log2e   = Math.LOG2E;
+var asin  = Math.asin;     var log10e  = Math.LOG10E;
+var acos  = Math.acos;     var inf     = 1 / 0;
+var atan  = Math.atan;     var nan     = 0 / 0;
+var atan2 = Math.atan2;    
+var max   = Math.max;      var floor   = Math.floor;
+var min   = Math.min;      var ceil    = Math.ceil; 
+var abs   = Math.abs;      var round   = Math.round;
+
+var bound  = function (lb,ub,x) { return max(lb,min(ub,x)) };
+var sin2pi = function (t) { return sin(2*pi*t) };
+var cos2pi = function (t) { return cos(2*pi*t) };
+var tan2pi = function (t) { return tan(2*pi*t) };
+
+var random  = Math.random;
 random.index = function (/* likelihoods */) {
   var total = 0;
   for (var i=0; i < arguments.length; ++i) {

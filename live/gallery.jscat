@@ -169,9 +169,9 @@ once {
 
 // an example
 live.blip = function () {
-  clear2d();
-  draw2d.fillStyle = '#222';
-  draw2d.fillRect(
+  var d = draw2d();
+  d.fillStyle = '#222';
+  d.fillRect(
     0,0,
     windowW * random(),
     windowH * random());
@@ -191,14 +191,13 @@ once live.blip();
 // i am live code
 // try changing me
 
-var d = draw2d;
+var d = draw2d();
 d.font = 'bold 64pt Courier';
 d.fillStyle = '#55aa55';
 d.textAlign = 'center';
 
 live.hello = function () {
-  clear2d();
-  draw2d.fillText(
+  draw2d().fillText(
       'Hello World!',
       1/8 * mouseX + 3/8 * windowW,
       1/8 * mouseY + 3/8 * windowH);
@@ -255,14 +254,14 @@ var X = function(a){return (0.5 + sin(2*a)/3)};
 var Y = function(a){return (0.5 + sin(3*a)/3)};
 var Z = function(a){return (0.5 + sin(8*a)/2)};
 
-var d = draw2d;
+var d = draw2d();
 d.font = 'bold 64pt Courier';
 
 live.juggle = function () {
   if (!live.running) return;
 
   var T = 1000, t = (Date.now() % T) / T;
-  clear2d();
+  var d = draw2d();
   for (var i=0, N=79; i < N; ++i) {
     var a = 2 * pi * (i + t) / N;
     d.fillStyle = 'rgba(255,255,255,' + Z(a) + ')';
@@ -279,8 +278,7 @@ once live.juggle();
 
 // test for text-shadow
 
-clear2d();
-var d = draw2d;
+var d = draw2d();
 
 var N = 20;
 
