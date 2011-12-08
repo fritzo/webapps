@@ -102,24 +102,24 @@ var live = (function(){
 
   var live = {};
 
-  // TODO move _compiling, _workspace etc. here
+  var _$source, _$log;
 
   live.init = function ($source, $log, canvas2d, initSource) {
 
-    live.$log = $log;
-    live.$source = $source;
+    _$log = $log;
+    _$source = $source;
 
     $source
         .val(initSource || live.logo)
         .css('color', '#aaffaa')
-        .on('keyup', live.compileIfChanged)
-        .on('click', live.compileSource)
-        .on('change', live.compileSource);
+        .on('keyup', _compileIfChanged)
+        .on('click', _compileSource)
+        .on('change', _compileSource);
 
     live.initGraphics(canvas2d);
 
-    live.compiling = false;
-    live.toggleCompiling();
+    _compiling = false;
+    _toggleCompiling();
   };
 
   live.logo = [
@@ -145,39 +145,39 @@ var live = (function(){
       ""
   ].join('\n');
 
-  live.print = function (message) {
-    live.$log.val('> ' + message).css('color', '#aaaaff').show();
+  var _print = function (message) {
+    _$log.val('> ' + message).css('color', '#aaaaff').show();
   };
-  live.success = function () {
-    live.$log.val('').hide();
-    live.$source.css('color', '#aaffaa');
+  var _success = function () {
+    _$log.val('').hide();
+    _$source.css('color', '#aaffaa');
   };
-  live.warn = function (message) {
-    live.$log.val(String(message)).css('color', '#ffff00').show();
-    live.$source.css('color', '#dddddd');
+  var _warn = function (message) {
+    _$log.val(String(message)).css('color', '#ffff00').show();
+    _$source.css('color', '#dddddd');
   };
-  live.error = function (message) {
-    live.$log.val(String(message)).css('color', '#ff7777').show();
-    live.$source.css('color', '#dddddd');
+  var _error = function (message) {
+    _$log.val(String(message)).css('color', '#ff7777').show();
+    _$source.css('color', '#dddddd');
   };
 
   clear = live.clear = function () {
-    for (var key in live.workspace) {
-      delete live.workspace[key];
+    for (var key in _workspace) {
+      delete _workspace[key];
     }
     live.clear2d();
   };
 
   live.setSource = function (val) {
-    live.$source.val(val);
+    _$source.val(val);
     live.clear();
 
-    live.compiling = false;
-    live.toggleCompiling();
-    live.$source.change().focus();
+    _compiling = false;
+    _toggleCompiling();
+    _$source.change().focus();
   };
   live.getSource = function (val) {
-    return live.$source.val();
+    return _$source.val();
   };
 
   //----------------------------------------------------------------------------
@@ -186,16 +186,16 @@ var live = (function(){
   live.initShadow = function ($shadow) {
 
     live.updateShadow = function () {
-      $shadow.val(live.$source.val().replace(/./g, '\u2588'));
+      $shadow.val(_$source.val().replace(/./g, '\u2588'));
     };
 
-    live.$source
+    _$source
         .on('keyup', live.updateShadow)
         .on('keypress', live.updateShadow)
         .on('click', live.updateShadow)
         .on('change', live.updateShadow)
         .on('scroll', function(){
-              $shadow.scrollTop(live.$source.scrollTop());
+              $shadow.scrollTop(_$source.scrollTop());
             })
         .change()
         .scroll()
@@ -204,66 +204,65 @@ var live = (function(){
   //----------------------------------------------------------------------------
   // Evaluation
 
-  live.compiling = false;
-  live.workspace = {};
-  live.time = Date.now();
-  live.now = function() { return time; };
+  var _compiling = false;
+  var _workspace = {};
+  var _evalTime = Date.now();
+  now = function() { return _evalTime; };
 
-  live.compileHandlers = [];
+  var _compileHandlers = [];
   live.oncompile = function (handler) {
-    live.compileHandlers.push(handler);
+    _compileHandlers.push(handler);
   };
 
-  live.compileSource = function () {
-    if (!live.compiling) {
-      live.warn('hit escape to compile');
+  var _compileSource = function () {
+    if (!_compiling) {
+      _warn('hit escape to compile');
       return;
     }
 
-    live.source = live.$source.val();
-
+    var source = _$source.val();
+    var compiled;
     try {
-      live.compiled = globalEval(
+      compiled = globalEval(
           '"use strict";\n' +
           //'with(Math);\n' +
           '(function(live){\n' +
-              live.source
+              source
                 .replace(/\bonce\b/g, 'if(1)')
                 .replace(/\bnonce\b/g, 'if(0)')
                 .replace(/\bfun\b/g, 'function') +
           '\n/**/})');
     } catch (err) {
-      live.warn(err);
+      _warn(err);
       return;
     }
 
-    if (live.source.match(/\bonce\b/)) {
-      var pos = live.$source.caret() + 1;
-      live.$source.val(live.source.replace(/\bonce\b/g, 'nonce')).caret(pos);
+    if (source.match(/\bonce\b/)) {
+      var pos = _$source.caret() + 1;
+      _$source.val(source.replace(/\bonce\b/g, 'nonce')).caret(pos);
     }
 
-    live.success();
+    _success();
 
     try {
-      live.time = Date.now();
-      live.compiled(live.workspace);
+      _evalTime = Date.now();
+      compiled(_workspace);
     } catch (err) {
-      live.error(err);
+      _error(err);
       return;
     }
 
-    for (var i = 0; i < live.compileHandlers.length; ++i) {
-      live.compileHandlers[i]();
+    for (var i = 0; i < _compileHandlers.length; ++i) {
+      _compileHandlers[i]();
     }
   };
 
-  live.compileIfChanged = function (keyup) {
-    if (!live.compiling) {
-      live.warn('hit escape to compile');
+  var _compileIfChanged = function (keyup) {
+    if (!_compiling) {
+      _warn('hit escape to compile');
       return;
     }
 
-    var $source = live.$source;
     var delay = false;
 
     // see eg
@@ -280,54 +279,54 @@ var live = (function(){
         delay = true;
         break;
       case 8: // backspace
-        delay = ($source.val().charAt($source.caret()-1) === '/')
+        delay = (_$source.val().charAt(_$source.caret()-1) === '/')
         break
       case 46: // delete
-        delay = ($source.val().charAt($source.caret()) === '/')
+        delay = (_$source.val().charAt(_$source.caret()) === '/')
         break
 
       // TODO insert matching delimiters (),{},[],',"
       // TODO allow block indent and outdent
     }
 
-    if (delay) setTimeout(live.compileSource, 200);
-    else live.compileSource();
+    if (delay) setTimeout(_compileSource, 200);
+    else _compileSource();
   };
 
-  live.toggleCompiling = function () {
+  var _toggleCompiling = function () {
 
-    if (live.compiling) {
-      live.compiling = false;
-      live.warn('hit escape to compile');
+    if (_compiling) {
+      _compiling = false;
+      _warn('hit escape to compile');
     }
     else {
-      live.compiling = true;
-      live.success();
-      live.$source.change();
+      _compiling = true;
+      _success();
+      _$source.change();
     }
   };
 
   //----------------------------------------------------------------------------
   // Scheduling drift-free tasks
 
-  live.after = function (delay, action) {
+  var _after = function (delay, action) {
 
     if (!(delay >= 0)) {
-      live.error('ignoring task scheduled after ' + delay);
+      _error('ignoring task scheduled after ' + delay);
       return;
     }
-    var actionTime = live.time + delay;
+    var actionTime = _evalTime + delay;
 
     var safeAction = function () {
       try {
-        live.time = actionTime; // Date.now() would cause drift
+        _evalTime = actionTime; // Date.now() would cause drift
         action();
       } catch (err) {
-        live.error(err);
+        _error(err);
       }
     };
       
-    setTimeout(safeAction, delay + live.time - Date.now());
+    setTimeout(safeAction, delay + _evalTime - Date.now());
   };
 
   //----------------------------------------------------------------------------
@@ -395,7 +394,7 @@ var live = (function(){
   var _taskCount = 0;
   var _taskList = {};
 
-  var _Task = function (params, action) {
+  var Task = function (params, action) {
 
     var mass = params.mass || 1.0;
     var acuity = params.acuity || 3.0; // hand-tuned
@@ -405,7 +404,7 @@ var live = (function(){
     assert(0 < mass, 'invalid mass: ' + mass);
     assert(0 < acuity, 'invalid acuity: ' + acuity);
 
-    this.time = now();
+    this.time = _evalTime;
     this.action = action;
     this.freq = 1 / params.delay;
     this.mass = mass;
@@ -419,7 +418,7 @@ var live = (function(){
     console.log('created task ' + _taskCount); // DEBUG
   };
 
-  _Task.prototype = {
+  Task.prototype = {
 
     _initBeat : function () {
 
@@ -446,11 +445,10 @@ var live = (function(){
       return new Poll(m, f);
     },
 
-    update : function (time, force) {
+    update : function (force) {
 
-      var newTime = now();
-      var dt = newTime - this.time;
-      this.time = newTime;
+      var dt = bound(1, 1000, _evalTime - this.time);
+      this.time = _evalTime;
 
       var a = 2 * pi * this.phase;
       var z = new Complex(cos(a), sin(a));
@@ -465,7 +463,7 @@ var live = (function(){
         this.beat = this.beatScale * max(0, cos(a) - this.beatFloor);
       } else {
         try { this.action(); }
-        catch (err) { live.error(err); }
+        catch (err) { _error(err); }
       }
     }
   };
@@ -479,7 +477,7 @@ var live = (function(){
     }
     var force = poll.mean();
 
-    live.time = Date.now();
+    _evalTime = Date.now();
     for (var i in tasks) {
       tasks[i].update(force);
     }
@@ -492,8 +490,8 @@ var live = (function(){
     _updateTasks();
   };
 
-  live.sync = function (params, action) {
-    new _Task(params, action);
+  var _sync = function (params, action) {
+    new Task(params, action);
     if (_initTasks) _initTasks();
   };
 
@@ -539,15 +537,15 @@ var live = (function(){
     setSource: live.setSource,
     getSource: live.getSource,
 
-    print: live.print,
-    error: live.error,
+    print: _print,
+    error: _error,
 
-    toggleCompiling: live.toggleCompiling,
+    toggleCompiling: _toggleCompiling,
     oncompile: live.oncompile,
 
-    now: live.now,
-    after: live.after,
-    sync: live.sync,
+    now: function () { return _evalTime; },
+    after: _after,
+    sync: _sync,
 
     none: undefined,
   };
