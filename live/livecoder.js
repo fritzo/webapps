@@ -535,6 +535,7 @@ var live = (function(){
 
     toggleCompiling: _toggleCompiling,
     oncompile: live.oncompile,
+    clear: _clear,
 
     now: function () { return _evalTime; },
     after: _after,
