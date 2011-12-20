@@ -1,5 +1,55 @@
 
 //==============================================================================
+// 1324384763822.js
+
+// faray tone scale (by hand)
+
+var tone = function (freq, duration, gain) {
+  var data = []; // just an array
+  for (var i=0, I=duration*sampleRate; i < I; ++i) {
+    var env = (I - i) / I;
+    var a = 2 * pi * freq / sampleRate * i;
+    data[i] = quantize8(sin(a) * gain * env);
+  }
+  return (new RIFFWAVE(data)).dataURI;
+}
+
+var play = function (sound) {
+  (new Audio(sound)).play();
+};
+
+var T = 500;
+
+nonce { // generate samples
+  var note = function(freq) { return tone(freq, T, 0.5); };
+  live.scale = [
+    note(1/1),
+    note(5/4),
+    note(4/3),
+    note(7/5),
+    note(3/2),
+    note(8/5),
+    note(5/3),
+    note(7/4),
+    note(2/1)
+  ];
+}
+
+nonce live.n = 0;
+
+live.S = function () {
+  live.n = (live.n + 1) % live.scale.length;
+  play(live.scale[live.n]);
+  print(now());
+  sync({delay:T,acuity:7}, live.S);
+};
+
+nonce live.S(); // start
+nonce sync.clear(); // stop
+
+print(live.scale.length)
+
+//==============================================================================
 // 1323367681157.js
 
 // Hello World
