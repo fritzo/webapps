@@ -430,7 +430,7 @@ var live = (function(){
         var dt = bound(1, 1000, _evalTime - this.time);
         this.time = _evalTime;
 
-        var a = 2 * pi * this.phase;
+        var a = 2 * pi * (this.phase + this.offset); // XXX is this right?
         var z = new Complex(cos(a), sin(a));
         var bend = this.beat * Complex.cross(z, force);
 
@@ -643,8 +643,35 @@ random.index = function (/* likelihoods */) {
 
 //------------------------------------------------------------------------------
 // Audio (mono 8bit 22050 Hz -- hey, it's just a browser)
-// see http://davidflanagan.com/Talks/jsconf11/BytesAndBlobs.html
+if (1) { // use riffwave.js
 
+tone = function (frequency, duration, gain) {
+  if (gain === undefined) gain = 1;
+  var data = []; // just an array
+  for (var i=0, I=duration*sampleRate; i < I; ++i) {
+    var env = (I - i) / I;
+    var a = 2 * pi * frequency / sampleRate * i;
+    data[i] = quantize8(sin(a) * gain * env);
+  }
+  return (new RIFFWAVE(data)).dataURI;
+};
+
+noise = function (duration, gain) {
+  if (gain === undefined) gain = 1;
+  var data = []; // just an array
+  for (var i=0, I=duration*sampleRate; i < I; ++i) {
+    var env = (I - i) / I;
+    data[i] = quantize8((2*random()-1) * gain * env);
+  }
+  return (new RIFFWAVE(data)).dataURI;
+};
+
+play = function (sound) {
+  (new Audio(sound)).play();
+};
+
+} else { // do not use riffwave.js
+// see http://davidflanagan.com/Talks/jsconf11/BytesAndBlobs.html
 // typed arrays are not universally supported
 
 (function(){
@@ -710,11 +737,12 @@ random.index = function (/* likelihoods */) {
       player.addEventListener("ended", function () {
             URL.revokeObjectURL(url);
           }, false);
-    }
+    };
   }
   catch (err) {
     alert(err);
   }
 
 })();
+} // whether to use riffwave.js
 
