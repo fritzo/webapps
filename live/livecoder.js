@@ -648,7 +648,7 @@ if (1) { // use riffwave.js
 tone = function (frequency, duration, gain) {
   if (gain === undefined) gain = 1;
   var data = []; // just an array
-  for (var i=0, I=duration*sampleRate; i < I; ++i) {
+  for (var i = 0, I = duration * sampleRate; i < I; ++i) {
     var env = (I - i) / I;
     var a = 2 * pi * frequency / sampleRate * i;
     data[i] = quantize8(sin(a) * gain * env);
@@ -659,9 +659,49 @@ tone = function (frequency, duration, gain) {
 noise = function (duration, gain) {
   if (gain === undefined) gain = 1;
   var data = []; // just an array
-  for (var i=0, I=duration*sampleRate; i < I; ++i) {
+  for (var i = 0, I = duration * sampleRate; i < I; ++i) {
     var env = (I - i) / I;
     data[i] = quantize8((2*random()-1) * gain * env);
+  }
+  return (new RIFFWAVE(data)).dataURI;
+};
+
+noise.band = function (param) {
+  assert('frequency' in param, 'param.frequency is undefined');
+  assert('bandwidth' in param, 'param.bandwidth is undefined');
+  assert('duration' in param, 'param.duration is undefined');
+  assert('gain' in param, 'param.gain is undefined');
+
+  var frequency = param.frequency;
+  var bandwidth = param.bandwidth;
+  var duration = param.duration;
+  var gain = param.gain;
+
+  var omega = 2 * pi * frequency / sampleRate;
+  var cos_omega = cos(omega);
+  var sin_omega = sin(omega);
+  var oldPart = exp(-bandwidth * frequency / sampleRate);
+  var newPart = 1 - oldPart;
+
+  var clip = function (x) {
+    var scaled = gain * x / bandwidth;
+    return scaled / sqrt(1 + scaled * scaled);
+  };
+
+  var x0 = 0;
+  var y0 = 0;
+  var data = [];
+  for (var i = 0, I = duration * sampleRate; i < I; ++i) {
+
+    var x1 = newPart * (2 * random() - 1)
+           + oldPart * (cos_omega * x0 - sin_omega * y0);
+    var y1 = newPart * (2 * random() - 1)
+           + oldPart * (cos_omega * y0 + sin_omega * x0);
+    x0 = x1;
+    y0 = y1;
+
+    var env = (I - i) / I;
+    data[i] = quantize8(clip(x0 * env));
   }
   return (new RIFFWAVE(data)).dataURI;
 };
