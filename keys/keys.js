@@ -20,19 +20,30 @@ function assert (condition, message) {
     throw new AssertException(message);
   }
 };
+var assert1 = assert;
+//var assert1 = function () {};
+
+function log1 (message) {
+  console.log(message);
+};
 
 //------------------------------------------------------------------------------
 // Rational numbers (more precisely, extended nonnegative rational pairs)
 
 var gcd = function (a,b)
 {
+  assert1(~isNaN(a), 'gcd arg 1 is not a number: ' + a);
+  assert1(~isNaN(b), 'gcd arg 2 is not a number: ' + b);
+  assert1(Math.floor(a) === a);
+  assert1(Math.floor(b) === b);
+
   if (b > a) { var temp = a; a = b; b = temp; }
 
   while (true) {
+    if (b === 0) return a;
     a %= b;
     if (a === 0) return b;
     b %= a;
-    if (b === 0) return a;
   }
 };
 
@@ -84,10 +95,10 @@ Rational.cmp = function (lhs, rhs) {
   return lhs.numer * rhs.denom - rhs.numer * lhs.denom;
 };
 
-Rational.distSquared (lhs, rhs) {
+Rational.distSquared = function (lhs, rhs) {
   return Rational.div(lhs, rhs).normSquared();
 };
-Rational.dist (lhs, rhs) {
+Rational.dist = function (lhs, rhs) {
   return Rational.div(lhs, rhs).norm();
 };
 
@@ -101,6 +112,7 @@ Rational.ball = function (radius) {
     }
   }
   result.sort(Rational.cmp);
+  return result;
 };
 
 //----------------------------------------------------------------------------
@@ -146,7 +158,7 @@ Pmf.prototype.perplexity = function () {
   return Math.exp(this.entropy());
 };
 
-Pmf.prototype.mean (values) = function {
+Pmf.prototype.mean = function (values) {
   assert(values.length === this.length, 'mismatched length in Pmf.mean');
   var result = 0;
   for (var i = 0, I = this.length; i < I; ++i) {
@@ -155,7 +167,7 @@ Pmf.prototype.mean (values) = function {
   return result;
 };
 
-Pmf.degenerate (n, N) {
+Pmf.degenerate = function (n, N) {
   assert(0 <= n && n < N, 'bad indices in Pmf.denerate: ' + n + ', ' + N);
   var result = new Pmf();
   for (var i = 0; i < N; ++i) {
@@ -164,7 +176,7 @@ Pmf.degenerate (n, N) {
   result[n] = 1;
 };
 
-Pmf.shiftTowardsPmf (p0, p1, rate) {
+Pmf.shiftTowardsPmf = function (p0, p1, rate) {
   assert(0 <= rate && rate <= 1, 'bad rate in Pmf.shiftTowardsPmf: ' + rate);
   assert(p0.length == p1.length, 'mismatched lengths in Pmf.shiftTowardsPmf');
 
@@ -177,7 +189,7 @@ Pmf.shiftTowardsPmf (p0, p1, rate) {
   return result;
 };
 
-Pmf.shiftTowardsPoint (p0, i1, rate) {
+Pmf.shiftTowardsPoint = function (p0, i1, rate) {
   assert(0 <= rate && rate <= 1, 'bad rate in Pmf.shiftTowardsPoint: ' + rate);
 
   var w0 = 1 - rate;
@@ -206,6 +218,7 @@ var Harmony = function (radius, timescaleSec, temperature) {
   timescaleSec = timescaleSec || 2.0;
   temperature = temperature || 1.0;
 
+  log1('building ' + radius + '-ball of points');
   this.points = Rational.ball(radius);
   this.length = this.points.length;
 
@@ -268,7 +281,7 @@ Synthesizer.prototype = {
     if (~this.running) {
       this.running = true;
       this.targetTime = Date.now();
-      update();
+      this.update();
     }
   },
   stop: function () {
@@ -279,12 +292,14 @@ Synthesizer.prototype = {
     var audio = this.synthesize(); // expensive
 
     var now = Date.now();
-    var playDelay = this.targetTime - now;
+    var delay = this.targetTime - now;
     this.targetTime += this.delayMs;
-    var updateDelay = TODO('determine Synthesizer.update delay');
 
-    setTimeout(function(){ audio.play() }, playDelay);
-    setTimeout(function(){ this.update(); }, updateDelay);
+    var playAndUpdate = function () {
+      audio.play();
+      this.update();
+    };
+    setTimeout(playAndUpdate, delay);
   },
   synthesize: function () {
     TODO('synthesize Hann window of constantly weighted sinusoids');
@@ -328,14 +343,17 @@ $(document).ready(function(){
 
   var RADIUS = 8; // maybe get from hash value
 
+  log1('building harmony');
   var harmony = new Harmony(RADIUS);
 
   var synthesizer = new Synthesizer(harmony);
 
-  var canvas = document.getgetElementById('canvas');
+  var canvas = document.getElementById('canvas');
   var keyboard = new Keyboard(harmony, canvas);
 
-  keyboard.start();
+  // TODO uncommen afer synthesizer & harmony work
+  //keyboard.start();
+
   synthesizer.start();
   harmony.start();
 });
