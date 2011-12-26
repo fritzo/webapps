@@ -174,6 +174,7 @@ Pmf.degenerate = function (n, N) {
     result[i] = 0;
   }
   result[n] = 1;
+  return result;
 };
 
 Pmf.shiftTowardsPmf = function (p0, p1, rate) {
@@ -214,9 +215,14 @@ Pmf.gibbs = function (energy, temperature) {
 //------------------------------------------------------------------------------
 // Harmony
 
-var Harmony = function (radius, timescaleSec, temperature) {
+var Harmony = function (radius, timescaleSec, temperature, delaySec) {
   timescaleSec = timescaleSec || 2.0;
   temperature = temperature || 1.0;
+  delaySec = delaySec || 0.05;
+
+  this.timescaleMs = timescaleSec * 1000;
+  this.temperature = temperature;
+  this.delayMs = delaySec * 1000;
 
   log1('building ' + radius + '-ball of points');
   this.points = Rational.ball(radius);
@@ -230,24 +236,42 @@ var Harmony = function (radius, timescaleSec, temperature) {
     }
   }
 
-  this.timescaleSec = timescaleSec;
-  this.temperature = temperature;
-
   this.mass = Pmf.degenerate((this.length - 1) / 2, this.length);
+
+  this.running = false;
 };
 
 Harmony.prototype = {
-  updateDiffusion: function () {
-    var prior = Pmf.gibbs(this.getEnergy(), this.temperature);
-    var rate = TODO('determine update rate and decay rate');
-    this.mass = Pmf.shiftTowardsPmf(this.mass, prior, rate);
+  start: function () {
+    if (this.running) return;
+    this.running = true;
+    this.lastTime = Date.now();
+    this.updateDiffusion();
   },
+  stop: function () {
+    this.running = false;
+  },
+  updateDiffusion: function () {
+    if (~this.running) return;
+
+    var now = Date.now();
+    var diffusionRate = 1 - exp((this.lastTime - now) / this.timeScaleMs);
+    this.LastTime = now;
+
+    var prior = Pmf.gibbs(this.getEnergy(), this.temperature);
+    this.mass = Pmf.shiftTowardsPmf(this.mass, prior, diffusionRate);
+
+    var harmony = this;
+    setTimeout(function(){ harmony.updateDiffusion(); }, this.delayMs);
+  },
+
   updateEvent: function (key) {
     assert(0 <= key && key < this.length, 'bad event key: ' + key);
 
     var rate = 1.0 / this.mass.perplexity();
     this.mass = Pmf.shiftTowardsPoint(this.mass, key, rate);
   },
+
   getEnergy: function () {
     var energy = [];
     var mass = this.mass;
@@ -262,9 +286,10 @@ Harmony.prototype = {
 //------------------------------------------------------------------------------
 // Synthesis
 
-var Synthesizer = function (harmony, windowSec, sampleRateHz) {
+var Synthesizer = function (harmony, windowSec, centerFreqHz, sampleRateHz) {
   windowSec = windowSec || 0.4;
-  sampleRateHz = sampleRateHz || 44100;
+  centerFreqHz = centerFreqHz || 440.0;
+  sampleRateHz = sampleRateHz || 22050;
 
   this.harmony = harmony;
   this.windowMs = windowSec / 1000;
@@ -272,22 +297,26 @@ var Synthesizer = function (harmony, windowSec, sampleRateHz) {
   this.sampleRateHz = sampleRateHz;
   this.windowSamples = Math.floor(windowSec * sampleRateHz);
 
+  this.freqs = harmony.points.map(function(q){
+        return 2 * Math.PI * centerFreqHz / sampleRateHz * q.toNumber();
+      });
+
   this.running = false;
   this.targetTime = Date.now();
 };
 
 Synthesizer.prototype = {
   start: function () {
-    if (~this.running) {
-      this.running = true;
-      this.targetTime = Date.now();
-      this.update();
-    }
+    if (this.running) return;
+    this.running = true;
+    this.targetTime = Date.now();
+    this.update();
   },
   stop: function () {
     this.running = false;
   },
   update: function () {
+    if (~this.running) return;
 
     var audio = this.synthesize(); // expensive
 
@@ -295,16 +324,27 @@ Synthesizer.prototype = {
     var delay = this.targetTime - now;
     this.targetTime += this.delayMs;
 
-    var playAndUpdate = function () {
-      audio.play();
-      this.update();
-    };
-    setTimeout(playAndUpdate, delay);
+    var synth = this;
+    setTimeout(function () { audio.play(); synth.update(); }, delay);
   },
-  synthesize: function () {
-    TODO('synthesize Hann window of constantly weighted sinusoids');
 
-    //return new Audio(...);
+  synthesize: function () {
+
+    var freqs = this.freqs;
+    var mass = this.harmony.mass;
+    var F = freqs.length;
+    var samples = [];
+    for (var t = 0, T = this.windowSamples; t < T; ++t) {
+      var env = 4 / (T*T) * t * (T - t);
+      var chord = 0;
+      for (var f = 0; f < F; ++f) {
+        chord += Math.sqrt(mass[f]) * Math.sin(freqs[f] * t);
+      }
+      samples[t] = Math.round(255/2 * (chord * env + 1));
+    }
+
+    var wave = new RIFFWAVE(samples);
+    return new Audio(wave.dataURI);
   }
 };
 
@@ -317,23 +357,103 @@ var Keyboard = function (harmony, canvas, updateHz) {
   this.harmony = harmony;
   this.canvas = canvas;
   this.context = canvas.getContext('2d');
-  this.updateDelay = 1000 / updateHz;
+  this.delayMs = 1000 / updateHz;
+
+  this.running = false;
+  this.geometry = undefined;
 };
 
 Keyboard.prototype = {
-  update: function () {
-    TODO('update keyboard visualization');
-    TODO('cache geometry for onclick event handling');
-  },
   start: function () {
-    TODO('start update loop');
+    if (this.running) return;
+    this.running = true;
+
+    this.update();
 
     var harmony = this.harmony;
-    $(this.canvas).onclick(function(){
+    $(this.canvas).on('click', function(){
           var key = TODO('determine key from click position');
           harmony.updateEvent(key);
         });
-  }
+  },
+  stop: function () {
+    this.running = false;
+    $(this.canvas).off('click');
+  },
+  update: function () {
+    if (~this.running) return;
+
+    this.updateGeometry();
+    this.draw();
+
+    var keyboard = this;
+    setTimeout(function(){ keyboard.update(); }, this.delayMs);
+  },
+
+  updateGeometry: function () {
+    var X = this.harmony.length;
+    var Y = Math.floor(1 + Math.sqrt(window.innerHeight));
+
+    var energy = this.harmony.getEnergy();
+    var mass = this.harmony.mass.slice();
+
+    // vertical bands with height-varying temperature
+    var geometryYX = [];
+    for (var y = 0; y < Y; ++y) {
+      var temperature = (y + 0.5) / (Y - y - 0.5);
+      var width = Pmf.gibbs(energy, temperature);
+
+      var geom = geometryYX[y] = [0];
+      for (var x = 0; x < X; ++x) {
+        geom[x+1] = geom[x] + width[x];
+      }
+      geom[X] = 1;
+    }
+
+    // transpose
+    var geometryXY = this.geometry = [];
+    for (var x = 0; x < X; ++x) {
+      var geom = geometryXY[x] = [];
+      for (var y = 0; y < Y; ++y) {
+        geom[y] = geometryYX[y][x];
+      }
+    }
+
+    var color = this.color = [];
+    var colorScale = 1.0 / Math.max(mass);
+    var colorPow = 1.0 / mass.perplexity();
+    for (var x = 0; x < X; ++x) {
+      color[x] = Math.pow(colorScale * mass[x], colorPow);
+    }
+  },
+
+  draw: function () {
+    var geom = this.geometry;
+    var context = this.context;
+
+    var X = geom.length - 1;
+    var Y = geom[0].length;
+    var W = window.innerWidth - 1;
+    var H = window.innerHeight - 1;
+
+    for (var x = 0; x < X; ++x) {
+      var c = this.color[x];
+      context.fillStyle = 'rgb(' + c + ',' + c + ',' + c + ')';
+
+      var lhs = geom[x];
+      var rhs = geom[x+1];
+      context.beginPath();
+      context.moveTo(W * lhs[0], 0);
+      for (y = 1; y < Y; ++y) {
+        context.lineTo(W * lhs[y], H / Y * y);
+      }
+      for (y = Y-1; y >= 0; --y) {
+        context.lineTo(W * rhs[y], H / Y * y);
+      }
+      context.closePath();
+      context.fill();
+    }
+  },
 };
 
 //------------------------------------------------------------------------------
@@ -345,15 +465,14 @@ $(document).ready(function(){
 
   log1('building harmony');
   var harmony = new Harmony(RADIUS);
+  log1('built harmony with ' + harmony.length + ' points');
 
   var synthesizer = new Synthesizer(harmony);
 
   var canvas = document.getElementById('canvas');
   var keyboard = new Keyboard(harmony, canvas);
 
-  // TODO uncommen afer synthesizer & harmony work
-  //keyboard.start();
-
+  keyboard.start();
   synthesizer.start();
   harmony.start();
 });
