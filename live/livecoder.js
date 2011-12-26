@@ -375,6 +375,13 @@ var live = (function(){
 
     //------------------------------------
     // Coupled tasks
+    //
+    // TODO replace this Synchronized::Phasor with Synchronized::Geometric
+    //   * this at least has a debuggable energy minimization interpretation
+    //   * it also allows syncopation of two beats separated by pi
+    //   * and the energy interpreatation can fit into larger energy
+    //     minimization frameworks.
+    //   (see kazoo/src/synchronization.h "struct Geometric"
 
     var taskCount = 0;
     var tasks = {};
