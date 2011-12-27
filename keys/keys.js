@@ -1,30 +1,61 @@
 
-function TodoException (message) {
+var globalEval = eval;
+
+var TodoException = function (message) {
   this.message = message || '(unfinished code)';
 };
 TodoException.prototype.toString = function () {
   return 'TODO: ' + this.message;
 };
-function TODO (message) {
+var TODO = function (message) {
   throw new TodoException(message);
 };
 
-function AssertException (message) {
+var AssertException = function (message) {
   this.message = message || '(unspecified)';
 };
 AssertException.prototype.toString = function () {
   return 'Assertion Failed: ' + this.message;
 };
-function assert (condition, message) {
+var assert = function (condition, message) {
   if (!condition) {
     throw new AssertException(message);
   }
 };
-var assert1 = assert;
-//var assert1 = function () {};
 
-function log1 (message) {
-  console.log(message);
+var log;
+if (window.console && window.console.log) {
+  log = function (message) { console.log(message); };
+} else {
+  log = function (message) {}; // ignore
+}
+
+var test = function (title, callback) {
+  callback = callback || function(){ globalEval(title); };
+  callback.title = title;
+  test._all.push(callback);
+};
+test._all = [];
+test.runAll = function () {
+  log('[ Running ' + test._all.length + ' unit tests ]');
+
+  var failCount = 0;
+  for (var i = 0; i < test._all.length; ++i) {
+    var callback = test._all[i];
+    try {
+      callback();
+    }
+    catch (err) {
+      log('FAILED ' + callback.title + '\n  ' + err);
+      failCount += 1;
+    }
+  }
+
+  if (failCount) {
+    log('[ failed ' + failCount + ' tests ]');
+  } else {
+    log('[ passed all tests :) ]');
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -32,22 +63,33 @@ function log1 (message) {
 
 var gcd = function (a,b)
 {
-  assert1(~isNaN(a), 'gcd arg 1 is not a number: ' + a);
-  assert1(~isNaN(b), 'gcd arg 2 is not a number: ' + b);
-  assert1(Math.floor(a) === a);
-  assert1(Math.floor(b) === b);
+  assert(a >= 0, 'gcd arg 1 is not positive: ' + a);
+  assert(b >= 0, 'gcd arg 2 is not positive: ' + b);
+  assert(a % 1 === 0, 'gcd arg 1 is not an integer: ' + a);
+  assert(b % 1 === 0, 'gcd arg 2 is not an integer: ' + b);
 
   if (b > a) { var temp = a; a = b; b = temp; }
+  if (b === 0) return 1;
 
   while (true) {
-    if (b === 0) return a;
     a %= b;
     if (a === 0) return b;
     b %= a;
+    if (b === 0) return a;
   }
 };
+test('assert(gcd(0,0) === 1)');
+test('assert(gcd(1,1) === 1)');
+test('assert(gcd(1,2) === 1)');
+test('assert(gcd(2,2) === 2)');
+test('assert(gcd(4,6) === 2)');
+test('assert(gcd(0,7) === 1)');
 
 var Rational = function (m,n) {
+  assert(0 <= m && m % 1 == 0, 'invalid numer: ' + m);
+  assert(0 <= n && n % 1 == 0, 'invalid denom: ' + n);
+  //assert(m || n, '0/0 is not a Rational');
+
   var g = gcd(m,n);
   this.numer = m / g;
   this.denom = n / g;
@@ -104,9 +146,9 @@ Rational.dist = function (lhs, rhs) {
 
 Rational.ball = function (radius) {
   var result = [];
-  for (var i = 0; i <= radius; ++i) {
-    for (var j = 0; j*j + i*i <= radius*radius; ++j) {
-      if (gcd(i,j) == 1) {
+  for (var i = 1; i <= radius; ++i) {
+    for (var j = 1; j*j + i*i <= radius*radius; ++j) {
+      if (gcd(i,j) === 1) {
         result.push(new Rational(i,j));
       }
     }
@@ -115,6 +157,16 @@ Rational.ball = function (radius) {
   return result;
 };
 
+test('Rational.ball', function(){
+  var actual = Rational.ball(4).map(function(q){ return q.toNumber(); });
+  var expected = [1/3, 1/2, 2/3, 1/1, 3/2, 2/1, 3/1];
+  actual = JSON.stringify(actual);
+  expected = JSON.stringify(expected);
+  assert(actual === expected,
+    '\n    actual = ' + actual +
+    '\n    expected = ' + expected);
+});
+
 //----------------------------------------------------------------------------
 // Probability vectors
 
@@ -122,11 +174,6 @@ var Pmf = function () {
 };
 
 Pmf.prototype = new Array();
-
-Pmf.prototype.clone = function () {
-  var result = new Pmf();
-  result = this.slice(); // XXX does this work?
-};
 
 Pmf.prototype.total = function () {
   var result = 0;
@@ -224,7 +271,7 @@ var Harmony = function (radius, timescaleSec, temperature, delaySec) {
   this.temperature = temperature;
   this.delayMs = delaySec * 1000;
 
-  log1('building ' + radius + '-ball of points');
+  log('building ' + radius + '-ball of points');
   this.points = Rational.ball(radius);
   this.length = this.points.length;
 
@@ -463,14 +510,18 @@ $(document).ready(function(){
 
   var RADIUS = 8; // maybe get from hash value
 
-  log1('building harmony');
+  log('building harmony');
   var harmony = new Harmony(RADIUS);
-  log1('built harmony with ' + harmony.length + ' points');
+  log('built harmony with ' + harmony.length + ' points');
 
   var synthesizer = new Synthesizer(harmony);
 
   var canvas = document.getElementById('canvas');
   var keyboard = new Keyboard(harmony, canvas);
+
+  if (window.location.hash && window.location.hash.substr(1) === 'test') {
+    test.runAll();
+  }
 
   keyboard.start();
   synthesizer.start();
