@@ -3,7 +3,7 @@ var config = {
   harmony: {
     radius: 13,
     diffuseSec: 1.0,
-    attackSec: 0.2,
+    attackSec: 0.1,
     temperature: 1.0,
     updateHz: 60
   },
@@ -11,7 +11,7 @@ var config = {
   synth: {
     sampleRateHz: 22050,
     centerFreqHz: 440.0,
-    windowSec: 0.5
+    windowSec: 0.2
   },
 
   keyboard: {
@@ -205,7 +205,7 @@ test('Rational.ball', function(){
 });
 
 test('Rational.ball of size 88', function(){
-  var target = 77; // needs to be odd; 88 is even
+  var target = 99; // needs to be odd; 88 is even
   var f = function(r) { return Rational.ball(r).length; }
 
   var r0, r1;
@@ -496,7 +496,7 @@ test('Harmony.updateDiffusion', function(){
 // Synthesis
 
 var Synthesizer = function (harmony) {
-  var windowMs = config.synth.windowSec / 1000;
+  var windowMs = 1000 * config.synth.windowSec;
 
   this.harmony = harmony;
   this.delayMs = windowMs / 2;
@@ -663,7 +663,7 @@ Keyboard.prototype = {
 
   updateGeometry: function () {
     var X = this.harmony.length;
-    var Y = Math.floor(1 + Math.sqrt(window.innerHeight));
+    var Y = Math.floor(2 + Math.sqrt(window.innerHeight));
 
     var energy = this.harmony.getEnergy();
     var mass = this.harmony.mass;
@@ -671,7 +671,8 @@ Keyboard.prototype = {
     // vertical bands with height-varying temperature
     var geometryYX = [];
     for (var y = 0; y < Y; ++y) {
-      var temperature = (y + 1) / (Y - y);
+      var hackToMakeKeysLookLonger = 2;
+      var temperature = (y + 1) / (Y - y) * hackToMakeKeysLookLonger;
       var width = Pmf.gibbs(energy, temperature).probs;
 
       var geom = geometryYX[y] = [0];
@@ -739,11 +740,15 @@ Keyboard.prototype = {
       var lhs = geom[x];
       var rhs = geom[x+1];
       context.beginPath();
-      context.moveTo(W * lhs[0], H);
-      for (y = 1; y < Y; ++y) {
+      context.moveTo(W * lhs[Y-1], 0);
+      for (y = Y-2; y >= 0; --y) {
         context.lineTo(W * lhs[y], H * (1 - y / (Y - 1)));
       }
-      for (y = Y-1; y >= 0; --y) {
+      //context.bezierCurveTo(
+      //    W * lhs[0], H,
+      //    W * rhs[0], H,
+      //    W * rhs[1], H * (1 - 1 / (Y - 1)));
+      for (y = 0; y < Y; ++y) {
         context.lineTo(W * rhs[y], H * (1 - y / (Y - 1)));
       }
       context.closePath();
