@@ -578,33 +578,36 @@ Synthesizer.prototype = {
 };
 
 test('web worker echo', function(){
-  var message = {
-    cmd: 'echo',
-    data: {a:0, b:1, c:[0,1,2]} // just some JSON
-  };
-
+  var message = {a:0, b:[0,1,2], c:'asdf', d:{}}; // just some JSON
   var received = false;
   var error = null;
 
-  var worker = new Worker('synthworker.js');
+  var worker = new Worker('testworker.js');
   worker.addEventListener('message', function (e) {
     received = true;
     try {
-      assert(e.data, 'echo message has no data');
-      assertEqual(e.data, message, 'echo data does not match');
+      assert(e.data, 'echoed message has no data');
+      assertEqual(e.data, message, 'echoed data does not match');
     }
     catch (err) {
       error = err;
     }
-  });
+  }, false);
 
   worker.postMessage(message);
-  var until = Date.now() + 1000;
-  while (Date.now() < until && ~received); // spin
-  worker.terminate();
 
-  assert(received, 'message was not received from web worker');
-  assert(error === null, error);
+  console.log('deferring decision on web worker test...');
+  setTimeout(function () {
+    try {
+      assert(received, 'no message was received from web worker');
+      assert(error === null, error);
+      console.log('PASSED web worker test');
+    }
+    catch (err) {
+      console.log('FAILED web worker test: ' + err);
+    }
+    worker.terminate();
+  }, 1000);
 });
 
 if(0) // TODO
