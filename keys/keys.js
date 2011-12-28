@@ -519,11 +519,27 @@ Synthesizer.prototype = {
     //log('starting Synthesizer');
     this.running = true;
 
-    // TODO
-    //this.worker = new Worker('synthworker.js');
-    //this.worker.addEventListener('message', function(){
-    //      TODO('handle messages from synth worker');
-    //    });
+    this.worker = new Worker('synthworker.js');
+    var synth = this;
+    this.worker.addEventListener('message', function (e) {
+          var data = e.data;
+          switch (data.type) {
+            case 'wave':
+              synth.play(data.data);
+              break;
+
+            case 'error':
+              log('Worker Error: ' + data.data);
+              break;
+          }
+        });
+    this.worker.postMessage({
+      cmd: 'init',
+      data: {
+          freqs: this.freqs,
+          windowSamples: this.windowSamples
+        }
+      });
 
     this.targetTime = Date.now();
     this.update();
@@ -532,53 +548,26 @@ Synthesizer.prototype = {
     //log('stopping Synthesizer');
     this.running = false;
 
-    // TODO
-    //this.worker.terminate();
+    this.worker.terminate();
   },
+
   update: function () {
 
-    // TODO move synthesis to a Web Worker thread
-    var audio = this.synthesize(); // expensive
+    var probs = this.harmony.mass.probs;
+    this.worker.postMessage({cmd:'synthesize', data:probs});
+  },
+  play: function (uri) {
+    var audio = new Audio(uri);
 
     var now = Date.now();
     var delay = this.targetTime - now;
-    this.targetTime += this.delayMs;
+    this.targetTime = Math.max(now, this.targetTime + this.delayMs);
 
     if (this.running) {
       var synth = this;
       setTimeout(function () { audio.play(); synth.update(); }, delay);
     }
-  },
 
-  synthesize: function () {
-
-    var freqs = this.freqs;
-    var F = freqs.length;
-    var T = this.windowSamples;
-    var normalizeEnvelope = Math.pow(2 / (T+1), 4);
-    var probs = this.harmony.mass.probs;
-    assert(probs.length === F, 'probs,freqs have different length');
-
-    var amp = [];
-    for (var f = 0; f < F; ++f) {
-      amp[f] = normalizeEnvelope * Math.sqrt(probs[f])
-             * Math.sqrt(freqs[0] / freqs[f]);
-    }
-
-    var samples = [];
-    for (var t = 0; t < T; ++t) {
-      var chord = 0;
-      for (var f = 0; f < F; ++f) {
-        chord += amp[f] * Math.sin(freqs[f] * t);
-      }
-      var env = (t + 1) * (T - t);
-      chord *= env * env; // envelope
-      chord /= Math.sqrt(1 + chord * chord); // clip
-      samples[t] = Math.round(255/2 * (chord + 1)); // quantize
-    }
-
-    var wave = new RIFFWAVE(samples);
-    return new Audio(wave.dataURI);
   }
 };
 
