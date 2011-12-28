@@ -1,8 +1,9 @@
 
 var config = {
   harmony: {
-    radius: 12,
-    timescaleSec: 2.0,
+    radius: 13,
+    diffuseSec: 1.0,
+    attackSec: 0.2,
     temperature: 1.0,
     updateHz: 60
   },
@@ -199,6 +200,28 @@ test('Rational.ball', function(){
   assertEqual(actual, expected);
 });
 
+test('Rational.ball of size 88', function(){
+  var target = 77; // needs to be odd; 88 is even
+  var f = function(r) { return Rational.ball(r).length; }
+
+  var r0, r1;
+  for (r0 = 3; f(r0) >= target; --r0);
+  for (r1 = 3; f(r1) <= target; ++r1);
+
+  var r;
+  while (true) {
+    var r = (r0 + r1) / 2;
+    var n = f(r);
+    if (r0 === r1) break;
+    if (n === target) break;
+    if (n < target) r0 = r;
+    else r1 = r;
+  }
+
+  if (f(Math.round(r)) === target) r = Math.round(r);
+  log('Rational.ball(' + r + ').length = ' + target);
+});
+
 //----------------------------------------------------------------------------
 // Probability vectors
 
@@ -338,7 +361,7 @@ test('Pmf.shiftTowardsPmf', function(){
   var p1 = new Pmf([0,1/2,1/2]);
   var rate = 1/3;
   p0.shiftTowardsPmf(p1, rate);
-  assertEqual(p0.probs, [0, 1/6, 5/6]);
+  assertEqual(p0.probs, [0, 1/6, 5/6]);delaySec: 0.05
 });
 
 test('Pmf.shiftTowardsPoint', function(){
@@ -355,7 +378,8 @@ var Harmony = function (radius) {
 
   //log('Building harmony of radius ' + radius);
 
-  this.timescaleMs = 1000 * config.harmony.timescaleSec;
+  this.diffuseRateKhz = 1e-3 / config.harmony.diffuseSec;
+  this.attackKhz = 1e-3 / config.harmony.attackSec;
   this.temperature = config.harmony.temperature;
   this.delayMs = 1000 / config.harmony.updateHz;
 
@@ -373,6 +397,7 @@ var Harmony = function (radius) {
 
   assert(this.length % 2, 'harmony does not have an odd number of points');
   this.mass = Pmf.degenerate((this.length - 1) / 2, this.length);
+  this.dmass = Pmf.degenerate((this.length - 1) / 2, this.length);
 
   this.running = false;
 };
@@ -392,12 +417,21 @@ Harmony.prototype = {
   updateDiffusion: function () {
     var now = Date.now();
     assert(this.lastTime <= now, 'Harmony.lastTime is in future');
-    var diffusionRate = 1 - Math.exp((this.lastTime - now) / this.timescaleMs);
+    var dt = now - this.lastTime;
     this.lastTime = now;
 
+    var diffusionRate = 1 - Math.exp(-dt * this.diffuseRateKhz);
     var prior = Pmf.gibbs(this.getEnergy(), this.temperature);
     this.mass.shiftTowardsPmf(prior, diffusionRate);
-    this.mass.normalize(); // to compensate for numerical drift
+
+    var attackDecay = Math.exp(-dt * this.attackKhz);
+    var attackRate = 1 / attackDecay - 1;
+    var probs = this.mass.probs;
+    var dprobs = this.dmass.probs;
+    for (var i = 0, I = probs.length; i < I; ++i) {
+      probs[i] += attackRate * (dprobs[i] *= attackDecay);
+    }
+    this.mass.normalize();
 
     if (this.running) {
       var harmony = this;
@@ -405,15 +439,14 @@ Harmony.prototype = {
     }
   },
 
-  // TODO switch from discrete events to continuous mass attack
-  //   to avoid discontinuous behavior WRT touch event reordering
   updateAddMass: function (index) {
     assert(0 <= index && index < this.length, 'bad event index: ' + index);
 
     var perplexity = this.mass.perplexity();
     assert(perplexity > 1, 'perplexity not greater than 1: ' + perplexity);
     var rate = 1 / (1 + perplexity);
-    this.mass.shiftTowardsPoint(index, rate);
+
+    this.dmass.probs[index] += rate;
   },
 
   getEnergy: function () {
@@ -493,6 +526,7 @@ Synthesizer.prototype = {
     this.running = false;
   },
   update: function () {
+    // TODO move synthesis to a Web Worker thread
     var audio = this.synthesize(); // expensive
 
     var now = Date.now();
@@ -512,7 +546,6 @@ Synthesizer.prototype = {
     var amp = this.harmony.mass.probs.map(function(p){
       return normalizeEnvelope * Math.sqrt(p);
     });
-    log('DEBUG ' + JSON.stringify(amp));
 
     var freqs = this.freqs;
     var F = freqs.length;
