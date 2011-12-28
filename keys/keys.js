@@ -184,7 +184,9 @@ Pmf.prototype.total = function () {
 };
 
 Pmf.prototype.normalize = function () {
-  var scale = 1.0 / this.total;
+  var total = this.total();
+  assert(0 < total, 'cannont normalize Pmf with zero mass');
+  var scale = 1.0 / total;
   for (var i = 0, I = this.length; i < I; ++i) {
     this[i] *= scale;
   }
@@ -214,6 +216,31 @@ Pmf.prototype.mean = function (values) {
   return result;
 };
 
+Pmf.prototype.shiftTowardsPmf = function (other, rate) {
+  assert(this.length == other.length,
+      'mismatched lengths in Pmf.shiftTowardsPmf');
+  assert(0 <= rate && rate <= 1, 'bad rate in Pmf.shiftTowardsPmf: ' + rate);
+
+  var w0 = 1 - rate;
+  var w1 = rate;
+  for (var i = 0, I = this.length; i < I; ++i) {
+    this[i] = w0 * this[i] + w1 * other[i];
+  }
+};
+
+Pmf.prototype.shiftTowardsPoint = function (index, rate) {
+  assert(0 <= index && index < this.length,
+      'bad index in Pmf.shiftTowardsPoint: ' + index);
+  assert(0 <= rate && rate <= 1, 'bad rate in Pmf.shiftTowardsPoint: ' + rate);
+
+  var w0 = 1 - rate;
+  var w1 = rate;
+  for (var i = 0, I = this.length; i < I; ++i) {
+    this[i] *= w0;
+  }
+  this[index] += w1;
+};
+
 Pmf.degenerate = function (n, N) {
   assert(0 <= n && n < N, 'bad indices in Pmf.denerate: ' + n + ', ' + N);
   var result = new Pmf();
@@ -221,32 +248,6 @@ Pmf.degenerate = function (n, N) {
     result[i] = 0;
   }
   result[n] = 1;
-  return result;
-};
-
-Pmf.shiftTowardsPmf = function (p0, p1, rate) {
-  assert(0 <= rate && rate <= 1, 'bad rate in Pmf.shiftTowardsPmf: ' + rate);
-  assert(p0.length == p1.length, 'mismatched lengths in Pmf.shiftTowardsPmf');
-
-  var w0 = 1 - rate;
-  var w1 = rate;
-  var result = new Pmf();
-  for (var i = 0, I = p0.length; i < I; ++i) {
-    result[i] = w0 * p0[i] + w1 * p1[i];
-  }
-  return result;
-};
-
-Pmf.shiftTowardsPoint = function (p0, i1, rate) {
-  assert(0 <= rate && rate <= 1, 'bad rate in Pmf.shiftTowardsPoint: ' + rate);
-
-  var w0 = 1 - rate;
-  var w1 = rate;
-  var result = new Pmf();
-  for (var i = 0, I = p0.length; i < I; ++i) {
-    result[i] = w0 * p0[i];
-  }
-  result[i1] += w1;
   return result;
 };
 
@@ -291,11 +292,13 @@ var Harmony = function (radius, timescaleSec, temperature, delaySec) {
 Harmony.prototype = {
   start: function () {
     if (this.running) return;
+    log('starting Harmony');
     this.running = true;
     this.lastTime = Date.now();
     this.updateDiffusion();
   },
   stop: function () {
+    log('stopping Harmony');
     this.running = false;
   },
   updateDiffusion: function () {
@@ -303,20 +306,24 @@ Harmony.prototype = {
 
     var now = Date.now();
     var diffusionRate = 1 - exp((this.lastTime - now) / this.timeScaleMs);
-    this.LastTime = now;
+    this.lastTime = now;
 
     var prior = Pmf.gibbs(this.getEnergy(), this.temperature);
-    this.mass = Pmf.shiftTowardsPmf(this.mass, prior, diffusionRate);
+    this.mass.shiftTowardsPmf(prior, diffusionRate);
 
     var harmony = this;
     setTimeout(function(){ harmony.updateDiffusion(); }, this.delayMs);
   },
 
-  updateEvent: function (key) {
-    assert(0 <= key && key < this.length, 'bad event key: ' + key);
+  // TODO switch from discrete events to continuous mass attack
+  //   to avoid discontinuous behavior WRT touch event reordering
+  updateAddMass: function (index) {
+    assert(0 <= index && index < this.length, 'bad event index: ' + index);
 
-    var rate = 1.0 / this.mass.perplexity();
-    this.mass = Pmf.shiftTowardsPoint(this.mass, key, rate);
+    var perplexity = this.mass.perplexity();
+    assert(perplexity > 0, 'nonpositive perplexity: ' + perplexity);
+    var rate = 1.0 / perplexity;
+    this.mass.shiftTowardsPoint(index, rate);
   },
 
   getEnergy: function () {
@@ -355,11 +362,13 @@ var Synthesizer = function (harmony, windowSec, centerFreqHz, sampleRateHz) {
 Synthesizer.prototype = {
   start: function () {
     if (this.running) return;
+    log('starting Synthesizer');
     this.running = true;
     this.targetTime = Date.now();
     this.update();
   },
   stop: function () {
+    log('stopping Synthesizer');
     this.running = false;
   },
   update: function () {
@@ -413,6 +422,7 @@ var Keyboard = function (harmony, canvas, updateHz) {
 Keyboard.prototype = {
   start: function () {
     if (this.running) return;
+    log('starting Keyboard');
     this.running = true;
 
     this.update();
@@ -420,10 +430,11 @@ Keyboard.prototype = {
     var harmony = this.harmony;
     $(this.canvas).on('click', function(){
           var key = TODO('determine key from click position');
-          harmony.updateEvent(key);
+          harmony.updateAddMass(key);
         });
   },
   stop: function () {
+    log('stopping Keyboard');
     this.running = false;
     $(this.canvas).off('click');
   },
