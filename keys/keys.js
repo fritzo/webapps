@@ -1,4 +1,26 @@
 
+var config = {
+  harmony: {
+    radius: 12,
+    timescaleSec: 2.0,
+    temperature: 1.0,
+    updateHz: 60
+  },
+
+  synth: {
+    sampleRateHz: 22050,
+    centerFreqHz: 440.0,
+    windowSec: 0.5
+  },
+
+  keyboard: {
+    updateHz: 30
+  }
+};
+
+//------------------------------------------------------------------------------
+// Global safety & testing
+
 var globalEval = eval;
 
 var TodoException = function (message) {
@@ -329,16 +351,13 @@ test('Pmf.shiftTowardsPoint', function(){
 //------------------------------------------------------------------------------
 // Harmony
 
-var Harmony = function (radius, timescaleSec, temperature, delaySec) {
-  timescaleSec = timescaleSec || 2.0;
-  temperature = temperature || 1.0;
-  delaySec = delaySec || 0.05;
+var Harmony = function (radius) {
 
   //log('Building harmony of radius ' + radius);
 
-  this.timescaleMs = timescaleSec * 1000;
-  this.temperature = temperature;
-  this.delayMs = delaySec * 1000;
+  this.timescaleMs = 1000 * config.harmony.timescaleSec;
+  this.temperature = config.harmony.temperature;
+  this.delayMs = 1000 / config.harmony.updateHz;
 
   this.points = Rational.ball(radius);
   this.length = this.points.length;
@@ -443,19 +462,18 @@ test('Harmony.updateDiffusion', function(){
 //------------------------------------------------------------------------------
 // Synthesis
 
-var Synthesizer = function (harmony, windowSec, centerFreqHz, sampleRateHz) {
-  windowSec = windowSec || 0.4;
-  centerFreqHz = centerFreqHz || 440.0;
-  sampleRateHz = sampleRateHz || 22050;
+var Synthesizer = function (harmony) {
+  var windowMs = config.synth.windowSec / 1000;
 
   this.harmony = harmony;
-  this.windowMs = windowSec / 1000;
-  this.delayMs = this.windowMs / 2;
-  this.sampleRateHz = sampleRateHz;
-  this.windowSamples = Math.floor(windowSec * sampleRateHz);
+  this.delayMs = windowMs / 2;
+  this.windowSamples = Math.floor(
+      config.synth.windowSec * config.synth.sampleRateHz);
 
+  var freqScale =
+      2 * Math.PI * config.synth.centerFreqHz / config.synth.sampleRateHz;
   this.freqs = harmony.points.map(function(q){
-        return 2 * Math.PI * centerFreqHz / sampleRateHz * q.toNumber();
+        return freqScale * q.toNumber();
       });
 
   this.running = false;
@@ -489,17 +507,25 @@ Synthesizer.prototype = {
 
   synthesize: function () {
 
+    var T = this.windowSamples;
+    var normalizeEnvelope = Math.pow(2 / (T+1), 4);
+    var amp = this.harmony.mass.probs.map(function(p){
+      return normalizeEnvelope * Math.sqrt(p);
+    });
+    log('DEBUG ' + JSON.stringify(amp));
+
     var freqs = this.freqs;
-    var mass = this.harmony.mass;
     var F = freqs.length;
     var samples = [];
-    for (var t = 0, T = this.windowSamples; t < T; ++t) {
-      var env = 4 / (T*T) * t * (T - t);
+    for (var t = 0; t < T; ++t) {
       var chord = 0;
       for (var f = 0; f < F; ++f) {
-        chord += Math.sqrt(mass[f]) * Math.sin(freqs[f] * t);
+        chord += amp[f] * Math.sin(freqs[f] * t);
       }
-      samples[t] = Math.round(255/2 * (chord * env + 1));
+      var env = (t + 1) * (T - t);
+      chord *= env * env; // envelope
+      chord /= Math.sqrt(1 + chord * chord); // clip
+      samples[t] = Math.round(255/2 * (chord + 1)); // quantize
     }
 
     var wave = new RIFFWAVE(samples);
@@ -510,11 +536,9 @@ Synthesizer.prototype = {
 //------------------------------------------------------------------------------
 // Visualization
 
-var Keyboard = function (harmony, updateHz) {
-  updateHz = updateHz || 60;
-
+var Keyboard = function (harmony) {
   this.harmony = harmony;
-  this.delayMs = 1000 / updateHz;
+  this.delayMs = 1000 / config.keyboard.updateHz;
 
   this.canvas = document.getElementById('canvas');
   this.context = canvas.getContext('2d');
@@ -736,17 +760,19 @@ $(document).ready(function(){
       }).resize();
 
   if (window.location.hash && window.location.hash.substr(1) === 'test') {
+    document.title = 'Keys - Unit Test';
     test.runAll();
     return;
   }
 
-  var harmony = new Harmony(24);
+  var harmony = new Harmony(config.harmony.radius);
   var synthesizer = new Synthesizer(harmony);
   var keyboard = new Keyboard(harmony);
 
+  document.title = harmony.length + ' Keys';
+
   harmony.start();
   keyboard.start();
-  // TODO uncomment when keyboard is stable
-  //synthesizer.start();
+  synthesizer.start();
 });
 
