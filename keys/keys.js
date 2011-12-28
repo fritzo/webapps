@@ -552,14 +552,19 @@ Synthesizer.prototype = {
 
   synthesize: function () {
 
-    var T = this.windowSamples;
-    var normalizeEnvelope = Math.pow(2 / (T+1), 4);
-    var amp = this.harmony.mass.probs.map(function(p){
-      return normalizeEnvelope * Math.sqrt(p);
-    });
-
     var freqs = this.freqs;
     var F = freqs.length;
+    var T = this.windowSamples;
+    var normalizeEnvelope = Math.pow(2 / (T+1), 4);
+    var probs = this.harmony.mass.probs;
+    assert(probs.length === F, 'probs,freqs have different length');
+
+    var amp = [];
+    for (var f = 0; f < F; ++f) {
+      amp[f] = normalizeEnvelope * Math.sqrt(probs[f])
+             * Math.sqrt(freqs[0] / freqs[f]);
+    }
+
     var samples = [];
     for (var t = 0; t < T; ++t) {
       var chord = 0;
