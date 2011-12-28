@@ -16,6 +16,10 @@ var config = {
 
   keyboard: {
     updateHz: 30
+  },
+
+  test: {
+    interactive: false
   }
 };
 
@@ -375,9 +379,6 @@ test('Pmf.shiftTowardsPoint', function(){
 // Harmony
 
 var Harmony = function (radius) {
-
-  //log('Building harmony of radius ' + radius);
-
   this.diffuseRateKhz = 1e-3 / config.harmony.diffuseSec;
   this.attackKhz = 1e-3 / config.harmony.attackSec;
   this.temperature = config.harmony.temperature;
@@ -385,7 +386,6 @@ var Harmony = function (radius) {
 
   this.points = Rational.ball(radius);
   this.length = this.points.length;
-  //log('  harmony has ' + this.length + ' points');
 
   var energyMatrix = this.energyMatrix = [];
   for (var i = 0; i < this.length; ++i) {
@@ -405,13 +405,13 @@ var Harmony = function (radius) {
 Harmony.prototype = {
   start: function () {
     if (this.running) return;
-    log('starting Harmony');
+    //log('starting Harmony');
     this.running = true;
     this.lastTime = Date.now();
     this.updateDiffusion();
   },
   stop: function () {
-    log('stopping Harmony');
+    //log('stopping Harmony');
     this.running = false;
   },
   updateDiffusion: function () {
@@ -516,16 +516,27 @@ var Synthesizer = function (harmony) {
 Synthesizer.prototype = {
   start: function () {
     if (this.running) return;
-    log('starting Synthesizer');
+    //log('starting Synthesizer');
     this.running = true;
+
+    // TODO
+    //this.worker = new Worker('synthworker.js');
+    //this.worker.addEventListener('message', function(){
+    //      TODO('handle messages from synth worker');
+    //    });
+
     this.targetTime = Date.now();
     this.update();
   },
   stop: function () {
-    log('stopping Synthesizer');
+    //log('stopping Synthesizer');
     this.running = false;
+
+    // TODO
+    //this.worker.terminate();
   },
   update: function () {
+
     // TODO move synthesis to a Web Worker thread
     var audio = this.synthesize(); // expensive
 
@@ -566,6 +577,49 @@ Synthesizer.prototype = {
   }
 };
 
+test('web worker echo', function(){
+  var message = {
+    cmd: 'echo',
+    data: {a:0, b:1, c:[0,1,2]} // just some JSON
+  };
+
+  var received = false;
+  var error = null;
+
+  var worker = new Worker('synthworker.js');
+  worker.addEventListener('message', function (e) {
+    received = true;
+    try {
+      assert(e.data, 'echo message has no data');
+      assertEqual(e.data, message, 'echo data does not match');
+    }
+    catch (err) {
+      error = err;
+    }
+  });
+
+  worker.postMessage(message);
+  var until = Date.now() + 1000;
+  while (Date.now() < until && ~received); // spin
+  worker.terminate();
+
+  assert(received, 'message was not received from web worker');
+  assert(error === null, error);
+});
+
+if(0) // TODO
+test('Synthesizer.worker', function(){
+  var harmony = new Harmony(3);
+  var synthesizer = new Synthesizer(harmony);
+  harmony.start();
+  synthesizer.start();
+
+  // TODO test web worker here
+
+  synthesizer.stop();
+  harmony.stop();
+});
+
 //------------------------------------------------------------------------------
 // Visualization
 
@@ -583,20 +637,20 @@ var Keyboard = function (harmony) {
 Keyboard.prototype = {
   start: function () {
     if (this.running) return;
-    log('starting Keyboard');
+    //log('starting Keyboard');
     this.running = true;
 
     this.update();
 
     var keyboard = this;
-    $(this.canvas).on('click.keyboard', function (event) {
+    $(this.canvas).on('click.keyboard', function (e) {
           keyboard.click(
-            event.pageX / window.innerWidth,
-            1 - event.pageY / window.innerHeight);
+            e.pageX / window.innerWidth,
+            e.pageY / window.innerHeight);
         });
   },
   stop: function () {
-    log('stopping Keyboard');
+    //log('stopping Keyboard');
     this.running = false;
     $(this.canvas).off('click.keyboard');
   },
@@ -705,7 +759,7 @@ Keyboard.prototype = {
     var X = geom.length - 1;
     var Y = geom[0].length;
 
-    var y = y01 * (Y - 1);
+    var y = 1 - y01 * (Y - 1);
     var y0 = Math.max(0, Math.min(Y - 2, Math.floor(y)));
     var y1 = y0 + 1;
     assert(y1 < Y);
@@ -750,7 +804,7 @@ test('Keyboard.updateGeometry', function(){
     assert(geom[0][y] === 0, 'geometry left is not 0: ' + geom[0][y]);
     assert(geom[X][y] === 1, 'geometry right is not 1: ' + geom[X][y]);
     for (var x = 0; x < X; ++x) {
-      assert(geom[x][y] < geom[x+1][y],
+      assert(geom[x][y] <= geom[x+1][y],
           'geometry is not monotonic: ' + geom[x][y] + ' -> ' + geom[x+1][y]);
     }
   }
@@ -776,13 +830,35 @@ test('Keyboard.draw', function(){
 
   keyboard.update();
   
-  if(0)
-  assert(confirm('does this look like a keyboard?'),
-    'keyboard is not drawn correctly');
+  if(config.test.interactive) {
+    assert(confirm('does this look like a keyboard?'),
+        'keyboard is not drawn correctly');
+  }
 });
 
 //------------------------------------------------------------------------------
 // Main
+
+test('main', function(){
+  var harmony = new Harmony(8);
+  var synthesizer = new Synthesizer(harmony);
+  var keyboard = new Keyboard(harmony);
+
+  harmony.start();
+  synthesizer.start();
+  keyboard.start();
+
+  if(config.test.interactive) {
+    assert(confirm('do you hear a tone?'),
+        'synthesizer did not make a tone');
+    assert(confirm('do you see a keyboard?'),
+        'keyboard was not drawn correctly');
+  }
+
+  keyboard.stop();
+  synthesizer.stop();
+  harmony.stop();
+});
 
 $(document).ready(function(){
 
