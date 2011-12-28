@@ -23,12 +23,16 @@ var assert = function (condition, message) {
   }
 };
 
-var assertEqual = function (actual, expected) {
+var assertEval = function (message) {
+  assert(eval(message), message);
+};
+var assertEqual = function (actual, expected, message) {
   if (~(actual instanceof String) || ~(expected instanceof String)) {
     actual = JSON.stringify(actual);
     expected = JSON.stringify(expected);
   }
   assert(actual === expected,
+    (message || '') + 
     '\n    actual = ' + actual +
     '\n    expected = ' + expected);
 };
@@ -303,8 +307,8 @@ test('new Pmf(init)', function(){
   var init = [1,2,3];
   var pmf = new Pmf(init);
   pmf.normalize();
-  assertEqual(init, [1,2,3]);
-  assertEqual(pmf.probs, [1/6,2/6,3/6]);
+  assertEqual(init, [1,2,3], 'init was changed');
+  assertEqual(pmf.probs, [1/6,2/6,3/6], 'probs is invalid');
 });
 
 test('Pmf.shiftTowardsPmf', function(){
@@ -403,6 +407,21 @@ Harmony.prototype = {
   }
 };
 
+test('Harmony.getEnergy', function(){
+  var harmony = new Harmony(8);
+  for (var i = 0; i < harmony.length; ++i) {
+    harmony.mass.probs[i] = i;
+  }
+  harmony.mass.normalize();
+
+  var energy = harmony.getEnergy();
+  assertEqual(energy.length, harmony.length, 'energy has wrong size');
+  for (var i = 0; i < energy.length; ++i) {
+    assert(-1/0 < energy[i], 'bad energy: ' + energy[i]);
+    assert(energy[i] < 1/0, 'bad energy: ' + energy[i]);
+  }
+});
+
 test('Harmony.updateDiffusion', function(){
   var harmony = new Harmony(8);
   var probs = harmony.mass.probs;
@@ -493,12 +512,11 @@ Synthesizer.prototype = {
 var Keyboard = function (harmony, updateHz) {
   updateHz = updateHz || 60;
 
-  var canvas = document.getElementById('canvas');
-
   this.harmony = harmony;
-  this.canvas = canvas;
-  this.context = canvas.getContext('2d');
   this.delayMs = 1000 / updateHz;
+
+  this.canvas = document.getElementById('canvas');
+  this.context = canvas.getContext('2d');
 
   this.running = false;
   this.geometry = undefined;
@@ -543,8 +561,8 @@ Keyboard.prototype = {
     // vertical bands with height-varying temperature
     var geometryYX = [];
     for (var y = 0; y < Y; ++y) {
-      var temperature = (y + 0.5) / (Y - y - 0.5);
-      var width = Pmf.gibbs(energy, temperature);
+      var temperature = (y + 1) / (Y - y);
+      var width = Pmf.gibbs(energy, temperature).probs;
 
       var geom = geometryYX[y] = [0];
       for (var x = 0; x < X; ++x) {
@@ -555,19 +573,40 @@ Keyboard.prototype = {
 
     // transpose
     var geometryXY = this.geometry = [];
-    for (var x = 0; x < X; ++x) {
+    for (var x = 0; x <= X; ++x) {
       var geom = geometryXY[x] = [];
       for (var y = 0; y < Y; ++y) {
         geom[y] = geometryYX[y][x];
       }
     }
 
-    var color = this.color = [];
-    var colorScale = 1.0 / Math.max(mass.probs);
-    var colorPow = 1.0 / mass.perplexity();
-    for (var x = 0; x < X; ++x) {
-      color[x] = Math.pow(colorScale * mass.probs[x], colorPow);
+    // accumulate statistics for color
+    var massLog = 0;
+    var meanLog = 0;
+    var varLog = 0;
+    for (var i = 0, I = mass.probs.length; i < I; ++i) {
+      var p = mass.probs[i];
+      if (p > 0) {
+        var l = Math.log(p);
+        massLog += p;
+        meanLog += p * l;
+        varLog += p * l * l;
+      }
     }
+    meanLog /= massLog;
+    varLog /= massLog;
+    varLog -= meanLog * meanLog;
+
+    var colorShift = -meanLog;
+    var colorScale = 1 / Math.sqrt(varLog);
+    var color = this.color = [];
+    for (var x = 0; x < X; ++x) {
+      var prob = mass.probs[x];
+      var colorStd = colorScale * (colorShift + Math.log(prob));
+      color[x] = 0.5 + Math.atan(colorStd) / Math.PI;
+    }
+    log('DEBUG minColor = ' + Math.min.apply(Math, color));
+    log('DEBUG maxColor = ' + Math.max.apply(Math, color));
   },
 
   draw: function () {
@@ -580,7 +619,7 @@ Keyboard.prototype = {
     var H = window.innerHeight - 1;
 
     for (var x = 0; x < X; ++x) {
-      var c = this.color[x];
+      var c = Math.round(255 * this.color[x]);
       context.fillStyle = 'rgb(' + c + ',' + c + ',' + c + ')';
 
       var lhs = geom[x];
@@ -599,11 +638,54 @@ Keyboard.prototype = {
   },
 };
 
+test('Keyboard.updateGeometry', function(){
+
+  var harmony = new Harmony(4);
+  for (var x = 0; x < harmony.length; ++x) {
+    harmony.mass.probs[x] = 0.01 + x;
+  }
+  harmony.mass.normalize();
+
+  var keyboard = new Keyboard(harmony);
+
+  keyboard.updateGeometry();
+
+  var geom = keyboard.geometry;
+  var X = geom.length - 1;
+  var Y = geom[0].length;
+  assertEqual(X, harmony.length, 'geometry X != harmony.length');
+  assert(Y > 0, 'geometry Y is not positive: ' << Y);
+
+  for (var x = 0; x <= X; ++x) {
+    for (var y = 0; y < Y; ++y) {
+      assert(0 <= geom[x][y] && geom[x][y] <= 1,
+          'bad geom['+x+']['+y+'] = ' + geom[x][y]);
+    }
+  }
+
+  for (var y = 0; y < Y; ++y) {
+    assert(geom[0][y] === 0, 'geometry left is not 0: ' + geom[0][y]);
+    assert(geom[X][y] === 1, 'geometry right is not 1: ' + geom[X][y]);
+    for (var x = 0; x < X; ++x) {
+      assert(geom[x][y] < geom[x+1][y],
+          'geometry is not monotonic: ' + geom[x][y] + ' -> ' + geom[x+1][y]);
+    }
+  }
+
+  var color = keyboard.color;
+  assertEqual(color.length, X, 'Keyboard.color has wrong length');
+  
+  for (var x = 0; x < X; ++x) {
+    assert(0 <= color[x] && color[x] <= 1,
+        'bad color['+x+'] = ' + color[x]);
+  }
+});
+
 test('Keyboard.draw', function(){
 
   var harmony = new Harmony(4);
   for (var i = 0; i < harmony.length; ++i) {
-    harmony.mass[i] = i;
+    harmony.mass.probs[i] = i;
   }
   harmony.mass.normalize();
 
@@ -620,6 +702,12 @@ test('Keyboard.draw', function(){
 // Main
 
 $(document).ready(function(){
+
+  var canvas = document.getElementById('canvas');
+  $(window).resize(function(){
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }).resize();
 
   if (window.location.hash && window.location.hash.substr(1) === 'test') {
     test.runAll();
