@@ -762,7 +762,7 @@ Keyboard.prototype = {
     var X = geom.length - 1;
     var Y = geom[0].length;
 
-    var y = 1 - y01 * (Y - 1);
+    var y = (1 - y01) * (Y - 1);
     var y0 = Math.max(0, Math.min(Y - 2, Math.floor(y)));
     var y1 = y0 + 1;
     assert(y1 < Y);
