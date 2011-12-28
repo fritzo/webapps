@@ -23,6 +23,16 @@ var assert = function (condition, message) {
   }
 };
 
+var assertEqual = function (actual, expected) {
+  if (~(actual instanceof String) || ~(expected instanceof String)) {
+    actual = JSON.stringify(actual);
+    expected = JSON.stringify(expected);
+  }
+  assert(actual === expected,
+    '\n    actual = ' + actual +
+    '\n    expected = ' + expected);
+};
+
 var log;
 if (window.console && window.console.log) {
   log = function (message) { console.log(message); };
@@ -160,105 +170,157 @@ Rational.ball = function (radius) {
 test('Rational.ball', function(){
   var actual = Rational.ball(4).map(function(q){ return q.toNumber(); });
   var expected = [1/3, 1/2, 2/3, 1/1, 3/2, 2/1, 3/1];
-  actual = JSON.stringify(actual);
-  expected = JSON.stringify(expected);
-  assert(actual === expected,
-    '\n    actual = ' + actual +
-    '\n    expected = ' + expected);
+  assertEqual(actual, expected);
 });
 
 //----------------------------------------------------------------------------
 // Probability vectors
 
-var Pmf = function () {
-};
-
-Pmf.prototype = new Array();
-
-Pmf.prototype.total = function () {
-  var result = 0;
-  for (var i = 0, I = this.length; i < I; ++i) {
-    result += this[i];
-  }
-  return result;
-};
-
-Pmf.prototype.normalize = function () {
-  var total = this.total();
-  assert(0 < total, 'cannont normalize Pmf with zero mass');
-  var scale = 1.0 / total;
-  for (var i = 0, I = this.length; i < I; ++i) {
-    this[i] *= scale;
+var Pmf = function (initProbs) {
+  if (initProbs instanceof Array) {
+    this.probs = initProbs.slice();
+  } else {
+    this.probs = [];
   }
 };
 
-Pmf.prototype.entropy = function () {
-  var result = 0;
-  for (var i = 0, I = this.length; i < I; ++i) {
-    var p = this[i];
-    if (p > 0) {
-      result += p * Math.log(p);
+Pmf.prototype = {
+
+  size: function () {
+    return this.probs.length;
+  },
+
+  total: function () {
+    var probs = this.probs;
+    var result = 0;
+    for (var i = 0, I = probs.length; i < I; ++i) {
+      result += probs[i];
     }
+    return result;
+  },
+
+  normalize: function () {
+    var total = this.total();
+    assert(0 < total, 'cannont normalize Pmf with zero mass');
+    var scale = 1.0 / total;
+    var probs = this.probs;
+    for (var i = 0, I = probs.length; i < I; ++i) {
+      probs[i] *= scale;
+    }
+  },
+
+  entropy: function () {
+    var probs = this.probs;
+    var result = 0;
+    for (var i = 0, I = probs.length; i < I; ++i) {
+      var p = probs[i];
+      if (p > 0) {
+        result += p * Math.log(p);
+      }
+    }
+    return result;
+  },
+
+  perplexity: function () {
+    return Math.exp(this.entropy());
+  },
+
+  mean: function (values) {
+    var probs = this.probs;
+    assert(values.length === probs.length, 'mismatched length in Pmf.mean');
+    var result = 0;
+    for (var i = 0, I = probs.length; i < I; ++i) {
+      result += probs[i] * values[i];
+    }
+    return result;
+  },
+
+  shiftTowardsPmf: function (other, rate) {
+    var probs0 = this.probs;
+    var probs1 = other.probs;
+    assert(probs0.length === probs1.length,
+        'mismatched lengths in Pmf.shiftTowardsPmf');
+    assert(0 <= rate && rate <= 1,
+        'bad rate in Pmf.shiftTowardsPmf: ' + rate);
+
+    var w0 = 1 - rate;
+    var w1 = rate;
+    for (var i = 0, I = probs0.length; i < I; ++i) {
+      probs0[i] = w0 * probs0[i] + w1 * probs1[i];
+    }
+  },
+
+  shiftTowardsPoint: function (index, rate) {
+    var probs = this.probs;
+    assert(0 <= index && index < probs.length,
+        'bad index in Pmf.shiftTowardsPoint: ' + index);
+    assert(0 <= rate && rate <= 1,
+        'bad rate in Pmf.shiftTowardsPoint: ' + rate);
+
+    var w0 = 1 - rate;
+    var w1 = rate;
+    for (var i = 0, I = probs.length; i < I; ++i) {
+      probs[i] *= w0;
+    }
+    probs[index] += w1;
   }
-  return result;
-};
-
-Pmf.prototype.perplexity = function () {
-  return Math.exp(this.entropy());
-};
-
-Pmf.prototype.mean = function (values) {
-  assert(values.length === this.length, 'mismatched length in Pmf.mean');
-  var result = 0;
-  for (var i = 0, I = this.length; i < I; ++i) {
-    result += this[i] * values[i];
-  }
-  return result;
-};
-
-Pmf.prototype.shiftTowardsPmf = function (other, rate) {
-  assert(this.length == other.length,
-      'mismatched lengths in Pmf.shiftTowardsPmf');
-  assert(0 <= rate && rate <= 1, 'bad rate in Pmf.shiftTowardsPmf: ' + rate);
-
-  var w0 = 1 - rate;
-  var w1 = rate;
-  for (var i = 0, I = this.length; i < I; ++i) {
-    this[i] = w0 * this[i] + w1 * other[i];
-  }
-};
-
-Pmf.prototype.shiftTowardsPoint = function (index, rate) {
-  assert(0 <= index && index < this.length,
-      'bad index in Pmf.shiftTowardsPoint: ' + index);
-  assert(0 <= rate && rate <= 1, 'bad rate in Pmf.shiftTowardsPoint: ' + rate);
-
-  var w0 = 1 - rate;
-  var w1 = rate;
-  for (var i = 0, I = this.length; i < I; ++i) {
-    this[i] *= w0;
-  }
-  this[index] += w1;
 };
 
 Pmf.degenerate = function (n, N) {
   assert(0 <= n && n < N, 'bad indices in Pmf.denerate: ' + n + ', ' + N);
   var result = new Pmf();
+  var probs = result.probs;
   for (var i = 0; i < N; ++i) {
-    result[i] = 0;
+    probs[i] = 0;
   }
-  result[n] = 1;
+  probs[n] = 1;
   return result;
 };
 
 Pmf.gibbs = function (energy, temperature) {
+  assert(0 < temperature, 'temperature is not positive: ' + temperature);
   var result = new Pmf();
+  var probs = result.probs;
   for (var i = 0, I = energy.length; i < I; ++i) {
-    result[i] = Math.exp(-energy[i] / temperature);
+    probs[i] = Math.exp(-energy[i] / temperature);
   }
   result.normalize();
   return result;
 };
+
+test('Pmf.normalize', function(){
+  var pmf = new Pmf();
+  for (var i = 0; i < 3; ++i) {
+    pmf.probs[i] = i;
+  }
+  pmf.normalize();
+  assertEqual(pmf.probs, [0,1/3,2/3]);
+});
+
+test('assertEqual(Pmf.degenerate(1,4).probs, [0,1,0,0])');
+
+test('new Pmf(init)', function(){
+  var init = [1,2,3];
+  var pmf = new Pmf(init);
+  pmf.normalize();
+  assertEqual(init, [1,2,3]);
+  assertEqual(pmf.probs, [1/6,2/6,3/6]);
+});
+
+test('Pmf.shiftTowardsPmf', function(){
+  var p0 = new Pmf([0,0,1]);
+  var p1 = new Pmf([0,1/2,1/2]);
+  var rate = 1/3;
+  p0.shiftTowardsPmf(p1, rate);
+  assertEqual(p0.probs, [0, 1/6, 5/6]);
+});
+
+test('Pmf.shiftTowardsPoint', function(){
+  var p0 = new Pmf([0,0,1]);
+  var rate = 1/4;
+  p0.shiftTowardsPoint(1, rate);
+  assertEqual(p0.probs, [0, 1/4, 3/4]);
+});
 
 //------------------------------------------------------------------------------
 // Harmony
@@ -268,13 +330,15 @@ var Harmony = function (radius, timescaleSec, temperature, delaySec) {
   temperature = temperature || 1.0;
   delaySec = delaySec || 0.05;
 
+  //log('Building harmony of radius ' + radius);
+
   this.timescaleMs = timescaleSec * 1000;
   this.temperature = temperature;
   this.delayMs = delaySec * 1000;
 
-  log('building ' + radius + '-ball of points');
   this.points = Rational.ball(radius);
   this.length = this.points.length;
+  //log('  harmony has ' + this.length + ' points');
 
   var energyMatrix = this.energyMatrix = [];
   for (var i = 0; i < this.length; ++i) {
@@ -284,6 +348,7 @@ var Harmony = function (radius, timescaleSec, temperature, delaySec) {
     }
   }
 
+  assert(this.length % 2, 'harmony does not have an odd number of points');
   this.mass = Pmf.degenerate((this.length - 1) / 2, this.length);
 
   this.running = false;
@@ -302,17 +367,18 @@ Harmony.prototype = {
     this.running = false;
   },
   updateDiffusion: function () {
-    if (~this.running) return;
-
     var now = Date.now();
-    var diffusionRate = 1 - exp((this.lastTime - now) / this.timeScaleMs);
+    assert(this.lastTime < now, 'Harmony.lastTime is in future');
+    var diffusionRate = 1 - Math.exp((this.lastTime - now) / this.timescaleMs);
     this.lastTime = now;
 
     var prior = Pmf.gibbs(this.getEnergy(), this.temperature);
     this.mass.shiftTowardsPmf(prior, diffusionRate);
 
-    var harmony = this;
-    setTimeout(function(){ harmony.updateDiffusion(); }, this.delayMs);
+    if (this.running) {
+      var harmony = this;
+      setTimeout(function(){ harmony.updateDiffusion(); }, this.delayMs);
+    }
   },
 
   // TODO switch from discrete events to continuous mass attack
@@ -336,6 +402,23 @@ Harmony.prototype = {
     return energy;
   }
 };
+
+test('Harmony.updateDiffusion', function(){
+  var harmony = new Harmony(8);
+  var probs = harmony.mass.probs;
+  assert(probs.length === harmony.length,
+      'harmony.probs has wrong length before update');
+
+  harmony.lastTime = Date.now() - 500;
+  harmony.updateDiffusion();
+
+  var probs = harmony.mass.probs;
+  assert(probs.length === harmony.length,
+      'harmony.probs has wrong length after update');
+  for (var i = 0; i < probs.length; ++i) {
+    assert(probs[i] > 0, 'probs is not positive: ' + JSON.stringify(probs));
+  }
+});
 
 //------------------------------------------------------------------------------
 // Synthesis
@@ -372,16 +455,16 @@ Synthesizer.prototype = {
     this.running = false;
   },
   update: function () {
-    if (~this.running) return;
-
     var audio = this.synthesize(); // expensive
 
     var now = Date.now();
     var delay = this.targetTime - now;
     this.targetTime += this.delayMs;
 
-    var synth = this;
-    setTimeout(function () { audio.play(); synth.update(); }, delay);
+    if (this.running) {
+      var synth = this;
+      setTimeout(function () { audio.play(); synth.update(); }, delay);
+    }
   },
 
   synthesize: function () {
@@ -407,8 +490,10 @@ Synthesizer.prototype = {
 //------------------------------------------------------------------------------
 // Visualization
 
-var Keyboard = function (harmony, canvas, updateHz) {
+var Keyboard = function (harmony, updateHz) {
   updateHz = updateHz || 60;
+
+  var canvas = document.getElementById('canvas');
 
   this.harmony = harmony;
   this.canvas = canvas;
@@ -439,13 +524,13 @@ Keyboard.prototype = {
     $(this.canvas).off('click');
   },
   update: function () {
-    if (~this.running) return;
-
     this.updateGeometry();
     this.draw();
 
-    var keyboard = this;
-    setTimeout(function(){ keyboard.update(); }, this.delayMs);
+    if (this.running) {
+      var keyboard = this;
+      setTimeout(function(){ keyboard.update(); }, this.delayMs);
+    }
   },
 
   updateGeometry: function () {
@@ -453,7 +538,7 @@ Keyboard.prototype = {
     var Y = Math.floor(1 + Math.sqrt(window.innerHeight));
 
     var energy = this.harmony.getEnergy();
-    var mass = this.harmony.mass.slice();
+    var mass = this.harmony.mass;
 
     // vertical bands with height-varying temperature
     var geometryYX = [];
@@ -478,10 +563,10 @@ Keyboard.prototype = {
     }
 
     var color = this.color = [];
-    var colorScale = 1.0 / Math.max(mass);
+    var colorScale = 1.0 / Math.max(mass.probs);
     var colorPow = 1.0 / mass.perplexity();
     for (var x = 0; x < X; ++x) {
-      color[x] = Math.pow(colorScale * mass[x], colorPow);
+      color[x] = Math.pow(colorScale * mass.probs[x], colorPow);
     }
   },
 
@@ -514,25 +599,36 @@ Keyboard.prototype = {
   },
 };
 
+test('Keyboard.draw', function(){
+
+  var harmony = new Harmony(4);
+  for (var i = 0; i < harmony.length; ++i) {
+    harmony.mass[i] = i;
+  }
+  harmony.mass.normalize();
+
+  var keyboard = new Keyboard(harmony);
+
+  keyboard.update();
+  
+  if(0)
+  assert(confirm('does this look like a keyboard?'),
+    'keyboard is not drawn correctly');
+});
+
 //------------------------------------------------------------------------------
 // Main
 
 $(document).ready(function(){
 
-  var RADIUS = 8; // maybe get from hash value
-
-  log('building harmony');
-  var harmony = new Harmony(RADIUS);
-  log('built harmony with ' + harmony.length + ' points');
-
-  var synthesizer = new Synthesizer(harmony);
-
-  var canvas = document.getElementById('canvas');
-  var keyboard = new Keyboard(harmony, canvas);
-
   if (window.location.hash && window.location.hash.substr(1) === 'test') {
     test.runAll();
+    return;
   }
+
+  var harmony = new Harmony(8);
+  var synthesizer = new Synthesizer(harmony);
+  var keyboard = new Keyboard(harmony);
 
   keyboard.start();
   synthesizer.start();
