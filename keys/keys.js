@@ -372,7 +372,7 @@ Harmony.prototype = {
   },
   updateDiffusion: function () {
     var now = Date.now();
-    assert(this.lastTime < now, 'Harmony.lastTime is in future');
+    assert(this.lastTime <= now, 'Harmony.lastTime is in future');
     var diffusionRate = 1 - Math.exp((this.lastTime - now) / this.timescaleMs);
     this.lastTime = now;
 
@@ -603,10 +603,14 @@ Keyboard.prototype = {
     for (var x = 0; x < X; ++x) {
       var prob = mass.probs[x];
       var colorStd = colorScale * (colorShift + Math.log(prob));
-      color[x] = 0.5 + Math.atan(colorStd) / Math.PI;
+      color[x] = Math.atan(colorStd);
     }
-    log('DEBUG minColor = ' + Math.min.apply(Math, color));
-    log('DEBUG maxColor = ' + Math.max.apply(Math, color));
+
+    var colorShift = -Math.min.apply(Math, color);
+    var colorScale = 1 / (Math.max.apply(Math, color) + colorShift);
+    for (var x = 0; x < X; ++x) {
+      color[x] = colorScale * (colorShift + color[x]);
+    }
   },
 
   draw: function () {
@@ -625,12 +629,12 @@ Keyboard.prototype = {
       var lhs = geom[x];
       var rhs = geom[x+1];
       context.beginPath();
-      context.moveTo(W * lhs[0], 0);
+      context.moveTo(W * lhs[0], H);
       for (y = 1; y < Y; ++y) {
-        context.lineTo(W * lhs[y], H / Y * y);
+        context.lineTo(W * lhs[y], H * (1 - y / (Y - 1)));
       }
       for (y = Y-1; y >= 0; --y) {
-        context.lineTo(W * rhs[y], H / Y * y);
+        context.lineTo(W * rhs[y], H * (1 - y / (Y - 1)));
       }
       context.closePath();
       context.fill();
@@ -718,8 +722,9 @@ $(document).ready(function(){
   var synthesizer = new Synthesizer(harmony);
   var keyboard = new Keyboard(harmony);
 
-  keyboard.start();
-  synthesizer.start();
   harmony.start();
+  keyboard.start();
+  // TODO uncomment when keyboard is stable
+  //synthesizer.start();
 });
 
