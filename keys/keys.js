@@ -222,7 +222,7 @@ Pmf.prototype = {
         result += p * Math.log(p);
       }
     }
-    return result;
+    return -result;
   },
 
   perplexity: function () {
@@ -378,6 +378,7 @@ Harmony.prototype = {
 
     var prior = Pmf.gibbs(this.getEnergy(), this.temperature);
     this.mass.shiftTowardsPmf(prior, diffusionRate);
+    this.mass.normalize(); // to compensate for numerical drift
 
     if (this.running) {
       var harmony = this;
@@ -391,8 +392,8 @@ Harmony.prototype = {
     assert(0 <= index && index < this.length, 'bad event index: ' + index);
 
     var perplexity = this.mass.perplexity();
-    assert(perplexity > 0, 'nonpositive perplexity: ' + perplexity);
-    var rate = 1.0 / perplexity;
+    assert(perplexity > 1, 'perplexity not greater than 1: ' + perplexity);
+    var rate = 1 / (1 + perplexity);
     this.mass.shiftTowardsPoint(index, rate);
   },
 
@@ -530,16 +531,17 @@ Keyboard.prototype = {
 
     this.update();
 
-    var harmony = this.harmony;
-    $(this.canvas).on('click', function(){
-          var key = TODO('determine key from click position');
-          harmony.updateAddMass(key);
+    var keyboard = this;
+    $(this.canvas).on('click.keyboard', function (event) {
+          keyboard.click(
+            event.pageX / window.innerWidth,
+            1 - event.pageY / window.innerHeight);
         });
   },
   stop: function () {
     log('stopping Keyboard');
     this.running = false;
-    $(this.canvas).off('click');
+    $(this.canvas).off('click.keyboard');
   },
   update: function () {
     this.updateGeometry();
@@ -640,6 +642,26 @@ Keyboard.prototype = {
       context.fill();
     }
   },
+
+  click: function (x01, y01) {
+    var geom = this.geometry;
+    var X = geom.length - 1;
+    var Y = geom[0].length;
+
+    var y = y01 * (Y - 1);
+    var y0 = Math.max(0, Math.min(Y - 2, Math.floor(y)));
+    var y1 = y0 + 1;
+    assert(y1 < Y);
+    var w0 = y1 - y;
+    var w1 = y - y0;
+
+    for (var x = 0; x < X; ++x) {
+      if (x01 <= w0 * geom[x+1][y0] + w1 * geom[x+1][y1]) {
+        this.harmony.updateAddMass(x);
+        break;
+      }
+    }
+  }
 };
 
 test('Keyboard.updateGeometry', function(){
@@ -718,7 +740,7 @@ $(document).ready(function(){
     return;
   }
 
-  var harmony = new Harmony(8);
+  var harmony = new Harmony(24);
   var synthesizer = new Synthesizer(harmony);
   var keyboard = new Keyboard(harmony);
 
