@@ -331,7 +331,8 @@ Pmf.degenerate = function (n, N) {
   return result;
 };
 
-Pmf.gibbs = function (energy, temperature) {
+Pmf.boltzmann = function (energy, temperature) {
+  if (temperature === undefined) temperature = 1;
   assert(0 < temperature, 'temperature is not positive: ' + temperature);
   var result = new Pmf();
   var probs = result.probs;
@@ -422,7 +423,7 @@ Harmony.prototype = {
     this.lastTime = now;
 
     var diffusionRate = 1 - Math.exp(-dt * this.diffuseRateKhz);
-    var prior = Pmf.gibbs(this.getEnergy(), this.temperature);
+    var prior = Pmf.boltzmann(this.getEnergy(), this.temperature);
     this.mass.shiftTowardsPmf(prior, diffusionRate);
 
     var attackDecay = Math.exp(-dt * this.attackKhz);
@@ -676,9 +677,8 @@ Keyboard.prototype = {
     // vertical bands with height-varying temperature
     var geometryYX = [];
     for (var y = 0; y < Y; ++y) {
-      var hackToMakeKeysLookLonger = 2;
-      var temperature = (y + 1) / (Y - y) * hackToMakeKeysLookLonger;
-      var width = Pmf.gibbs(energy, temperature).probs;
+      var temperature = Y / (Y - y);
+      var width = Pmf.boltzmann(energy, temperature).probs;
 
       var geom = geometryYX[y] = [0];
       for (var x = 0; x < X; ++x) {
@@ -713,11 +713,13 @@ Keyboard.prototype = {
     varLog /= massLog;
     varLog -= meanLog * meanLog;
 
+    //var probs = Pmf.boltzmann(energy).probs;
+    var probs = mass.probs;
     var colorShift = -meanLog;
     var colorScale = 1 / Math.sqrt(varLog);
     var color = this.color = [];
     for (var x = 0; x < X; ++x) {
-      var prob = mass.probs[x];
+      var prob = probs[x];
       var colorStd = colorScale * (colorShift + Math.log(prob));
       color[x] = Math.atan(colorStd);
     }
@@ -738,22 +740,26 @@ Keyboard.prototype = {
     var W = window.innerWidth - 1;
     var H = window.innerHeight - 1;
 
+    context.fillStyle = 'rgb(0,0,0)';
+    context.clearRect(0, 0, W+1, H+1);
+
     for (var x = 0; x < X; ++x) {
       var c = Math.round(255 * this.color[x]);
+      if (c === 0) continue;
       context.fillStyle = 'rgb(' + c + ',' + c + ',' + c + ')';
 
       var lhs = geom[x];
       var rhs = geom[x+1];
       context.beginPath();
       context.moveTo(W * lhs[Y-1], 0);
-      for (y = Y-2; y >= 0; --y) {
+      for (y = Y-2; y > 0; --y) {
         context.lineTo(W * lhs[y], H * (1 - y / (Y - 1)));
       }
-      //context.bezierCurveTo(
-      //    W * lhs[0], H,
-      //    W * rhs[0], H,
-      //    W * rhs[1], H * (1 - 1 / (Y - 1)));
-      for (y = 0; y < Y; ++y) {
+      context.bezierCurveTo(
+          W * lhs[0], H * (1 + 1/3 / (Y - 1)),
+          W * rhs[0], H * (1 + 1/3 / (Y - 1)),
+          W * rhs[1], H * (1 - 1 / (Y - 1)));
+      for (y = 2; y < Y; ++y) {
         context.lineTo(W * rhs[y], H * (1 - y / (Y - 1)));
       }
       context.closePath();
@@ -886,7 +892,6 @@ $(document).ready(function(){
   var keyboard = new Keyboard(harmony);
 
   log('using ' + harmony.lenth + ' keys');
-
 
   var running = false;
   var toggleRunning = function () {
