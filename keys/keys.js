@@ -3,9 +3,11 @@ var config = {
   harmony: {
     //radius: 13, // 77 keys
     radius: 14.25, // 99 keys
-    diffuseSec: 2.0,
+    priorSec: 8.0,
+    diffusionSec: 1.0,
     attackSec: 0.1,
-    temperature: Math.sqrt(2),
+    backgroundGain: 0.2,
+    temperature: 2,
     updateHz: 60
   },
 
@@ -295,6 +297,13 @@ Lmf.prototype = {
     return sum_px / sum_p;
   },
 
+  scale: function (s) {
+    var likes = this.likes;
+    for (var i = 0, I = likes.length; i < I; ++i) {
+      likes[i] *= s;
+    }
+  },
+
   shiftTowardsLmf: function (other, rate) {
     var likes0 = this.likes;
     var likes1 = other.likes;
@@ -417,8 +426,10 @@ test('Lmf.shiftTowardsPoint', function(){
 // Harmony
 
 var Harmony = function (radius) {
-  this.diffuseRateKhz = 1e-3 / config.harmony.diffuseSec;
+  this.priorRateKhz = 1e-3 / config.harmony.priorSec;
+  this.diffusionRateKhz = 1e-3 / config.harmony.diffusionSec;
   this.attackKhz = 1e-3 / config.harmony.attackSec;
+  this.backgroundGain = config.harmony.backgroundGain;
   this.temperature = config.harmony.temperature;
   this.delayMs = 1000 / config.harmony.updateHz;
 
@@ -436,7 +447,7 @@ var Harmony = function (radius) {
   assert(this.length % 2, 'harmony does not have an odd number of points');
   this.mass = Lmf.degenerate((this.length - 1) / 2, this.length);
   this.dmass = Lmf.zero(this.length);
-  this.prior = Lmf.boltzmann(this.getEnergy(), this.temperature);
+  this.prior = Lmf.boltzmann(this.getEnergy(this.mass), this.temperature);
 
   this.running = false;
 };
@@ -459,10 +470,13 @@ Harmony.prototype = {
     var dt = now - this.lastTime;
     this.lastTime = now;
 
-    var diffusionRate = 1 - Math.exp(-dt * this.diffuseRateKhz);
-    var prior = Lmf.boltzmann(this.getEnergy(), this.temperature);
-    this.prior.shiftTowardsLmf(prior, diffusionRate);
-    this.mass.shiftTowardsLmf(prior, diffusionRate);
+    var priorRate = 1 - Math.exp(-dt * this.priorRateKhz);
+    var newPrior = Lmf.boltzmann(this.getEnergy(this.mass), this.temperature);
+    this.prior.shiftTowardsLmf(newPrior, priorRate);
+
+    var diffusionRate = 1 - Math.exp(-dt * this.diffusionRateKhz);
+    newPrior.scale(this.backgroundGain);
+    this.mass.shiftTowardsLmf(newPrior, diffusionRate);
 
     var attackDecay = Math.exp(-dt * this.attackKhz);
     var attackRate = 1 / attackDecay - 1;
@@ -482,9 +496,8 @@ Harmony.prototype = {
     this.dmass.likes[index] += 1;
   },
 
-  getEnergy: function () {
+  getEnergy: function (mass) {
     var energy = [];
-    var mass = this.mass;
     var energyMatrix = this.energyMatrix;
     for (var i = 0, I = this.length; i < I; ++i) {
       energy[i] = mass.mean(energyMatrix[i]);
@@ -500,7 +513,7 @@ test('Harmony.getEnergy', function(){
   }
   harmony.mass.normalize();
 
-  var energy = harmony.getEnergy();
+  var energy = harmony.getEnergy(harmony.mass);
   assertEqual(energy.length, harmony.length, 'energy has wrong size');
   for (var i = 0; i < energy.length; ++i) {
     assert(-1/0 < energy[i], 'bad energy: ' + energy[i]);
@@ -703,8 +716,7 @@ Keyboard.prototype = {
     var X = this.harmony.length;
     var Y = Math.floor(2 + Math.sqrt(window.innerHeight));
 
-    var energy = this.harmony.getEnergy();
-    var mass = this.harmony.mass;
+    var energy = this.harmony.getEnergy(this.harmony.prior);
 
     // vertical bands with height-varying temperature
     var geometryYX = [];
