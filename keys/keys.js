@@ -3,16 +3,17 @@ var config = {
   harmony: {
     //radius: 13, // 77 keys
     radius: 14.25, // 99 keys
-    diffuseSec: 1.0,
+    diffuseSec: 2.0,
     attackSec: 0.1,
-    temperature: 1.0,
+    temperature: 2.0,
     updateHz: 60
   },
 
   synth: {
     sampleRateHz: 22050,
     centerFreqHz: 440.0,
-    windowSec: 0.2
+    windowSec: 0.2,
+    gain: 0.5
   },
 
   keyboard: {
@@ -230,44 +231,45 @@ test('Rational.ball of size 88', function(){
 //----------------------------------------------------------------------------
 // Probability vectors
 
-var Pmf = function (initProbs) {
+var Lmf = function (initProbs) {
   if (initProbs instanceof Array) {
-    this.probs = initProbs.slice();
+    this.likes = initProbs.slice();
   } else {
-    this.probs = [];
+    this.likes = [];
   }
 };
 
-Pmf.prototype = {
+Lmf.prototype = {
 
   size: function () {
-    return this.probs.length;
+    return this.likes.length;
   },
 
   total: function () {
-    var probs = this.probs;
+    var likes = this.likes;
     var result = 0;
-    for (var i = 0, I = probs.length; i < I; ++i) {
-      result += probs[i];
+    for (var i = 0, I = likes.length; i < I; ++i) {
+      result += likes[i];
     }
     return result;
   },
 
   normalize: function () {
     var total = this.total();
-    assert(0 < total, 'cannont normalize Pmf with zero mass');
+    assert(0 < total, 'cannont normalize Lmf with zero mass');
     var scale = 1.0 / total;
-    var probs = this.probs;
-    for (var i = 0, I = probs.length; i < I; ++i) {
-      probs[i] *= scale;
+    var likes = this.likes;
+    for (var i = 0, I = likes.length; i < I; ++i) {
+      likes[i] *= scale;
     }
+    return total;
   },
 
   entropy: function () {
-    var probs = this.probs;
+    var likes = this.likes;
     var result = 0;
-    for (var i = 0, I = probs.length; i < I; ++i) {
-      var p = probs[i];
+    for (var i = 0, I = likes.length; i < I; ++i) {
+      var p = likes[i];
       if (p > 0) {
         result += p * Math.log(p);
       }
@@ -280,101 +282,135 @@ Pmf.prototype = {
   },
 
   mean: function (values) {
-    var probs = this.probs;
-    assert(values.length === probs.length, 'mismatched length in Pmf.mean');
-    var result = 0;
-    for (var i = 0, I = probs.length; i < I; ++i) {
-      result += probs[i] * values[i];
+    var likes = this.likes;
+    assert(values.length === likes.length, 'mismatched length in Lmf.mean');
+    var sum_p = 0;
+    var sum_px = 0;
+    for (var i = 0, I = likes.length; i < I; ++i) {
+      var p = likes[i];
+      sum_p += p;
+      sum_px += p * values[i];
     }
-    return result;
+    assert(sum_p > 0, 'cannot compute mean WRT zero Lmf');
+    return sum_px / sum_p;
   },
 
-  shiftTowardsPmf: function (other, rate) {
-    var probs0 = this.probs;
-    var probs1 = other.probs;
-    assert(probs0.length === probs1.length,
-        'mismatched lengths in Pmf.shiftTowardsPmf');
+  shiftTowardsLmf: function (other, rate) {
+    var likes0 = this.likes;
+    var likes1 = other.likes;
+    assert(likes0.length === likes1.length,
+        'mismatched lengths in Lmf.shiftTowardsLmf');
     assert(0 <= rate && rate <= 1,
-        'bad rate in Pmf.shiftTowardsPmf: ' + rate);
+        'bad rate in Lmf.shiftTowardsLmf: ' + rate);
 
     var w0 = 1 - rate;
     var w1 = rate;
-    for (var i = 0, I = probs0.length; i < I; ++i) {
-      probs0[i] = w0 * probs0[i] + w1 * probs1[i];
+    for (var i = 0, I = likes0.length; i < I; ++i) {
+      likes0[i] = w0 * likes0[i] + w1 * likes1[i];
     }
   },
 
   shiftTowardsPoint: function (index, rate) {
-    var probs = this.probs;
-    assert(0 <= index && index < probs.length,
-        'bad index in Pmf.shiftTowardsPoint: ' + index);
+    var likes = this.likes;
+    assert(0 <= index && index < likes.length,
+        'bad index in Lmf.shiftTowardsPoint: ' + index);
     assert(0 <= rate && rate <= 1,
-        'bad rate in Pmf.shiftTowardsPoint: ' + rate);
+        'bad rate in Lmf.shiftTowardsPoint: ' + rate);
 
     var w0 = 1 - rate;
     var w1 = rate;
-    for (var i = 0, I = probs.length; i < I; ++i) {
-      probs[i] *= w0;
+    for (var i = 0, I = likes.length; i < I; ++i) {
+      likes[i] *= w0;
     }
-    probs[index] += w1;
+    likes[index] += w1;
   }
 };
 
-Pmf.degenerate = function (n, N) {
-  assert(0 <= n && n < N, 'bad indices in Pmf.denerate: ' + n + ', ' + N);
-  var result = new Pmf();
-  var probs = result.probs;
+Lmf.zero = function (N) {
+  assert(0 < N, 'bad length in Lmf.zero: ' + N);
+  var result = new Lmf();
+  var likes = result.likes;
   for (var i = 0; i < N; ++i) {
-    probs[i] = 0;
+    likes[i] = 0;
   }
-  probs[n] = 1;
   return result;
 };
 
-Pmf.boltzmann = function (energy, temperature) {
+Lmf.degenerate = function (n, N) {
+  assert(0 <= n && n < N, 'bad indices in Lmf.denerate: ' + n + ', ' + N);
+  var result = new Lmf();
+  var likes = result.likes;
+  for (var i = 0; i < N; ++i) {
+    likes[i] = 0;
+  }
+  likes[n] = 1;
+  return result;
+};
+
+Lmf.multiply = function (lhs, rhs) {
+  assert(lhs.length === rhs.length,
+      'length mismatch in Lmf.multiply');
+
+  var result = new Lmf();
+  x = lhs.likes;
+  y = rhs.likes;
+  var xy = result.likes;
+  for (var i = 0, I = x.length; i < I; ++i) {
+    xy[i] = x[i] * y[i];
+  }
+  return result;
+};
+
+Lmf.boltzmann = function (energy, temperature) {
   if (temperature === undefined) temperature = 1;
   assert(0 < temperature, 'temperature is not positive: ' + temperature);
-  var result = new Pmf();
-  var probs = result.probs;
+  var result = new Lmf();
+  var likes = result.likes;
   for (var i = 0, I = energy.length; i < I; ++i) {
-    probs[i] = Math.exp(-energy[i] / temperature);
+    likes[i] = Math.exp(-energy[i] / temperature);
   }
   result.normalize();
   return result;
 };
 
-test('Pmf.normalize', function(){
-  var pmf = new Pmf();
+test('Lmf.normalize', function(){
+  var pmf = new Lmf();
   for (var i = 0; i < 3; ++i) {
-    pmf.probs[i] = i;
+    pmf.likes[i] = i;
   }
   pmf.normalize();
-  assertEqual(pmf.probs, [0,1/3,2/3]);
+  assertEqual(pmf.likes, [0,1/3,2/3]);
 });
 
-test('assertEqual(Pmf.degenerate(1,4).probs, [0,1,0,0])');
+test('assertEqual(Lmf.zero(3).likes, [0,0,0])');
+test('assertEqual(Lmf.degenerate(1,4).likes, [0,1,0,0])');
+test('Lmf.multiply', function(){
+  var x = new Lmf([0,1,2,3]);
+  var y = new Lmf([3,2,1,0]);
+  assertEqual(Lmf.multiply(x,y).likes, [0,2,2,0]);
+});
 
-test('new Pmf(init)', function(){
+test('new Lmf(init)', function(){
   var init = [1,2,3];
-  var pmf = new Pmf(init);
+  var pmf = new Lmf(init);
   pmf.normalize();
   assertEqual(init, [1,2,3], 'init was changed');
-  assertEqual(pmf.probs, [1/6,2/6,3/6], 'probs is invalid');
+  assertEqual(pmf.likes, [1/6,2/6,3/6], 'likes is invalid');
 });
 
-test('Pmf.shiftTowardsPmf', function(){
-  var p0 = new Pmf([0,0,1]);
-  var p1 = new Pmf([0,1/2,1/2]);
+test('Lmf.shiftTowardsLmf', function(){
+  var p0 = new Lmf([0,0,1]);
+  var p1 = new Lmf([0,1/2,1/2]);
   var rate = 1/3;
-  p0.shiftTowardsPmf(p1, rate);
-  assertEqual(p0.probs, [0, 1/6, 5/6]);delaySec: 0.05
+  p0.shiftTowardsLmf(p1, rate);
+  assertEqual(p0.likes, [0, 1/6, 5/6]);delaySec: 0.05
 });
 
-test('Pmf.shiftTowardsPoint', function(){
-  var p0 = new Pmf([0,0,1]);
+test('Lmf.shiftTowardsPoint', function(){
+  var p0 = new Lmf([0,0,1]);
   var rate = 1/4;
   p0.shiftTowardsPoint(1, rate);
-  assertEqual(p0.probs, [0, 1/4, 3/4]);
+  assertEqual(p0.likes, [0, 1/4, 3/4]);
 });
 
 //------------------------------------------------------------------------------
@@ -398,8 +434,8 @@ var Harmony = function (radius) {
   }
 
   assert(this.length % 2, 'harmony does not have an odd number of points');
-  this.mass = Pmf.degenerate((this.length - 1) / 2, this.length);
-  this.dmass = Pmf.degenerate((this.length - 1) / 2, this.length);
+  this.mass = Lmf.degenerate((this.length - 1) / 2, this.length);
+  this.dmass = Lmf.zero(this.length);
 
   this.running = false;
 };
@@ -423,17 +459,16 @@ Harmony.prototype = {
     this.lastTime = now;
 
     var diffusionRate = 1 - Math.exp(-dt * this.diffuseRateKhz);
-    var prior = Pmf.boltzmann(this.getEnergy(), this.temperature);
-    this.mass.shiftTowardsPmf(prior, diffusionRate);
+    var prior = Lmf.boltzmann(this.getEnergy(), this.temperature);
+    this.mass.shiftTowardsLmf(prior, diffusionRate);
 
     var attackDecay = Math.exp(-dt * this.attackKhz);
     var attackRate = 1 / attackDecay - 1;
-    var probs = this.mass.probs;
-    var dprobs = this.dmass.probs;
-    for (var i = 0, I = probs.length; i < I; ++i) {
-      probs[i] += attackRate * (dprobs[i] *= attackDecay);
+    var likes = this.mass.likes;
+    var dlikes = this.dmass.likes;
+    for (var i = 0, I = likes.length; i < I; ++i) {
+      likes[i] += attackRate * (dlikes[i] *= attackDecay);
     }
-    this.mass.normalize();
 
     if (this.running) {
       var harmony = this;
@@ -442,13 +477,7 @@ Harmony.prototype = {
   },
 
   updateAddMass: function (index) {
-    assert(0 <= index && index < this.length, 'bad event index: ' + index);
-
-    var perplexity = this.mass.perplexity();
-    assert(perplexity > 1, 'perplexity not greater than 1: ' + perplexity);
-    var rate = 1 / (1 + perplexity);
-
-    this.dmass.probs[index] += rate;
+    this.dmass.likes[index] += 1;
   },
 
   getEnergy: function () {
@@ -465,7 +494,7 @@ Harmony.prototype = {
 test('Harmony.getEnergy', function(){
   var harmony = new Harmony(8);
   for (var i = 0; i < harmony.length; ++i) {
-    harmony.mass.probs[i] = i;
+    harmony.mass.likes[i] = i;
   }
   harmony.mass.normalize();
 
@@ -479,18 +508,18 @@ test('Harmony.getEnergy', function(){
 
 test('Harmony.updateDiffusion', function(){
   var harmony = new Harmony(8);
-  var probs = harmony.mass.probs;
-  assert(probs.length === harmony.length,
-      'harmony.probs has wrong length before update');
+  var likes = harmony.mass.likes;
+  assert(likes.length === harmony.length,
+      'harmony.likes has wrong length before update');
 
   harmony.lastTime = Date.now() - 500;
   harmony.updateDiffusion();
 
-  var probs = harmony.mass.probs;
-  assert(probs.length === harmony.length,
-      'harmony.probs has wrong length after update');
-  for (var i = 0; i < probs.length; ++i) {
-    assert(probs[i] > 0, 'probs is not positive: ' + JSON.stringify(probs));
+  var likes = harmony.mass.likes;
+  assert(likes.length === harmony.length,
+      'harmony.likes has wrong length after update');
+  for (var i = 0; i < likes.length; ++i) {
+    assert(likes[i] > 0, 'likes is not positive: ' + JSON.stringify(likes));
   }
 });
 
@@ -504,6 +533,7 @@ var Synthesizer = function (harmony) {
   this.delayMs = windowMs / 2;
   this.windowSamples = Math.floor(
       config.synth.windowSec * config.synth.sampleRateHz);
+  this.gain = config.synth.gain;
 
   var freqScale =
       2 * Math.PI * config.synth.centerFreqHz / config.synth.sampleRateHz;
@@ -542,6 +572,7 @@ Synthesizer.prototype = {
     this.worker.postMessage({
       cmd: 'init',
       data: {
+          gain: this.gain,
           freqs: this.freqs,
           windowSamples: this.windowSamples
         }
@@ -558,9 +589,8 @@ Synthesizer.prototype = {
   },
 
   update: function () {
-
-    var probs = this.harmony.mass.probs;
-    this.worker.postMessage({cmd:'synthesize', data:probs});
+    var mass = this.harmony.mass.likes;
+    this.worker.postMessage({cmd:'synthesize', data:mass});
   },
   play: function (uri) {
     var audio = new Audio(uri);
@@ -677,8 +707,8 @@ Keyboard.prototype = {
     // vertical bands with height-varying temperature
     var geometryYX = [];
     for (var y = 0; y < Y; ++y) {
-      var temperature = Y / (Y - y);
-      var width = Pmf.boltzmann(energy, temperature).probs;
+      var temperature = this.harmony.temperature * Y / (Y - y);
+      var width = Lmf.boltzmann(energy, temperature).likes;
 
       var geom = geometryYX[y] = [0];
       for (var x = 0; x < X; ++x) {
@@ -700,8 +730,8 @@ Keyboard.prototype = {
     var massLog = 0;
     var meanLog = 0;
     var varLog = 0;
-    for (var i = 0, I = mass.probs.length; i < I; ++i) {
-      var p = mass.probs[i];
+    for (var x = 0; x < X; ++x) {
+      var p = mass.likes[x];
       if (p > 0) {
         var l = Math.log(p);
         massLog += p;
@@ -713,15 +743,12 @@ Keyboard.prototype = {
     varLog /= massLog;
     varLog -= meanLog * meanLog;
 
-    //var probs = Pmf.boltzmann(energy).probs;
-    var probs = mass.probs;
     var colorShift = -meanLog;
     var colorScale = 1 / Math.sqrt(varLog);
     var color = this.color = [];
     for (var x = 0; x < X; ++x) {
-      var prob = probs[x];
-      var colorStd = colorScale * (colorShift + Math.log(prob));
-      color[x] = Math.atan(colorStd);
+      var colorStd = colorScale * (colorShift + Math.log(mass.likes[x]));
+      color[x] = Math.atan(colorStd / 2);
     }
 
     var colorShift = -Math.min.apply(Math, color);
@@ -792,7 +819,7 @@ test('Keyboard.updateGeometry', function(){
 
   var harmony = new Harmony(4);
   for (var x = 0; x < harmony.length; ++x) {
-    harmony.mass.probs[x] = 0.01 + x;
+    harmony.mass.likes[x] = 0.01 + x;
   }
   harmony.mass.normalize();
 
@@ -835,7 +862,7 @@ test('Keyboard.draw', function(){
 
   var harmony = new Harmony(4);
   for (var i = 0; i < harmony.length; ++i) {
-    harmony.mass.probs[i] = i;
+    harmony.mass.likes[i] = i;
   }
   harmony.mass.normalize();
 

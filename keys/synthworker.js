@@ -24,6 +24,7 @@ var log = function (message) {
 // Commands
 
 var init = function (data) {
+  self.gain = data.gain;
   self.freqs = data.freqs;
   self.F = self.freqs.length;
   self.T = data.windowSamples;
@@ -31,10 +32,10 @@ var init = function (data) {
   self.initialized = true;
 };
 
-var synthesize = function (probs) {
+var synthesize = function (mass) {
   assert(self.initialized, 'worker has not been initialized');
-  assert(probs.length === self.freqs.length,
-      'probs,freqs have different length');
+  assert(mass.length === self.freqs.length,
+      'mass,freqs have different length');
 
   var freqs = self.freqs;
   var F = self.F;
@@ -42,9 +43,9 @@ var synthesize = function (probs) {
 
   var amps = [];
   var normalizeEnvelope = 4 / ((T+1) * (T+1));
+  var gain = self.gain * normalizeEnvelope * Math.sqrt(freqs[0]);
   for (var f = 0; f < F; ++f) {
-    amps[f] = normalizeEnvelope * Math.sqrt(probs[f])
-            * Math.sqrt(freqs[0] / freqs[f]);
+    amps[f] = gain * Math.sqrt(mass[f] / freqs[f]);
   }
 
   var G = 0;
