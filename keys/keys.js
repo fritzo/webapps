@@ -436,6 +436,7 @@ var Harmony = function (radius) {
   this.temperature = config.harmony.temperature;
   this.delayMs = 1000 / config.harmony.updateHz;
 
+  // TODO dynamically add & remove points based on prior
   this.points = Rational.ball(radius);
   this.length = this.points.length;
 
@@ -763,6 +764,7 @@ Keyboard.prototype = {
 
   draw: function () {
     var geom = this.geometry;
+    var color = this.color;
     var context = this.context;
 
     var X = geom.length - 1;
@@ -774,8 +776,8 @@ Keyboard.prototype = {
     context.clearRect(0, 0, W+1, H+1);
 
     for (var x = 0; x < X; ++x) {
-      var r = Math.round(255 * Math.min(1, this.color[x] + this.active[x]));
-      var g = Math.round(255 * Math.max(0, this.color[x] - this.active[x]));
+      var r = Math.round(255 * Math.min(1, color[x] + this.active[x]));
+      var g = Math.round(255 * Math.max(0, color[x] - this.active[x]));
       if (r === 0) continue;
       context.fillStyle = 'rgb(' + r + ',' + g + ',' + g + ')';
 
@@ -795,6 +797,25 @@ Keyboard.prototype = {
       }
       context.closePath();
       context.fill();
+    }
+
+    var textThresh = 0.5;
+    for (var x = 0; x < X; ++x) {
+      var c = color[x];
+      if (c > textThresh) {
+        var point = this.harmony.points[x];
+        var opacity = Math.sqrt((c - textThresh) / (1 - textThresh));
+        context.fillStyle = 'rgba(0,0,0,' + opacity + ')';
+        context.font = '10pt Helvetica';
+        context.textAlign = 'center';
+
+        var posX = W * (geom[x][1] + geom[x+1][1]) / 2;
+        var posY = H - 12;
+
+        context.fillText(point.numer, posX, posY - 8);
+        context.fillText('\u2013', posX, posY); // 2014,2015 are wider
+        context.fillText(point.denom, posX, posY + 8);
+      }
     }
   },
 
