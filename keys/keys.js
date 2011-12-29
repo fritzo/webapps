@@ -7,15 +7,15 @@ var config = {
     diffusionSec: 1.0,
     attackSec: 0.1,
     backgroundGain: 0.2,
-    temperature: 2,
+    temperature: 3,
     updateHz: 60
   },
 
   synth: {
     sampleRateHz: 22050,
-    centerFreqHz: 440.0,
+    centerFreqHz: 261.625565, // middle C
     windowSec: 0.2,
-    gain: 0.5
+    gain: 1.0
   },
 
   keyboard: {
@@ -721,7 +721,7 @@ Keyboard.prototype = {
     // vertical bands with height-varying temperature
     var geometryYX = [];
     for (var y = 0; y < Y; ++y) {
-      var temperature = this.harmony.temperature * Y / (Y - y);
+      var temperature = this.harmony.temperature / (1 - 0.8 * y / (Y-1));
       var width = Lmf.boltzmann(energy, temperature).likes;
 
       var geom = geometryYX[y] = [0];
