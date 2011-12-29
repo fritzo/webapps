@@ -5,7 +5,7 @@ var config = {
     radius: 14.25, // 99 keys
     diffuseSec: 2.0,
     attackSec: 0.1,
-    temperature: 2.0,
+    temperature: Math.sqrt(2),
     updateHz: 60
   },
 
@@ -436,6 +436,7 @@ var Harmony = function (radius) {
   assert(this.length % 2, 'harmony does not have an odd number of points');
   this.mass = Lmf.degenerate((this.length - 1) / 2, this.length);
   this.dmass = Lmf.zero(this.length);
+  this.prior = Lmf.boltzmann(this.getEnergy(), this.temperature);
 
   this.running = false;
 };
@@ -460,6 +461,7 @@ Harmony.prototype = {
 
     var diffusionRate = 1 - Math.exp(-dt * this.diffuseRateKhz);
     var prior = Lmf.boltzmann(this.getEnergy(), this.temperature);
+    this.prior.shiftTowardsLmf(prior, diffusionRate);
     this.mass.shiftTowardsLmf(prior, diffusionRate);
 
     var attackDecay = Math.exp(-dt * this.attackKhz);
@@ -726,35 +728,11 @@ Keyboard.prototype = {
       }
     }
 
-    // accumulate statistics for color
-    var massLog = 0;
-    var meanLog = 0;
-    var varLog = 0;
-    for (var x = 0; x < X; ++x) {
-      var p = mass.likes[x];
-      if (p > 0) {
-        var l = Math.log(p);
-        massLog += p;
-        meanLog += p * l;
-        varLog += p * l * l;
-      }
-    }
-    meanLog /= massLog;
-    varLog /= massLog;
-    varLog -= meanLog * meanLog;
-
-    var colorShift = -meanLog;
-    var colorScale = 1 / Math.sqrt(varLog);
+    var colorParam = this.harmony.prior.likes;
+    var colorScale = 1 / Math.max.apply(Math, colorParam);
     var color = this.color = [];
     for (var x = 0; x < X; ++x) {
-      var colorStd = colorScale * (colorShift + Math.log(mass.likes[x]));
-      color[x] = Math.atan(colorStd / 2);
-    }
-
-    var colorShift = -Math.min.apply(Math, color);
-    var colorScale = 1 / (Math.max.apply(Math, color) + colorShift);
-    for (var x = 0; x < X; ++x) {
-      color[x] = colorScale * (colorShift + color[x]);
+      color[x] = Math.sqrt(colorScale * colorParam[x]);
     }
   },
 
