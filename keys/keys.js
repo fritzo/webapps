@@ -730,9 +730,12 @@ Keyboard.prototype = {
 
     var colorParam = this.harmony.prior.likes;
     var colorScale = 1 / Math.max.apply(Math, colorParam);
+    var activeParam = this.harmony.dmass.likes;
     var color = this.color = [];
+    var active = this.active = [];
     for (var x = 0; x < X; ++x) {
       color[x] = Math.sqrt(colorScale * colorParam[x]);
+      active[x] = 1 - Math.exp(-activeParam[x]);
     }
   },
 
@@ -749,9 +752,10 @@ Keyboard.prototype = {
     context.clearRect(0, 0, W+1, H+1);
 
     for (var x = 0; x < X; ++x) {
-      var c = Math.round(255 * this.color[x]);
-      if (c === 0) continue;
-      context.fillStyle = 'rgb(' + c + ',' + c + ',' + c + ')';
+      var r = Math.round(255 * Math.min(1, this.color[x] + this.active[x]));
+      var g = Math.round(255 * Math.max(0, this.color[x] - this.active[x]));
+      if (r === 0) continue;
+      context.fillStyle = 'rgb(' + r + ',' + g + ',' + g + ')';
 
       var lhs = geom[x];
       var rhs = geom[x+1];
