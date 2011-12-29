@@ -765,6 +765,7 @@ Keyboard.prototype = {
   draw: function () {
     var geom = this.geometry;
     var color = this.color;
+    var points = this.harmony.points;
     var context = this.context;
 
     var X = geom.length - 1;
@@ -799,21 +800,21 @@ Keyboard.prototype = {
       context.fill();
     }
 
-    var textThresh = 0.5;
+    var textThresh = 0.4;
+    context.font = '10pt Helvetica';
+    context.textAlign = 'center';
     for (var x = 0; x < X; ++x) {
       var c = color[x];
       if (c > textThresh) {
-        var point = this.harmony.points[x];
         var opacity = Math.sqrt((c - textThresh) / (1 - textThresh));
         context.fillStyle = 'rgba(0,0,0,' + opacity + ')';
-        context.font = '10pt Helvetica';
-        context.textAlign = 'center';
 
         var posX = W * (geom[x][1] + geom[x+1][1]) / 2;
         var posY = H - 12;
 
+        var point = points[x];
         context.fillText(point.numer, posX, posY - 8);
-        context.fillText('\u2013', posX, posY); // 2014,2015 are wider
+        context.fillText('\u2013', posX, posY - 1); // 2014,2015 are wider
         context.fillText(point.denom, posX, posY + 8);
       }
     }
