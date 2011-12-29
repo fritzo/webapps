@@ -4,7 +4,8 @@ var config = {
     //radius: 13, // 77 keys
     radius: 14.25, // 99 keys
     priorSec: 8.0,
-    diffusionSec: 1.0,
+    priorWidthOctaves: 4.0,
+    sustainSec: 1.0,
     attackSec: 0.1,
     backgroundGain: 0.2,
     temperature: 3,
@@ -427,9 +428,11 @@ test('Lmf.shiftTowardsPoint', function(){
 
 var Harmony = function (radius) {
   this.priorRateKhz = 1e-3 / config.harmony.priorSec;
-  this.diffusionRateKhz = 1e-3 / config.harmony.diffusionSec;
+  this.sustainRateKhz = 1e-3 / config.harmony.sustainSec;
   this.attackKhz = 1e-3 / config.harmony.attackSec;
   this.backgroundGain = config.harmony.backgroundGain;
+  this.logFreqVariance =
+    Math.pow(config.harmony.priorWidthOctaves * Math.log(2), 2);
   this.temperature = config.harmony.temperature;
   this.delayMs = 1000 / config.harmony.updateHz;
 
@@ -442,6 +445,12 @@ var Harmony = function (radius) {
     for (var j = 0; j < this.length; ++j) {
       row[j] = Rational.dist(this.points[i], this.points[j]);
     }
+  }
+  
+  var freqEnergy = this.freqEnergy = [];
+  for (var i = 0; i < this.length; ++i) {
+    var logFreq = Math.log(this.points[i].toNumber());
+    freqEnergy[i] = 0.5 * logFreq * logFreq / this.logFreqVariance;
   }
 
   assert(this.length % 2, 'harmony does not have an odd number of points');
@@ -474,9 +483,9 @@ Harmony.prototype = {
     var newPrior = Lmf.boltzmann(this.getEnergy(this.mass), this.temperature);
     this.prior.shiftTowardsLmf(newPrior, priorRate);
 
-    var diffusionRate = 1 - Math.exp(-dt * this.diffusionRateKhz);
+    var sustainRate = 1 - Math.exp(-dt * this.sustainRateKhz);
     newPrior.scale(this.backgroundGain);
-    this.mass.shiftTowardsLmf(newPrior, diffusionRate);
+    this.mass.shiftTowardsLmf(newPrior, sustainRate);
 
     var attackDecay = Math.exp(-dt * this.attackKhz);
     var attackRate = 1 / attackDecay - 1;
@@ -499,8 +508,9 @@ Harmony.prototype = {
   getEnergy: function (mass) {
     var energy = [];
     var energyMatrix = this.energyMatrix;
+    var freqEnergy = this.freqEnergy;
     for (var i = 0, I = this.length; i < I; ++i) {
-      energy[i] = mass.mean(energyMatrix[i]);
+      energy[i] = mass.mean(energyMatrix[i]) + freqEnergy[i];
     }
     return energy;
   }
