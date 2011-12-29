@@ -16,6 +16,10 @@ var assert = function (condition, message) {
   }
 };
 
+var log = function (message) {
+  self.postMessage({type:'log', data:message});
+};
+
 //------------------------------------------------------------------------------
 // Commands
 
@@ -29,24 +33,39 @@ var init = function (data) {
 
 var synthesize = function (probs) {
   assert(self.initialized, 'worker has not been initialized');
+  assert(probs.length === self.freqs.length,
+      'probs,freqs have different length');
+
   var freqs = self.freqs;
   var F = self.F;
   var T = self.T;
 
+  var amps = [];
   var normalizeEnvelope = 4 / ((T+1) * (T+1));
-  assert(probs.length === F, 'probs,freqs have different length');
-
-  var amp = [];
   for (var f = 0; f < F; ++f) {
-    amp[f] = normalizeEnvelope * Math.sqrt(probs[f])
-           * Math.sqrt(freqs[0] / freqs[f]);
+    amps[f] = normalizeEnvelope * Math.sqrt(probs[f])
+            * Math.sqrt(freqs[0] / freqs[f]);
   }
+
+  var G = 0;
+  var ampsG = [];
+  var freqsG = [];
+  var ampThresh = 1e-2 * Math.max.apply(Math, amps);
+  for (var f = 0; f < F; ++f) {
+    var amp = amps[f];
+    if (amp > ampThresh) {
+      ampsG[G] = amp;
+      freqsG[G] = freqs[f];
+      ++G;
+    }
+  }
+  //log('using top ' + G + ' frequencies');
 
   var samples = [];
   for (var t = 0; t < T; ++t) {
     var chord = 0;
-    for (var f = 0; f < F; ++f) {
-      chord += amp[f] * Math.sin(freqs[f] * t);
+    for (var g = 0; g < G; ++g) {
+      chord += ampsG[g] * Math.sin(freqsG[g] * t);
     }
     chord *= (t + 1) * (T - t); // envelope
     chord /= Math.sqrt(1 + chord * chord); // clip

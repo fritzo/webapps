@@ -1,7 +1,8 @@
 
 var config = {
   harmony: {
-    radius: 13,
+    //radius: 13, // 77 keys
+    radius: 14.25, // 99 keys
     diffuseSec: 1.0,
     attackSec: 0.1,
     temperature: 1.0,
@@ -528,6 +529,10 @@ Synthesizer.prototype = {
               synth.play(data.data);
               break;
 
+            case 'log':
+              log(data.data);
+              break;
+
             case 'error':
               log('Worker Error: ' + data.data);
               break;
@@ -871,7 +876,7 @@ $(document).ready(function(){
       }).resize();
 
   if (window.location.hash && window.location.hash.substr(1) === 'test') {
-    document.title = 'Keys - Unit Test';
+    document.title = 'The Rational Keyboard - Unit Test';
     test.runAll();
     return;
   }
@@ -880,7 +885,7 @@ $(document).ready(function(){
   var synthesizer = new Synthesizer(harmony);
   var keyboard = new Keyboard(harmony);
 
-  document.title = harmony.length + ' Keys';
+  log('using ' + harmony.lenth + ' keys');
 
   harmony.start();
   keyboard.start();
