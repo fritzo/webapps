@@ -887,8 +887,32 @@ $(document).ready(function(){
 
   log('using ' + harmony.lenth + ' keys');
 
-  harmony.start();
-  keyboard.start();
-  synthesizer.start();
+
+  var running = false;
+  var toggleRunning = function () {
+    if (running) {
+      document.title = 'The Rational Keyboard (paused)';
+      synthesizer.stop();
+      keyboard.stop();
+      harmony.stop();
+      running = false;
+    } else {
+      document.title = 'The Rational Keyboard';
+      harmony.start();
+      keyboard.start();
+      synthesizer.start();
+      running = true;
+    }
+  };
+
+  $(document).on('keyup', function (e) {
+        switch (e.which) {
+          case 27:
+            toggleRunning();
+            break;
+            }
+      });
+
+  toggleRunning();
 });
 
