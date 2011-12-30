@@ -27,6 +27,7 @@ var init = function (data) {
   self.gain = data.gain;
   self.freqs = data.freqs;
   self.centerFreq = self.freqs[(self.freqs.length - 1) / 2];
+  self.relThresh = data.relThresh;
   self.F = self.freqs.length;
   self.T = data.windowSamples;
 
@@ -46,22 +47,22 @@ var synthesize = function (mass) {
   var normalizeEnvelope = 4 / ((T+1) * (T+1));
   var gain = self.gain * normalizeEnvelope * Math.sqrt(self.centerFreq);
   for (var f = 0; f < F; ++f) {
-    amps[f] = gain * Math.sqrt(mass[f] / freqs[f]);
+    amps[f] = gain * Math.sqrt(mass[f]);
   }
 
   var G = 0;
   var ampsG = [];
   var freqsG = [];
-  var ampThresh = 1e-2 * Math.max.apply(Math, amps);
+  var ampThresh = self.relThresh * Math.max.apply(Math, amps);
   for (var f = 0; f < F; ++f) {
     var amp = amps[f];
     if (amp > ampThresh) {
-      ampsG[G] = amp;
+      ampsG[G] = amp / Math.sqrt(freqs[f]);
       freqsG[G] = freqs[f];
       ++G;
     }
   }
-  //log('using top ' + G + ' frequencies');
+  //log('using top ' + G + '/' + F + ' frequencies');
 
   var samples = [];
   for (var t = 0; t < T; ++t) {

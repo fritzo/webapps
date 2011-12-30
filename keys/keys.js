@@ -1,8 +1,10 @@
 
 var config = {
   harmony: {
+    //radius: 11.44, // 63 keys
     //radius: 13, // 77 keys
-    radius: 14.25, // 99 keys
+    //radius: 14.25, // 99 keys
+    radius: 16.45, // 127 keys
     priorSec: 8.0,
     priorWidthOctaves: 4.0,
     sustainSec: 1.0,
@@ -17,7 +19,8 @@ var config = {
     centerFreqHz: 261.625565, // middle C
     windowSec: 0.2,
     onsetGain: 2.0,
-    sustainGain: 0.3
+    sustainGain: 0.3,
+    relThresh: 1/10
   },
 
   keyboard: {
@@ -211,7 +214,7 @@ test('Rational.ball', function(){
 });
 
 test('Rational.ball of size 88', function(){
-  var target = 99; // needs to be odd; 88 is even
+  var target = 63; // needs to be odd; 88 is even
   var f = function(r) { return Rational.ball(r).length; }
 
   var r0, r1;
@@ -262,7 +265,6 @@ Lmf.prototype = {
     for (var i = 0, I = likes.length; i < I; ++i) {
       likes[i] *= scale;
     }
-    return total;
   },
 
   scale: function (s) {
@@ -539,6 +541,7 @@ var Synthesizer = function (harmony) {
       config.synth.windowSec * config.synth.sampleRateHz);
   this.sustainGain = config.synth.sustainGain;
   this.onsetGain = config.synth.onsetGain;
+  this.relThresh = config.synth.relThresh;
 
   var centerFreq = this.centerFreq =
     2 * Math.PI * config.synth.centerFreqHz / config.synth.sampleRateHz;
@@ -583,6 +586,7 @@ Synthesizer.prototype = {
       data: {
           gain: this.sustainGain,
           freqs: this.freqs,
+          relThresh: this.relThresh,
           windowSamples: this.windowSamples
         }
       });
@@ -784,6 +788,7 @@ Keyboard.prototype = {
 
       var lhs = geom[x];
       var rhs = geom[x+1];
+      if (rhs[Y-1] - lhs[Y-1] < 2 / W) continue;
       context.beginPath();
       context.moveTo(W * lhs[Y-1], 0);
       for (y = Y-2; y > 0; --y) {
@@ -848,7 +853,6 @@ test('Keyboard.updateGeometry', function(){
   for (var x = 0; x < harmony.length; ++x) {
     harmony.mass.likes[x] = 0.01 + x;
   }
-  harmony.mass.normalize();
 
   var synthesizer = new Synthesizer(harmony);
   var keyboard = new Keyboard(harmony, synthesizer);
@@ -892,7 +896,6 @@ test('Keyboard.draw', function(){
   for (var i = 0; i < harmony.length; ++i) {
     harmony.mass.likes[i] = i;
   }
-  harmony.mass.normalize();
 
   var synthesizer = new Synthesizer(harmony);
   var keyboard = new Keyboard(harmony, synthesizer);
@@ -947,7 +950,7 @@ $(document).ready(function(){
   var synthesizer = new Synthesizer(harmony);
   var keyboard = new Keyboard(harmony, synthesizer);
 
-  log('using ' + harmony.lenth + ' keys');
+  log('using ' + harmony.length + ' keys');
 
   var running = false;
   var toggleRunning = function () {
