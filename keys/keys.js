@@ -747,30 +747,32 @@ Keyboard.prototype = {
 
   updateGeometry: function () {
     var X = this.harmony.length;
-    var Y = Math.floor(2 + Math.sqrt(window.innerHeight));
+    var Y = Math.floor(
+        2 + Math.sqrt((window.innerHeight + window.innerWidth) / 2));
     var keyExponent = 6;
 
     var energy = this.harmony.getEnergy(this.harmony.prior);
     var probs = Lmf.boltzmann(energy);
-    probs.scale((1 - 1 / keyExponent) / Math.max.apply(Math, probs.likes));
+    probs.scale((1 - 0.5 / keyExponent) / Math.max.apply(Math, probs.likes));
     probs = this.probs = probs.likes;
 
     // vertical bands of varying width
     var geometryYX = [];
+    var width = new Lmf();
+    var widthLikes = width.likes;
     for (var y = 0; y < Y; ++y) {
       var y01 = (y + 0.5) / Y;
-      var width = new Lmf();
+
       for (var x = 0; x < X; ++x) {
         var p = probs[x];
-        //width.likes[x] = Math.pow(p, 1 - 0.8 * y/(Y-1));
-        width.likes[x] = Math.pow(p, keyExponent * (1 - y01))
-                       * Math.pow(1-p, keyExponent * y01);
+        widthLikes[x] = Math.pow(p, keyExponent * (1 - y01))
+                      * Math.pow(1-p, keyExponent * y01);
       }
       width.normalize();
 
       var geom = geometryYX[y] = [0];
       for (var x = 0; x < X; ++x) {
-        geom[x+1] = geom[x] + width.likes[x];
+        geom[x+1] = geom[x] + widthLikes[x];
       }
       geom[X] = 1;
     }
@@ -800,6 +802,7 @@ Keyboard.prototype = {
     var color = this.color;
     var points = this.harmony.points;
     var context = this.context;
+    var probs = this.probs;
 
     var X = geom.length - 1;
     var Y = geom[0].length;
@@ -808,11 +811,12 @@ Keyboard.prototype = {
 
     context.fillStyle = 'rgb(0,0,0)';
     context.clearRect(0, 0, W+1, H+1);
+    var colorThresh = 2;
 
     for (var x = 0; x < X; ++x) {
       var r = Math.round(255 * Math.min(1, color[x] + this.active[x]));
       var g = Math.round(255 * Math.max(0, color[x] - this.active[x]));
-      if (r < 2) continue;
+      if (r < colorThresh) continue;
       context.fillStyle = 'rgb(' + r + ',' + g + ',' + g + ')';
 
       var lhs = geom[x];
@@ -830,7 +834,7 @@ Keyboard.prototype = {
       for (y = 0; y < Y; ++y) {
         context.lineTo(W * rhs[y], H * (1 - y / (Y - 1)));
       }
-      context.closePath();
+      //context.closePath();
       context.fill();
     }
 
@@ -843,7 +847,7 @@ Keyboard.prototype = {
         var opacity = Math.sqrt((c - textThresh) / (1 - textThresh));
         context.fillStyle = 'rgba(0,0,0,' + opacity + ')';
 
-        var p = this.probs[x];
+        var p = probs[x];
         var py = (1-p) * (Y-1);
         var y0 = Math.floor(py);
         var y1 = 1 + y0;
