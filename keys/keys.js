@@ -10,7 +10,7 @@ var config = {
     priorWidthOctaves: 4.0,
     sustainSec: 1.0,
     attackSec: 0.1,
-    backgroundGain: 0.2,
+    backgroundGain: 0.3,
     updateHz: 60
   },
 
@@ -20,7 +20,7 @@ var config = {
     windowSec: 0.2,
     onsetGain: 2.0,
     sustainGain: 0.3,
-    numVoices: 16
+    numVoices: 24
   },
 
   keyboard: {
@@ -783,7 +783,7 @@ Keyboard.prototype = {
     for (var x = 0; x < X; ++x) {
       var r = Math.round(255 * Math.min(1, color[x] + this.active[x]));
       var g = Math.round(255 * Math.max(0, color[x] - this.active[x]));
-      if (r === 0) continue;
+      if (r < 2) continue;
       context.fillStyle = 'rgb(' + r + ',' + g + ',' + g + ')';
 
       var lhs = geom[x];
