@@ -27,7 +27,7 @@ var init = function (data) {
   self.gain = data.gain;
   self.freqs = data.freqs;
   self.centerFreq = self.freqs[(self.freqs.length - 1) / 2];
-  self.relThresh = data.relThresh;
+  self.numVoices = data.numVoices;
   self.F = self.freqs.length;
   self.T = data.windowSamples;
 
@@ -44,31 +44,29 @@ var synthesize = function (mass) {
   var T = self.T;
 
   var amps = [];
+  var best = [];
   var normalizeEnvelope = 4 / ((T+1) * (T+1));
   var gain = self.gain * normalizeEnvelope * Math.sqrt(self.centerFreq);
   for (var f = 0; f < F; ++f) {
     amps[f] = gain * Math.sqrt(mass[f]);
+    best[f] = f;
   }
+  best.sort(function(i,j){ return amps[j] - amps[i]; });
 
-  var G = 0;
-  var ampsG = [];
-  var freqsG = [];
-  var ampThresh = self.relThresh * Math.max.apply(Math, amps);
-  for (var f = 0; f < F; ++f) {
-    var amp = amps[f];
-    if (amp > ampThresh) {
-      ampsG[G] = amp / Math.sqrt(freqs[f]);
-      freqsG[G] = freqs[f];
-      ++G;
-    }
+  var G = self.numVoices;
+  var bestAmps = [];
+  var bestFreqs = [];
+  for (var g = 0; g < G; ++g) {
+    var f = best[g];
+    bestAmps[g] = amps[f] / Math.sqrt(freqs[f]);
+    bestFreqs[g] = freqs[f];
   }
-  //log('using top ' + G + '/' + F + ' frequencies');
 
   var samples = [];
   for (var t = 0; t < T; ++t) {
     var chord = 0;
     for (var g = 0; g < G; ++g) {
-      chord += ampsG[g] * Math.sin(freqsG[g] * t);
+      chord += bestAmps[g] * Math.sin(bestFreqs[g] * t);
     }
     chord *= (t + 1) * (T - t); // envelope
     chord /= Math.sqrt(1 + chord * chord); // clip

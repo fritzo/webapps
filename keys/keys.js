@@ -20,7 +20,7 @@ var config = {
     windowSec: 0.2,
     onsetGain: 2.0,
     sustainGain: 0.3,
-    relThresh: 1/10
+    numVoices: 16
   },
 
   keyboard: {
@@ -541,7 +541,7 @@ var Synthesizer = function (harmony) {
       config.synth.windowSec * config.synth.sampleRateHz);
   this.sustainGain = config.synth.sustainGain;
   this.onsetGain = config.synth.onsetGain;
-  this.relThresh = config.synth.relThresh;
+  this.numVoices = Math.min(harmony.length, config.synth.numVoices);
 
   var centerFreq = this.centerFreq =
     2 * Math.PI * config.synth.centerFreqHz / config.synth.sampleRateHz;
@@ -586,7 +586,7 @@ Synthesizer.prototype = {
       data: {
           gain: this.sustainGain,
           freqs: this.freqs,
-          relThresh: this.relThresh,
+          numVoices: this.numVoices,
           windowSamples: this.windowSamples
         }
       });
