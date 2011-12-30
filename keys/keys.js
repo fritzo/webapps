@@ -1,16 +1,16 @@
 
 var config = {
   harmony: {
-    //radius: 11.44, // 63 keys
-    //radius: 13, // 77 keys
-    //radius: 14.25, // 99 keys
-    radius: 16.45, // 127 keys
+    //maxRadius: 11.44, // 63 keys
+    //maxRadius: 13, // 77 keys
+    //maxRadius: 14.25, // 99 keys
+    maxRadius: 16.45, // 127 keys
     priorSec: 8.0,
+    priorRadius: 3,
     priorWidthOctaves: 4.0,
     sustainSec: 1.0,
     attackSec: 0.1,
     backgroundGain: 0.2,
-    temperature: 3,
     updateHz: 60
   },
 
@@ -410,9 +410,9 @@ var Harmony = function (radius) {
   this.sustainRateKhz = 1e-3 / config.harmony.sustainSec;
   this.attackKhz = 1e-3 / config.harmony.attackSec;
   this.backgroundGain = config.harmony.backgroundGain;
+  this.priorRadius = config.harmony.priorRadius;
   this.logFreqVariance =
     Math.pow(config.harmony.priorWidthOctaves * Math.log(2), 2);
-  this.temperature = config.harmony.temperature;
   this.delayMs = 1000 / config.harmony.updateHz;
 
   // TODO dynamically add & remove points based on prior
@@ -436,7 +436,7 @@ var Harmony = function (radius) {
   assert(this.length % 2, 'harmony does not have an odd number of points');
   this.mass = Lmf.degenerate((this.length - 1) / 2, this.length);
   this.dmass = Lmf.zero(this.length);
-  this.prior = Lmf.boltzmann(this.getEnergy(this.mass), this.temperature);
+  this.prior = Lmf.boltzmann(this.getEnergy(this.mass));
 
   this.running = false;
 };
@@ -460,7 +460,7 @@ Harmony.prototype = {
     this.lastTime = now;
 
     var priorRate = 1 - Math.exp(-dt * this.priorRateKhz);
-    var newPrior = Lmf.boltzmann(this.getEnergy(this.mass), this.temperature);
+    var newPrior = Lmf.boltzmann(this.getEnergy(this.mass));
     this.prior.shiftTowardsLmf(newPrior, priorRate);
 
     var sustainRate = 1 - Math.exp(-dt * this.sustainRateKhz);
@@ -488,10 +488,10 @@ Harmony.prototype = {
   getEnergy: function (mass) {
     var energyMatrix = this.energyMatrix;
     var freqEnergy = this.freqEnergy;
-    var massScale = 1 / mass.total();
+    var radiusScale = 1 / mass.total() / this.priorRadius;
     var energy = [];
     for (var i = 0, I = this.length; i < I; ++i) {
-      energy[i] = massScale * mass.dot(energyMatrix[i]) + freqEnergy[i];
+      energy[i] = radiusScale * mass.dot(energyMatrix[i]) + freqEnergy[i];
     }
     return energy;
   }
@@ -736,7 +736,7 @@ Keyboard.prototype = {
     // vertical bands with height-varying temperature
     var geometryYX = [];
     for (var y = 0; y < Y; ++y) {
-      var temperature = this.harmony.temperature / (1 - 0.8 * y / (Y-1));
+      var temperature = 1 / (1 - 0.8 * y / (Y-1));
       var width = Lmf.boltzmann(energy, temperature).likes;
 
       var geom = geometryYX[y] = [0];
@@ -946,7 +946,7 @@ $(document).ready(function(){
     return;
   }
 
-  var harmony = new Harmony(config.harmony.radius);
+  var harmony = new Harmony(config.harmony.maxRadius);
   var synthesizer = new Synthesizer(harmony);
   var keyboard = new Keyboard(harmony, synthesizer);
 
