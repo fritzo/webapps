@@ -15,6 +15,7 @@ var config = {
   synth: {
     sampleRateHz: 22050,
     centerFreqHz: 261.625565, // middle C
+    onsetGain: 2.0,
     windowSec: 0.2,
     gain: 1.0
   },
@@ -560,12 +561,17 @@ var Synthesizer = function (harmony) {
   this.windowSamples = Math.floor(
       config.synth.windowSec * config.synth.sampleRateHz);
   this.gain = config.synth.gain;
+  this.onsetGain = config.synth.onsetGain;
 
-  var freqScale =
-      2 * Math.PI * config.synth.centerFreqHz / config.synth.sampleRateHz;
-  this.freqs = harmony.points.map(function(q){
-        return freqScale * q.toNumber();
+  var centerFreq = this.centerFreq =
+    2 * Math.PI * config.synth.centerFreqHz / config.synth.sampleRateHz;
+  var freqs = this.freqs = harmony.points.map(function(q){
+        return centerFreq * q.toNumber();
       });
+  var onsets = this.onsets = [];
+  for (var i = 0; i < freqs.length; ++i) {
+    onsets[i] = this.synthesizeOnset(freqs[i]);
+  }
 
   this.running = false;
   this.targetTime = Date.now();
@@ -629,7 +635,23 @@ Synthesizer.prototype = {
       var synth = this;
       setTimeout(function () { audio.play(); synth.update(); }, delay);
     }
+  },
 
+  synthesizeOnset: function (freq) {
+    var T = 2 * this.windowSamples;
+    var amp = this.onsetGain * Math.sqrt(this.centerFreq / freq) / T;
+    var samples = [];
+    for (var t = 0; t < T; ++t) {
+      var tone = amp * (T - t) * Math.sin(freq * t);
+      tone /= Math.sqrt(1 + tone * tone); // clip
+      samples[t] = Math.round(255/2 * (tone + 1)); // quantize
+    }
+
+    var wave = new RIFFWAVE(samples);
+    return wave.dataURI;
+  },
+  playOnset: function (index) {
+    (new Audio(this.onsets[index])).play();
   }
 };
 
@@ -682,8 +704,9 @@ test('Synthesizer.worker', function(){
 //------------------------------------------------------------------------------
 // Visualization
 
-var Keyboard = function (harmony) {
+var Keyboard = function (harmony, synthesizer) {
   this.harmony = harmony;
+  this.synthesizer = synthesizer;
   this.delayMs = 1000 / config.keyboard.updateHz;
 
   this.canvas = document.getElementById('canvas');
@@ -835,6 +858,7 @@ Keyboard.prototype = {
     for (var x = 0; x < X; ++x) {
       if (x01 <= w0 * geom[x+1][y0] + w1 * geom[x+1][y1]) {
         this.harmony.updateAddMass(x);
+        this.synthesizer.playOnset(x);
         break;
       }
     }
@@ -849,7 +873,8 @@ test('Keyboard.updateGeometry', function(){
   }
   harmony.mass.normalize();
 
-  var keyboard = new Keyboard(harmony);
+  var synthesizer = new Synthesizer(harmony);
+  var keyboard = new Keyboard(harmony, synthesizer);
 
   keyboard.updateGeometry();
 
@@ -892,7 +917,8 @@ test('Keyboard.draw', function(){
   }
   harmony.mass.normalize();
 
-  var keyboard = new Keyboard(harmony);
+  var synthesizer = new Synthesizer(harmony);
+  var keyboard = new Keyboard(harmony, synthesizer);
 
   keyboard.update();
   
@@ -908,7 +934,7 @@ test('Keyboard.draw', function(){
 test('main', function(){
   var harmony = new Harmony(8);
   var synthesizer = new Synthesizer(harmony);
-  var keyboard = new Keyboard(harmony);
+  var keyboard = new Keyboard(harmony, synthesizer);
 
   harmony.start();
   synthesizer.start();
@@ -942,7 +968,7 @@ $(document).ready(function(){
 
   var harmony = new Harmony(config.harmony.radius);
   var synthesizer = new Synthesizer(harmony);
-  var keyboard = new Keyboard(harmony);
+  var keyboard = new Keyboard(harmony, synthesizer);
 
   log('using ' + harmony.lenth + ' keys');
 
