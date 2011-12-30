@@ -100,5 +100,5 @@ self.addEventListener('message', function (e) {
   catch (err) {
     self.postMessage({type:'error', data:err.toString()});
   }
-});
+}, false);
 

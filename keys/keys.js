@@ -63,7 +63,7 @@ var assertEval = function (message) {
   assert(eval(message), message);
 };
 var assertEqual = function (actual, expected, message) {
-  if (~(actual instanceof String) || ~(expected instanceof String)) {
+  if (!(actual instanceof String) || !(expected instanceof String)) {
     actual = JSON.stringify(actual);
     expected = JSON.stringify(expected);
   }
@@ -105,6 +105,24 @@ test.runAll = function () {
     log('[ failed ' + failCount + ' tests ]');
   } else {
     log('[ passed all tests :) ]');
+  }
+};
+
+var verifyBrowser = function () {
+  var missing = [];
+  if (!Modernizr.canvas) missing.push('canvas element');
+  if (!Modernizr.audio) missing.push('audio element');
+  if (!Modernizr.webworkers) missing.push('web workers');
+
+  if (missing.length) {
+    var message = 'The Rational Keyboard ' +
+        'needs some features not available in your browser: ' +
+        missing.join(', ') + '.';
+    $(document.body).empty().html(message).attr('class', 'warning');
+
+    return false;
+  } else {
+    return true;
   }
 };
 
@@ -580,7 +598,7 @@ Synthesizer.prototype = {
               log('Worker Error: ' + data.data);
               break;
           }
-        });
+        }, false);
     this.worker.postMessage({
       cmd: 'init',
       data: {
@@ -691,7 +709,7 @@ var Keyboard = function (harmony, synthesizer) {
   this.delayMs = 1000 / config.keyboard.updateHz;
 
   this.canvas = document.getElementById('canvas');
-  this.context = canvas.getContext('2d');
+  this.context = this.canvas.getContext('2d');
 
   this.running = false;
   this.geometry = undefined;
@@ -933,6 +951,8 @@ test('main', function(){
 });
 
 $(document).ready(function(){
+
+  if (!verifyBrowser()) return;
 
   var canvas = document.getElementById('canvas');
   $(window).resize(function(){
