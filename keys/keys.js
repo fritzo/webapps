@@ -748,18 +748,29 @@ Keyboard.prototype = {
   updateGeometry: function () {
     var X = this.harmony.length;
     var Y = Math.floor(2 + Math.sqrt(window.innerHeight));
+    var keyExponent = 6;
 
     var energy = this.harmony.getEnergy(this.harmony.prior);
+    var probs = Lmf.boltzmann(energy);
+    probs.scale((1 - 1 / keyExponent) / Math.max.apply(Math, probs.likes));
+    probs = this.probs = probs.likes;
 
-    // vertical bands with height-varying temperature
+    // vertical bands of varying width
     var geometryYX = [];
     for (var y = 0; y < Y; ++y) {
-      var temperature = 1 / (1 - 0.8 * y / (Y-1));
-      var width = Lmf.boltzmann(energy, temperature).likes;
+      var y01 = (y + 0.5) / Y;
+      var width = new Lmf();
+      for (var x = 0; x < X; ++x) {
+        var p = probs[x];
+        //width.likes[x] = Math.pow(p, 1 - 0.8 * y/(Y-1));
+        width.likes[x] = Math.pow(p, keyExponent * (1 - y01))
+                       * Math.pow(1-p, keyExponent * y01);
+      }
+      width.normalize();
 
       var geom = geometryYX[y] = [0];
       for (var x = 0; x < X; ++x) {
-        geom[x+1] = geom[x] + width[x];
+        geom[x+1] = geom[x] + width.likes[x];
       }
       geom[X] = 1;
     }
@@ -806,24 +817,24 @@ Keyboard.prototype = {
 
       var lhs = geom[x];
       var rhs = geom[x+1];
-      if (rhs[Y-1] - lhs[Y-1] < 2 / W) continue;
+      //if (rhs[Y-1] - lhs[Y-1] < 2 / W) continue;
       context.beginPath();
       context.moveTo(W * lhs[Y-1], 0);
-      for (y = Y-2; y > 0; --y) {
+      for (y = Y-2; y >= 0; --y) {
         context.lineTo(W * lhs[y], H * (1 - y / (Y - 1)));
       }
-      context.bezierCurveTo(
-          W * lhs[0], H * (1 + 1/3 / (Y - 1)),
-          W * rhs[0], H * (1 + 1/3 / (Y - 1)),
-          W * rhs[1], H * (1 - 1 / (Y - 1)));
-      for (y = 2; y < Y; ++y) {
+      //context.bezierCurveTo(
+      //    W * lhs[0], H * (1 + 1/3 / (Y - 1)),
+      //    W * rhs[0], H * (1 + 1/3 / (Y - 1)),
+      //    W * rhs[1], H * (1 - 1 / (Y - 1)));
+      for (y = 0; y < Y; ++y) {
         context.lineTo(W * rhs[y], H * (1 - y / (Y - 1)));
       }
       context.closePath();
       context.fill();
     }
 
-    var textThresh = 0.4;
+    var textThresh = 1/4;
     context.font = '10pt Helvetica';
     context.textAlign = 'center';
     for (var x = 0; x < X; ++x) {
@@ -832,8 +843,16 @@ Keyboard.prototype = {
         var opacity = Math.sqrt((c - textThresh) / (1 - textThresh));
         context.fillStyle = 'rgba(0,0,0,' + opacity + ')';
 
-        var posX = W * (geom[x][1] + geom[x+1][1]) / 2;
-        var posY = H - 12;
+        var p = this.probs[x];
+        var py = (1-p) * (Y-1);
+        var y0 = Math.floor(py);
+        var y1 = 1 + y0;
+        var w0 = y1 - py;
+        var w1 = py - y0;
+        var lhs = (w0 * geom[x][y0] + w1 * geom[x][y1]);
+        var rhs = (w0 * geom[x+1][y0] + w1 * geom[x+1][y1]);
+        var posX = W * (lhs + rhs) / 2;
+        var posY = H * p + 8;
 
         var point = points[x];
         context.fillText(point.numer, posX, posY - 8);
