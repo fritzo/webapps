@@ -26,6 +26,7 @@ var log = function (message) {
 var init = function (data) {
   self.gain = data.gain;
   self.freqs = data.freqs;
+  self.centerFreq = self.freqs[(self.freqs.length - 1) / 2];
   self.F = self.freqs.length;
   self.T = data.windowSamples;
 
@@ -43,7 +44,7 @@ var synthesize = function (mass) {
 
   var amps = [];
   var normalizeEnvelope = 4 / ((T+1) * (T+1));
-  var gain = self.gain * normalizeEnvelope * Math.sqrt(freqs[0]);
+  var gain = self.gain * normalizeEnvelope * Math.sqrt(self.centerFreq);
   for (var f = 0; f < F; ++f) {
     amps[f] = gain * Math.sqrt(mass[f] / freqs[f]);
   }

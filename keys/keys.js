@@ -15,9 +15,9 @@ var config = {
   synth: {
     sampleRateHz: 22050,
     centerFreqHz: 261.625565, // middle C
-    onsetGain: 2.0,
     windowSec: 0.2,
-    gain: 1.0
+    onsetGain: 2.0,
+    sustainGain: 0.3
   },
 
   keyboard: {
@@ -245,10 +245,6 @@ var Lmf = function (initProbs) {
 
 Lmf.prototype = {
 
-  size: function () {
-    return this.likes.length;
-  },
-
   total: function () {
     var likes = this.likes;
     var result = 0;
@@ -269,41 +265,21 @@ Lmf.prototype = {
     return total;
   },
 
-  entropy: function () {
-    var likes = this.likes;
-    var result = 0;
-    for (var i = 0, I = likes.length; i < I; ++i) {
-      var p = likes[i];
-      if (p > 0) {
-        result += p * Math.log(p);
-      }
-    }
-    return -result;
-  },
-
-  perplexity: function () {
-    return Math.exp(this.entropy());
-  },
-
-  mean: function (values) {
-    var likes = this.likes;
-    assert(values.length === likes.length, 'mismatched length in Lmf.mean');
-    var sum_p = 0;
-    var sum_px = 0;
-    for (var i = 0, I = likes.length; i < I; ++i) {
-      var p = likes[i];
-      sum_p += p;
-      sum_px += p * values[i];
-    }
-    assert(sum_p > 0, 'cannot compute mean WRT zero Lmf');
-    return sum_px / sum_p;
-  },
-
   scale: function (s) {
     var likes = this.likes;
     for (var i = 0, I = likes.length; i < I; ++i) {
       likes[i] *= s;
     }
+  },
+
+  dot: function (values) {
+    var likes = this.likes;
+    //assert(values.length === likes.length, 'mismatched length in Lmf.dot');
+    var result = 0;
+    for (var i = 0, I = likes.length; i < I; ++i) {
+      result += likes[i] * values[i];
+    }
+    return result;
   },
 
   shiftTowardsLmf: function (other, rate) {
@@ -508,11 +484,12 @@ Harmony.prototype = {
   },
 
   getEnergy: function (mass) {
-    var energy = [];
     var energyMatrix = this.energyMatrix;
     var freqEnergy = this.freqEnergy;
+    var massScale = 1 / mass.total();
+    var energy = [];
     for (var i = 0, I = this.length; i < I; ++i) {
-      energy[i] = mass.mean(energyMatrix[i]) + freqEnergy[i];
+      energy[i] = massScale * mass.dot(energyMatrix[i]) + freqEnergy[i];
     }
     return energy;
   }
@@ -560,7 +537,7 @@ var Synthesizer = function (harmony) {
   this.delayMs = windowMs / 2;
   this.windowSamples = Math.floor(
       config.synth.windowSec * config.synth.sampleRateHz);
-  this.gain = config.synth.gain;
+  this.sustainGain = config.synth.sustainGain;
   this.onsetGain = config.synth.onsetGain;
 
   var centerFreq = this.centerFreq =
@@ -604,7 +581,7 @@ Synthesizer.prototype = {
     this.worker.postMessage({
       cmd: 'init',
       data: {
-          gain: this.gain,
+          gain: this.sustainGain,
           freqs: this.freqs,
           windowSamples: this.windowSamples
         }
