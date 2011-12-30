@@ -3,8 +3,11 @@ var config = {
   harmony: {
     //maxRadius: 11.44, // 63 keys
     //maxRadius: 13, // 77 keys
-    maxRadius: 14.25, // 99 keys
+    //maxRadius: 14.25, // 99 keys
     //maxRadius: 16.45, // 127 keys
+    //maxRadius: 20, // 191 keys
+    //maxRadius: 21, // 207 keys
+    maxRadius: 25, // 297 keys
     priorSec: 8.0,
     priorRadius: 3,
     priorWidthOctaves: 4.0,
@@ -232,7 +235,7 @@ test('Rational.ball', function(){
 });
 
 test('Rational.ball of size 88', function(){
-  var target = 63; // needs to be odd; 88 is even
+  var target = 191; // needs to be odd; 88 is even
   var f = function(r) { return Rational.ball(r).length; }
 
   var r0, r1;
@@ -240,7 +243,7 @@ test('Rational.ball of size 88', function(){
   for (r1 = 3; f(r1) <= target; ++r1);
 
   var r;
-  while (true) {
+  while (r0 < r1) {
     var r = (r0 + r1) / 2;
     var n = f(r);
     if (r0 === r1) break;
@@ -754,11 +757,25 @@ Keyboard.prototype = {
   updateGeometry: function () {
     var X = this.harmony.length;
     var Y = Math.floor(
-        2 + Math.sqrt((window.innerHeight + window.innerWidth) / 2));
-    var keyExponent = 6;
+        2 + Math.sqrt(window.innerHeight + window.innerWidth));
 
     var energy = this.harmony.getEnergy(this.harmony.prior);
-    var probs = Lmf.boltzmann(energy);
+    var boltzmann = Lmf.boltzmann(energy).likes;
+
+    var keyExponent = 8;
+    var keyThresh = 1e-3;
+    var keys = this.keys = [];
+    var K = 0;
+    var probs = new Lmf();
+    for (var x = 0; x < X; ++x) {
+      var p = boltzmann[x] - keyThresh
+      if (p > 0) {
+        var k = K++;
+        keys[k] = x;
+        probs.likes[k] = p;
+      }
+    }
+    probs.normalize();
     probs.scale((1 - 0.5 / keyExponent) / Math.max.apply(Math, probs.likes));
     probs = this.probs = probs.likes;
 
@@ -767,28 +784,28 @@ Keyboard.prototype = {
     var width = new Lmf();
     var widthLikes = width.likes;
     for (var y = 0; y < Y; ++y) {
-      var y01 = (y + 0.5) / Y;
+      var y01 = (y + 0.5) / Y * (1 - 0.5 / keyExponent);
 
-      for (var x = 0; x < X; ++x) {
-        var p = probs[x];
-        widthLikes[x] = Math.pow(p, keyExponent * (1 - y01))
+      for (var k = 0; k < K; ++k) {
+        var p = probs[k];
+        widthLikes[k] = Math.pow(p, keyExponent * (1 - y01))
                       * Math.pow(1-p, keyExponent * y01);
       }
       width.normalize();
 
       var geom = geometryYX[y] = [0];
-      for (var x = 0; x < X; ++x) {
-        geom[x+1] = geom[x] + widthLikes[x];
+      for (var k = 0; k < K; ++k) {
+        geom[k+1] = geom[k] + widthLikes[k];
       }
-      geom[X] = 1;
+      geom[K] = 1;
     }
 
     // transpose
     var geometryXY = this.geometry = [];
-    for (var x = 0; x <= X; ++x) {
-      var geom = geometryXY[x] = [];
+    for (var k = 0; k <= K; ++k) {
+      var geom = geometryXY[k] = [];
       for (var y = 0; y < Y; ++y) {
-        geom[y] = geometryYX[y][x];
+        geom[y] = geometryYX[y][k];
       }
     }
 
@@ -797,20 +814,23 @@ Keyboard.prototype = {
     var activeParam = this.harmony.dmass.likes;
     var color = this.color = [];
     var active = this.active = [];
-    for (var x = 0; x < X; ++x) {
-      color[x] = Math.sqrt(colorScale * colorParam[x]);
-      active[x] = 1 - Math.exp(-activeParam[x]);
+    for (var k = 0; k < K; ++k) {
+      var x = keys[k];
+      color[k] = Math.sqrt(colorScale * colorParam[x]);
+      active[k] = 1 - Math.exp(-activeParam[x]);
     }
   },
 
   draw: function () {
     var geom = this.geometry;
     var color = this.color;
+    var active = this.active;
     var points = this.harmony.points;
     var context = this.context;
     var probs = this.probs;
+    var keys = this.keys;
 
-    var X = geom.length - 1;
+    var K = geom.length - 1;
     var Y = geom[0].length;
     var W = window.innerWidth - 1;
     var H = window.innerHeight - 1;
@@ -819,14 +839,14 @@ Keyboard.prototype = {
     context.clearRect(0, 0, W+1, H+1);
     var colorThresh = 2;
 
-    for (var x = 0; x < X; ++x) {
-      var r = Math.round(255 * Math.min(1, color[x] + this.active[x]));
-      var g = Math.round(255 * Math.max(0, color[x] - this.active[x]));
+    for (var k = 0; k < K; ++k) {
+      var r = Math.round(255 * Math.min(1, color[k] + active[k]));
+      var g = Math.round(255 * Math.max(0, color[k] - active[k]));
       if (r < colorThresh) continue;
       context.fillStyle = 'rgb(' + r + ',' + g + ',' + g + ')';
 
-      var lhs = geom[x];
-      var rhs = geom[x+1];
+      var lhs = geom[k];
+      var rhs = geom[k+1];
       //if (rhs[Y-1] - lhs[Y-1] < 2 / W) continue;
       context.beginPath();
       context.moveTo(W * lhs[Y-1], 0);
@@ -847,34 +867,35 @@ Keyboard.prototype = {
     var textThresh = 1/4;
     context.font = '10pt Helvetica';
     context.textAlign = 'center';
-    for (var x = 0; x < X; ++x) {
-      var c = color[x];
-      if (c > textThresh) {
-        var opacity = Math.sqrt((c - textThresh) / (1 - textThresh));
-        context.fillStyle = 'rgba(0,0,0,' + opacity + ')';
+    for (var k = 0; k < K; ++k) {
+      var c = color[k];
+      if (c < textThresh) continue;
 
-        var p = probs[x];
-        var py = (1-p) * (Y-1);
-        var y0 = Math.floor(py);
-        var y1 = 1 + y0;
-        var w0 = y1 - py;
-        var w1 = py - y0;
-        var lhs = (w0 * geom[x][y0] + w1 * geom[x][y1]);
-        var rhs = (w0 * geom[x+1][y0] + w1 * geom[x+1][y1]);
-        var posX = W * (lhs + rhs) / 2;
-        var posY = H * p + 8;
+      var opacity = Math.sqrt((c - textThresh) / (1 - textThresh));
+      context.fillStyle = 'rgba(0,0,0,' + opacity + ')';
 
-        var point = points[x];
-        context.fillText(point.numer, posX, posY - 8);
-        context.fillText('\u2013', posX, posY - 1); // 2014,2015 are wider
-        context.fillText(point.denom, posX, posY + 8);
-      }
+      var p = probs[k];
+      var py = (1-p) * (Y-1);
+      var y0 = Math.floor(py);
+      var y1 = 1 + y0;
+      var w0 = y1 - py;
+      var w1 = py - y0;
+      var lhs = (w0 * geom[k][y0] + w1 * geom[k][y1]);
+      var rhs = (w0 * geom[k+1][y0] + w1 * geom[k+1][y1]);
+      var posX = W * (lhs + rhs) / 2;
+      var posY = H * p + 8;
+
+      var x = keys[k];
+      var point = points[x];
+      context.fillText(point.numer, posX, posY - 8);
+      context.fillText('\u2013', posX, posY - 1); // 2014,2015 are wider
+      context.fillText(point.denom, posX, posY + 8);
     }
   },
 
   click: function (x01, y01) {
     var geom = this.geometry;
-    var X = geom.length - 1;
+    var K = geom.length - 1;
     var Y = geom[0].length;
 
     var y = (1 - y01) * (Y - 1);
@@ -884,8 +905,9 @@ Keyboard.prototype = {
     var w0 = y1 - y;
     var w1 = y - y0;
 
-    for (var x = 0; x < X; ++x) {
-      if (x01 <= w0 * geom[x+1][y0] + w1 * geom[x+1][y1]) {
+    for (var k = 0; k < K; ++k) {
+      if (x01 <= w0 * geom[k+1][y0] + w1 * geom[k+1][y1]) {
+        var x = this.keys[k];
         this.harmony.updateAddMass(x);
         this.synthesizer.playOnset(x);
         break;
