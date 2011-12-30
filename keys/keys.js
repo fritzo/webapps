@@ -3,8 +3,8 @@ var config = {
   harmony: {
     //maxRadius: 11.44, // 63 keys
     //maxRadius: 13, // 77 keys
-    //maxRadius: 14.25, // 99 keys
-    maxRadius: 16.45, // 127 keys
+    maxRadius: 14.25, // 99 keys
+    //maxRadius: 16.45, // 127 keys
     priorSec: 8.0,
     priorRadius: 3,
     priorWidthOctaves: 4.0,
@@ -713,6 +713,12 @@ var Keyboard = function (harmony, synthesizer) {
 
   this.running = false;
   this.geometry = undefined;
+
+  var keyboard = this;
+  $(window).on('resize', function () {
+    keyboard.updateGeometry();
+    keyboard.draw();
+  });
 };
 
 Keyboard.prototype = {
