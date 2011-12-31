@@ -643,31 +643,24 @@ test('web worker echo', function(){
   var error = null;
 
   var worker = new Worker('testworker.js');
+  var timeout = setTimeout(function () {
+    log('FAILED web worker test: no message was received from web worker');
+    worker.terminate();
+  }, 4000);
   worker.addEventListener('message', function (e) {
-    received = true;
+    clearTimeout(timeout);
     try {
       assert(e.data, 'echoed message has no data');
       assertEqual(e.data, message, 'echoed data does not match');
+      log('PASSED web worker test');
     }
     catch (err) {
-      error = err;
+      log('FAILED web worker test: ' + err);
     }
   }, false);
 
+  log('deferring decision on web worker test...');
   worker.postMessage(message);
-
-  console.log('deferring decision on web worker test...');
-  setTimeout(function () {
-    try {
-      assert(received, 'no message was received from web worker');
-      assert(error === null, error);
-      console.log('PASSED web worker test');
-    }
-    catch (err) {
-      console.log('FAILED web worker test: ' + err);
-    }
-    worker.terminate();
-  }, 1000);
 });
 
 if(0) // TODO
@@ -778,6 +771,130 @@ test('Keyboard.click', function(){
     }
   }  
 });
+
+//----------------------------------------------------------------------------
+// Visualization: Temperature
+
+Keyboard.styles.thermal = {
+
+  updateGeometry: function () {
+    var X = this.harmony.length;
+    var Y = Math.floor(2 + Math.sqrt(window.innerHeight));
+
+    var energy = this.harmony.getEnergy(this.harmony.prior);
+
+    // vertical bands with height-varying temperature
+    var geometryYX = [];
+    for (var y = 0; y < Y; ++y) {
+      var temperature = 1 / (1 - 0.8 * y / (Y-1));
+      var width = Lmf.boltzmann(energy, temperature).likes;
+
+      var geom = geometryYX[y] = [0];
+      for (var x = 0; x < X; ++x) {
+        geom[x+1] = geom[x] + width[x];
+      }
+      geom[X] = 1;
+    }
+
+    // transpose
+    var geometryXY = this.geometry = [];
+    for (var x = 0; x <= X; ++x) {
+      var geom = geometryXY[x] = [];
+      for (var y = 0; y < Y; ++y) {
+        geom[y] = geometryYX[y][x];
+      }
+    }
+
+    var colorParam = this.harmony.prior.likes;
+    var colorScale = 1 / Math.max.apply(Math, colorParam);
+    var activeParam = this.harmony.dmass.likes;
+    var color = this.color = [];
+    var active = this.active = [];
+    for (var x = 0; x < X; ++x) {
+      color[x] = Math.sqrt(colorScale * colorParam[x]);
+      active[x] = 1 - Math.exp(-activeParam[x]);
+    }
+  },
+
+  draw: function () {
+    var geom = this.geometry;
+    var color = this.color;
+    var points = this.harmony.points;
+    var context = this.context;
+
+    var X = geom.length - 1;
+    var Y = geom[0].length;
+    var W = window.innerWidth - 1;
+    var H = window.innerHeight - 1;
+
+    context.fillStyle = 'rgb(0,0,0)';
+    context.clearRect(0, 0, W+1, H+1);
+
+    for (var x = 0; x < X; ++x) {
+      var r = Math.round(255 * Math.min(1, color[x] + this.active[x]));
+      var g = Math.round(255 * Math.max(0, color[x] - this.active[x]));
+      if (r < 2) continue;
+      context.fillStyle = 'rgb(' + r + ',' + g + ',' + g + ')';
+
+      var lhs = geom[x];
+      var rhs = geom[x+1];
+      if (rhs[Y-1] - lhs[Y-1] < 2 / W) continue;
+      context.beginPath();
+      context.moveTo(W * lhs[Y-1], 0);
+      for (y = Y-2; y > 0; --y) {
+        context.lineTo(W * lhs[y], H * (1 - y / (Y - 1)));
+      }
+      context.bezierCurveTo(
+          W * lhs[0], H * (1 + 1/3 / (Y - 1)),
+          W * rhs[0], H * (1 + 1/3 / (Y - 1)),
+          W * rhs[1], H * (1 - 1 / (Y - 1)));
+      for (y = 2; y < Y; ++y) {
+        context.lineTo(W * rhs[y], H * (1 - y / (Y - 1)));
+      }
+      context.closePath();
+      context.fill();
+    }
+
+    var textThresh = 0.4;
+    context.font = '10pt Helvetica';
+    context.textAlign = 'center';
+    for (var x = 0; x < X; ++x) {
+      var c = color[x];
+      if (c > textThresh) {
+        var opacity = Math.sqrt((c - textThresh) / (1 - textThresh));
+        context.fillStyle = 'rgba(0,0,0,' + opacity + ')';
+
+        var posX = W * (geom[x][1] + geom[x+1][1]) / 2;
+        var posY = H - 12;
+
+        var point = points[x];
+        context.fillText(point.numer, posX, posY - 8);
+        context.fillText('\u2013', posX, posY - 1); // 2014,2015 are wider
+        context.fillText(point.denom, posX, posY + 8);
+      }
+    }
+  },
+
+  click: function (x01, y01) {
+    var geom = this.geometry;
+    var X = geom.length - 1;
+    var Y = geom[0].length;
+
+    var y = (1 - y01) * (Y - 1);
+    var y0 = Math.max(0, Math.min(Y - 2, Math.floor(y)));
+    var y1 = y0 + 1;
+    assert(y1 < Y);
+    var w0 = y1 - y;
+    var w1 = y - y0;
+
+    for (var x = 0; x < X; ++x) {
+      if (x01 <= w0 * geom[x+1][y0] + w1 * geom[x+1][y1]) {
+        this.onclick(x);
+        break;
+      }
+    }
+  }
+};
 
 //----------------------------------------------------------------------------
 // Visualization: Flow graph
