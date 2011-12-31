@@ -421,7 +421,6 @@ var Harmony = function (radius) {
     Math.pow(config.harmony.priorWidthOctaves * Math.log(2), 2);
   this.delayMs = 1000 / config.harmony.updateHz;
 
-  // TODO dynamically add & remove points based on prior
   this.points = Rational.ball(radius);
   this.length = this.points.length;
 
@@ -958,16 +957,21 @@ test('main', function(){
   synthesizer.start();
   keyboard.start();
 
-  if(config.test.interactive) {
-    assert(confirm('do you hear a tone?'),
-        'synthesizer did not make a tone');
-    assert(confirm('do you see a keyboard?'),
-        'keyboard was not drawn correctly');
+  try {
+    if(config.test.interactive) {
+      TODO('implement an asynchronous query dialog box');
+      assert(confirm('do you hear a tone?'),
+          'synthesizer did not make a tone');
+      assert(confirm('do you see a keyboard?'),
+          'keyboard was not drawn correctly');
+    }
   }
 
-  keyboard.stop();
-  synthesizer.stop();
-  harmony.stop();
+  finally {
+    keyboard.stop();
+    synthesizer.stop();
+    harmony.stop();
+  }
 });
 
 $(document).ready(function(){
@@ -980,10 +984,22 @@ $(document).ready(function(){
         canvas.height = window.innerHeight;
       }).resize();
 
-  if (window.location.hash && window.location.hash.substr(1) === 'test') {
-    document.title = 'The Rational Keyboard - Unit Test';
-    test.runAll();
-    return;
+  if (window.location.hash) {
+    if (window.location.hash.substr(1) === 'test') {
+      document.title = 'The Rational Keyboard - Unit Test';
+      test.runAll();
+      return;
+    }
+    else if (window.location.hash.substr(1) === 'test=interactive') {
+      document.title = 'The Rational Keyboard - Interactive Unit Test';
+      config.test.interactive = true;
+      test.runAll();
+      return;
+    }
+    else if (window.location.hash.substr(1,6) === 'style=') {
+      var style = window.location.hash.substr(7);
+      Keyboard.setStyle(style);
+    }
   }
 
   var harmony = new Harmony(config.harmony.maxRadius);
