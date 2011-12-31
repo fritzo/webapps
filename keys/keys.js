@@ -23,11 +23,15 @@ var config = {
     windowSec: 0.2,
     onsetGain: 2.0,
     sustainGain: 0.3,
-    numVoices: 24
+    numVoices: 32
   },
 
   keyboard: {
-    updateHz: 30
+    updateHz: 30,
+    boxes: {
+      keyThresh: 1e-4,
+      temperature: 3
+    }
   },
 
   test: {
@@ -1076,8 +1080,8 @@ Keyboard.styles.flow = {
 Keyboard.styles.boxes = {
 
   updateGeometry: function () {
-    var keyThresh = 1e-3;
-    var temperature = 3;
+    var keyThresh = config.keyboard.boxes.keyThresh;
+    var temperature = config.keyboard.boxes.temperature;
 
     var X = this.harmony.length;
     var Y = Math.floor(
@@ -1213,24 +1217,21 @@ Keyboard.styles.boxes = {
   },
 
   click: function (x01, y01) {
+    var keys = this.keys;
+    var depthSorted = this.depthSorted;
+    var radii = this.radii;
+    var xpos = this.xpos;
+    var ypos = this.ypos;
 
-    TODO('implement Keyboard.styles.boxes.click');
+    for (var d = depthSorted.length - 1; d >= 0; --d) {
+      var k = depthSorted[d];
 
-    var geom = this.geometry;
-    var K = geom.length - 1;
-    var Y = geom[0].length;
-
-    var y = (1 - y01) * (Y - 1);
-    var y0 = Math.max(0, Math.min(Y - 2, Math.floor(y)));
-    var y1 = y0 + 1;
-    assert(y1 < Y);
-    var w0 = y1 - y;
-    var w1 = y - y0;
-
-    for (var k = 0; k < K; ++k) {
-      if (x01 <= w0 * geom[k+1][y0] + w1 * geom[k+1][y1]) {
-        this.onclick(this.keys[k]);
-        break;
+      if (y01 <= ypos[k]) {
+        var r = Math.abs(x01 - xpos[k]);
+        if (r <= radii[k]) {
+          this.onclick(keys[k]);
+          break;
+        }
       }
     }
   }
