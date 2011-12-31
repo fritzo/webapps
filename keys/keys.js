@@ -1115,7 +1115,7 @@ Keyboard.styles.boxes = {
     }
 
     var radii = probs.likes.map(function(p){
-          return Math.pow(p, 1/temperature);
+          return Math.pow(p, 0.5/temperature);
         });
     var xpos = [];
     var xmax = 0;
@@ -1129,9 +1129,9 @@ Keyboard.styles.boxes = {
         var x2 = xpos[k2];
         var y2 = ypos[k2];
 
-        x = Math.max(x, x2 + 2 * Math.min(r, r2));
-        //x = Math.max(x, y2 <= y ? x2 + r2 + r * y2 / y
-        //                        : x2 + r2 * y / y2 + r);
+        var padding = y2 < y ? r2 + r * Math.pow(y2 / y, 2)
+                             : r2 * Math.pow(y / y2, 2) + r;
+        x = Math.max(x, x2 + padding);
       }
 
       xpos[k] = x;
@@ -1208,11 +1208,13 @@ Keyboard.styles.boxes = {
       context.fillRect(Wx - Wr, 0, Wr + Wr, Hy);
       context.strokeRect(Wx - Wr, 0, Wr + Wr, Hy);
 
+      if (Wr < 6) continue;
+      Hy -= 2/3 * (Wr - 6);
       var point = points[keys[k]];
       context.fillStyle = 'rgb(0,0,0)';
-      context.fillText(point.numer, Wx, Hy - 18);
-      context.fillText('\u2013', Wx, Hy - 12); // 2014,2015 are wider
-      context.fillText(point.denom, Wx, Hy - 4);
+      context.fillText(point.numer, Wx, Hy - 16);
+      context.fillText('\u2013', Wx, Hy - 10); // 2014,2015 are wider
+      context.fillText(point.denom, Wx, Hy - 2);
     }
   },
 
