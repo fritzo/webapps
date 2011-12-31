@@ -325,6 +325,20 @@ Lmf.prototype = {
     for (var i = 0, I = likes0.length; i < I; ++i) {
       likes0[i] = w0 * likes0[i] + w1 * likes1[i];
     }
+  },
+
+  truncate: function (thresh) {
+    var oldLikes = this.likes;
+    var newLikes = this.likes = [];
+    var indices = [];
+    for (var i = 0, I = oldLikes.length, J = 0; i < I; ++i) {
+      var like = oldLikes[i] - thresh;
+      if (like > 0) {
+        newLikes[J] = like;
+        indices[J++] = i;
+      }
+    }
+    return indices;
   }
 };
 
@@ -691,6 +705,7 @@ var Keyboard = function (harmony, synthesizer) {
 };
 
 Keyboard.prototype = {
+
   start: function () {
     if (this.running) return;
     this.running = true;
@@ -708,10 +723,12 @@ Keyboard.prototype = {
             e.pageY / window.innerHeight);
         });
   },
+
   stop: function () {
     this.running = false;
     $(this.canvas).off('click.keyboard');
   },
+
   update: function () {
     this.updateGeometry();
     this.draw();
@@ -721,6 +738,7 @@ Keyboard.prototype = {
       setTimeout(function(){ keyboard.update(); }, this.delayMs);
     }
   },
+
   onclick: function (index) {
     this.harmony.updateAddMass(index);
     if (this.synthesizer !== undefined) {
@@ -827,7 +845,6 @@ Keyboard.styles.thermal = {
     var W = window.innerWidth - 1;
     var H = window.innerHeight - 1;
 
-    context.fillStyle = 'rgb(0,0,0)';
     context.clearRect(0, 0, W+1, H+1);
 
     for (var x = 0; x < X; ++x) {
@@ -900,28 +917,22 @@ Keyboard.styles.thermal = {
 // Visualization: Flow graph
 
 Keyboard.styles.flow = {
+
   updateGeometry: function () {
+    var keyThresh = 1e-3;
+    var keyExponent = 8;
+
     var X = this.harmony.length;
     var Y = Math.floor(
         2 + Math.sqrt(window.innerHeight + window.innerWidth));
 
     var energy = this.harmony.getEnergy(this.harmony.prior);
-    var boltzmann = Lmf.boltzmann(energy).likes;
+    var probs = Lmf.boltzmann(energy);
 
-    var keyExponent = 8;
-    var keyThresh = 1e-3;
-    var keys = this.keys = [];
-    var K = 0;
-    var probs = new Lmf();
-    for (var x = 0; x < X; ++x) {
-      var p = boltzmann[x] - keyThresh
-      if (p > 0) {
-        var k = K++;
-        keys[k] = x;
-        probs.likes[k] = p;
-      }
-    }
+    var keys = this.keys = probs.truncate(keyThresh);
+    var K = keys.length;
     probs.normalize();
+
     probs.scale((1 - 0.5 / keyExponent) / Math.max.apply(Math, probs.likes));
     probs = this.probs = probs.likes;
 
@@ -981,7 +992,6 @@ Keyboard.styles.flow = {
     var W = window.innerWidth - 1;
     var H = window.innerHeight - 1;
 
-    context.fillStyle = 'rgb(0,0,0)';
     context.clearRect(0, 0, W+1, H+1);
     var colorThresh = 2;
 
@@ -1060,6 +1070,182 @@ Keyboard.styles.flow = {
   }
 };
 
+//----------------------------------------------------------------------------
+// Visualization: boxes
+
+Keyboard.styles.boxes = {
+
+  updateGeometry: function () {
+    var keyThresh = 1e-3;
+    var temperature = 3;
+
+    var X = this.harmony.length;
+    var Y = Math.floor(
+        2 + Math.sqrt(window.innerHeight + window.innerWidth));
+
+    var energy = this.harmony.getEnergy(this.harmony.prior);
+    var probs = Lmf.boltzmann(energy);
+
+    var keys = probs.truncate(keyThresh);
+    var K = keys.length;
+    if (testing) {
+      assert(probs.likes.length === keys.length, 'probs,keys length mismatch');
+      for (var k = 0; k < K; ++k) {
+        assert(0 <= probs.likes[k],
+            'bad prob: probs.likes[' + k + '] = ' + probs.likes[k]);
+      }
+    }
+
+    var ypos = probs.likes.map(function(p){
+          return Math.log(p + keyThresh);
+          //return Math.pow(p, 1/temperature);
+        });
+    var ymin = Math.log(keyThresh);
+    var ymax = Math.max.apply(Math, ypos); // TODO use soft max
+    ypos = ypos.map(function(y){ return (y - ymin) / (ymax - ymin); });
+    if (testing) {
+      for (var k = 0; k < K; ++k) {
+        assert(0 <= ypos[k] && ypos[k] <= 1,
+            'bad y position: ypos[' + k + '] = ' + ypos[k]);
+      }
+    }
+
+    var radii = probs.likes.map(function(p){
+          return Math.pow(p, 1/temperature);
+        });
+    var xpos = [];
+    var xmax = 0;
+    for (var k = 0; k < K; ++k) {
+      var r = radii[k];
+      var x = r + (k ? xpos[k-1] : 0);
+      var y = ypos[k];
+
+      for (var k2 = 0; k2 < k; ++k2) {
+        var r2 = radii[k2];
+        var x2 = xpos[k2];
+        var y2 = ypos[k2];
+
+        //x = Math.max(x, x2 + 2 * Math.min(r, r2));
+        x = Math.max(x, y2 <= y ? r2 + r * y2 / y
+                                : r2 * y / y2 + r);
+      }
+
+      xpos[k] = x;
+      xmax = Math.max(xmax, x + r);
+    }
+    xpos = xpos.map(function(x){ return x / xmax; });
+    radii = radii.map(function(r){ return r / xmax; });
+    if (testing) {
+      for (var k = 0; k < K; ++k) {
+        assert(0 <= xpos[k] && xpos[k] <= 1,
+            'bad x position: xpos[' + k + '] = ' + xpos[k]);
+        assert(0 <= radii[k] && radii[k] <= 1,
+            'bad radius: radii[' + k + '] = ' + radii[k]);
+      }
+    }
+    log('DEBUG max radius = ' + Math.max.apply(Math, radii));
+
+    var depthSorted = [];
+    for (var k = 0; k < K; ++k) {
+      depthSorted[k] = k;
+    }
+    depthSorted.sort(function(k1,k2){ return ypos[k2] - ypos[k1]; });
+
+    this.keys = keys;
+    this.depthSorted = depthSorted;
+    this.radii = radii;
+    this.xpos = xpos;
+    this.ypos = ypos;
+
+    var colorParam = this.harmony.prior.likes;
+    var colorScale = 1 / Math.max.apply(Math, colorParam);
+    var activeParam = this.harmony.dmass.likes;
+    var color = this.color = [];
+    var active = this.active = [];
+    for (var k = 0; k < K; ++k) {
+      var i = keys[k];
+      color[k] = Math.sqrt(colorScale * colorParam[i]);
+      active[k] = 1 - Math.exp(-activeParam[i]);
+    }
+  },
+
+  draw: function () {
+    var textThresh = 1/4;
+
+    var keys = this.keys;
+    var depthSorted = this.depthSorted;
+    var radii = this.radii;
+    var xpos = this.xpos;
+    var ypos = this.ypos;
+
+    var color = this.color;
+    var active = this.active;
+
+    var points = this.harmony.points;
+    var context = this.context;
+    var probs = this.probs;
+    var keys = this.keys;
+
+    var K = keys.length;
+    var W = window.innerWidth;
+    var H = window.innerHeight;
+
+    context.clearRect(0, 0, W, H);
+    context.font = '10pt Helvetica';
+    context.textAlign = 'center';
+    context.strokeStyle = 'rgb(0,0,0)';
+
+    for (var d = 0; d < K; ++d) {
+      var k = depthSorted[d];
+
+      var r = Math.round(255 * Math.min(1, color[k] + active[k]));
+      var g = Math.round(255 * Math.max(0, color[k] - active[k]));
+      context.fillStyle = 'rgb(' + r + ',' + g + ',' + g + ')';
+
+      var Wx = W * xpos[k];
+      var Hy = H * ypos[k];
+      var Wr = W * radii[k];
+      context.fillRect(Wx - Wr, 0, Wr + Wr, Hy);
+      context.strokeRect(Wx - Wr, 0, Wr + Wr, Hy);
+
+      var c = color[k];
+      if (c > textThresh) {
+
+        var opacity = Math.sqrt((c - textThresh) / (1 - textThresh));
+        context.fillStyle = 'rgba(0,0,0,' + opacity + ')';
+
+        var point = points[keys[k]];
+        context.fillText(point.numer, xpos, ypos);
+        context.fillText('\u2013', xpos, ypos + 7); // 2014,2015 are wider
+        context.fillText(point.denom, xpos, ypos + 16);
+      }
+    }
+  },
+
+  click: function (x01, y01) {
+
+    TODO('implement Keyboard.styles.boxes.click');
+
+    var geom = this.geometry;
+    var K = geom.length - 1;
+    var Y = geom[0].length;
+
+    var y = (1 - y01) * (Y - 1);
+    var y0 = Math.max(0, Math.min(Y - 2, Math.floor(y)));
+    var y1 = y0 + 1;
+    assert(y1 < Y);
+    var w0 = y1 - y;
+    var w1 = y - y0;
+
+    for (var k = 0; k < K; ++k) {
+      if (x01 <= w0 * geom[k+1][y0] + w1 * geom[k+1][y1]) {
+        this.onclick(this.keys[k]);
+        break;
+      }
+    }
+  }
+};
+
 //------------------------------------------------------------------------------
 // Main
 
@@ -1114,6 +1300,7 @@ $(document).ready(function(){
       return;
     }
     else if (window.location.hash.substr(1,6) === 'style=') {
+      document.title = 'The Rational Keyboard - ' + style + ' style';
       var style = window.location.hash.substr(7);
       Keyboard.setStyle(style);
     }
