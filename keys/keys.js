@@ -718,13 +718,6 @@ var Keyboard = function (harmony, synthesizer) {
   this.context = this.canvas.getContext('2d');
 
   this.running = false;
-  this.geometry = undefined;
-
-  var keyboard = this;
-  $(window).on('resize', function () {
-    keyboard.updateGeometry();
-    keyboard.draw();
-  });
 };
 
 Keyboard.prototype = {
@@ -735,6 +728,10 @@ Keyboard.prototype = {
     this.update();
 
     var keyboard = this;
+    $(window).off('resize.keyboard').on('resize.keyboard', function () {
+          keyboard.updateGeometry(); // used by .draw() and .click()
+          keyboard.draw();
+        });
     $(this.canvas).on('click.keyboard', function (e) {
           keyboard.click(
             e.pageX / window.innerWidth,
@@ -754,7 +751,61 @@ Keyboard.prototype = {
       setTimeout(function(){ keyboard.update(); }, this.delayMs);
     }
   },
+  onclick: function (index) {
+    this.harmony.updateAddMass(index);
+    if (this.synthesizer !== undefined) {
+      this.synthesizer.playOnset(index);
+    }
+  },
+};
 
+Keyboard.style = {};
+
+Keyboard.setStyle = function (style) {
+  assert(style in Keyboard.style, 'unknown Keyboard.style: ' + style);
+  $.extend(Keyboard.prototype, Keyboard.style[style]);
+  log('using keyboard style = ' + style);
+};
+
+test('Keyboard.update', function(){
+  var harmony = new Harmony(4);
+
+  for (var style in Keyboard.style) {
+    Keyboard.setStyle(style);
+
+    harmony.start();
+    harmony.stop();
+
+    var keyboard = new Keyboard(harmony);
+    keyboard.update();
+  }
+});
+
+test('Keyboard.click', function(){
+  var harmony = new Harmony(4);
+
+  for (var style in Keyboard.style) {
+    Keyboard.setStyle(style);
+
+    var keyboard = new Keyboard(harmony);
+
+    harmony.start();
+    keyboard.start();
+    keyboard.stop();
+    harmony.stop();
+
+    for (var i = 0; i < 10; ++i) {
+      keyboard.click(Math.random(), Math.random());
+      harmony.updateDiffusion();
+      keyboard.update();
+    }
+  }  
+});
+
+//----------------------------------------------------------------------------
+// Visualization: Flow graph
+
+Keyboard.style.flow = {
   updateGeometry: function () {
     var X = this.harmony.length;
     var Y = Math.floor(
@@ -908,44 +959,17 @@ Keyboard.prototype = {
 
     for (var k = 0; k < K; ++k) {
       if (x01 <= w0 * geom[k+1][y0] + w1 * geom[k+1][y1]) {
-        var x = this.keys[k];
-        this.harmony.updateAddMass(x);
-        if (this.synthesizer !== undefined) {
-          this.synthesizer.playOnset(x);
-        }
+        this.onclick(this.keys[k]);
         break;
       }
     }
   }
 };
 
-test('Keyboard.update', function(){
-  var harmony = new Harmony(4);
-  harmony.start();
-  harmony.stop();
-
-  var keyboard = new Keyboard(harmony);
-  keyboard.update();
-});
-
-test('Keyboard.click', function(){
-  var harmony = new Harmony(4);
-  var keyboard = new Keyboard(harmony);
-
-  harmony.start();
-  keyboard.start();
-  keyboard.stop();
-  harmony.stop();
-
-  for (var i = 0; i < 10; ++i) {
-    keyboard.click(Math.random(), Math.random());
-    harmony.updateDiffusion();
-    keyboard.update();
-  }  
-});
-
 //------------------------------------------------------------------------------
 // Main
+
+Keyboard.setStyle('flow');
 
 test('main', function(){
   var harmony = new Harmony(8);
