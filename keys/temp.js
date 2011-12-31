@@ -4,10 +4,7 @@ var config = {
     //maxRadius: 11.44, // 63 keys
     //maxRadius: 13, // 77 keys
     //maxRadius: 14.25, // 99 keys
-    //maxRadius: 16.45, // 127 keys
-    //maxRadius: 20, // 191 keys
-    //maxRadius: 21, // 207 keys
-    maxRadius: 25, // 297 keys
+    maxRadius: 16.45, // 127 keys
     priorSec: 8.0,
     priorRadius: 3,
     priorWidthOctaves: 4.0,
@@ -83,7 +80,6 @@ if (window.console && window.console.log) {
   log = function (message) {}; // ignore
 }
 
-var testing = false;
 var test = function (title, callback) {
   callback = callback || function(){ globalEval(title); };
   callback.title = title;
@@ -92,7 +88,6 @@ var test = function (title, callback) {
 test._all = [];
 test.runAll = function () {
   log('[ Running ' + test._all.length + ' unit tests ]');
-  testing = true;
 
   var failCount = 0;
   for (var i = 0; i < test._all.length; ++i) {
@@ -136,12 +131,10 @@ var verifyBrowser = function () {
 
 var gcd = function (a,b)
 {
-  if (testing) {
-    assert(a >= 0, 'gcd arg 1 is not positive: ' + a);
-    assert(b >= 0, 'gcd arg 2 is not positive: ' + b);
-    assert(a % 1 === 0, 'gcd arg 1 is not an integer: ' + a);
-    assert(b % 1 === 0, 'gcd arg 2 is not an integer: ' + b);
-  }
+  assert(a >= 0, 'gcd arg 1 is not positive: ' + a);
+  assert(b >= 0, 'gcd arg 2 is not positive: ' + b);
+  assert(a % 1 === 0, 'gcd arg 1 is not an integer: ' + a);
+  assert(b % 1 === 0, 'gcd arg 2 is not an integer: ' + b);
 
   if (b > a) { var temp = a; a = b; b = temp; }
   if (b === 0) return 1;
@@ -161,20 +154,13 @@ test('assert(gcd(4,6) === 2)');
 test('assert(gcd(0,7) === 1)');
 
 var Rational = function (m,n) {
-  if (testing) {
-    assert(0 <= m && m % 1 == 0, 'invalid numer: ' + m);
-    assert(0 <= n && n % 1 == 0, 'invalid denom: ' + n);
-    assert(m || n, '0/0 is not a Rational');
-  }
+  assert(0 <= m && m % 1 == 0, 'invalid numer: ' + m);
+  assert(0 <= n && n % 1 == 0, 'invalid denom: ' + n);
+  //assert(m || n, '0/0 is not a Rational');
 
   var g = gcd(m,n);
   this.numer = m / g;
   this.denom = n / g;
-
-  if (testing) {
-    assert(this.numer % 1 === 0, 'bad Rational.numer: ' + this.numer);
-    assert(this.denom % 1 === 0, 'bad Rational.denom: ' + this.denom);
-  }
 };
 
 Rational.prototype = {
@@ -192,6 +178,10 @@ Rational.prototype = {
   },
   isNormal: function () {
     return this.numer !== 0 && this.denom !== 0;
+  },
+  validate: function () {
+    assert(this.numer % 1 === 0, 'bad Rational.numer: ' + this.numer);
+    assert(this.denom % 1 === 0, 'bad Rational.denom: ' + this.denom);
   }
 };
 
@@ -242,7 +232,7 @@ test('Rational.ball', function(){
 });
 
 test('Rational.ball of size 88', function(){
-  var target = 191; // needs to be odd; 88 is even
+  var target = 63; // needs to be odd; 88 is even
   var f = function(r) { return Rational.ball(r).length; }
 
   var r0, r1;
@@ -250,7 +240,7 @@ test('Rational.ball of size 88', function(){
   for (r1 = 3; f(r1) <= target; ++r1);
 
   var r;
-  while (r0 < r1) {
+  while (true) {
     var r = (r0 + r1) / 2;
     var n = f(r);
     if (r0 === r1) break;
@@ -312,19 +302,34 @@ Lmf.prototype = {
     return result;
   },
 
-  shiftTowards: function (other, rate) {
+  shiftTowardsLmf: function (other, rate) {
     var likes0 = this.likes;
     var likes1 = other.likes;
     assert(likes0.length === likes1.length,
-        'mismatched lengths in Lmf.shiftTowards');
+        'mismatched lengths in Lmf.shiftTowardsLmf');
     assert(0 <= rate && rate <= 1,
-        'bad rate in Lmf.shiftTowards: ' + rate);
+        'bad rate in Lmf.shiftTowardsLmf: ' + rate);
 
     var w0 = 1 - rate;
     var w1 = rate;
     for (var i = 0, I = likes0.length; i < I; ++i) {
       likes0[i] = w0 * likes0[i] + w1 * likes1[i];
     }
+  },
+
+  shiftTowardsPoint: function (index, rate) {
+    var likes = this.likes;
+    assert(0 <= index && index < likes.length,
+        'bad index in Lmf.shiftTowardsPoint: ' + index);
+    assert(0 <= rate && rate <= 1,
+        'bad rate in Lmf.shiftTowardsPoint: ' + rate);
+
+    var w0 = 1 - rate;
+    var w1 = rate;
+    for (var i = 0, I = likes.length; i < I; ++i) {
+      likes[i] *= w0;
+    }
+    likes[index] += w1;
   }
 };
 
@@ -400,12 +405,19 @@ test('new Lmf(init)', function(){
   assertEqual(pmf.likes, [1/6,2/6,3/6], 'likes is invalid');
 });
 
-test('Lmf.shiftTowards', function(){
+test('Lmf.shiftTowardsLmf', function(){
   var p0 = new Lmf([0,0,1]);
   var p1 = new Lmf([0,1/2,1/2]);
   var rate = 1/3;
-  p0.shiftTowards(p1, rate);
+  p0.shiftTowardsLmf(p1, rate);
   assertEqual(p0.likes, [0, 1/6, 5/6]);delaySec: 0.05
+});
+
+test('Lmf.shiftTowardsPoint', function(){
+  var p0 = new Lmf([0,0,1]);
+  var rate = 1/4;
+  p0.shiftTowardsPoint(1, rate);
+  assertEqual(p0.likes, [0, 1/4, 3/4]);
 });
 
 //------------------------------------------------------------------------------
@@ -450,11 +462,13 @@ var Harmony = function (radius) {
 Harmony.prototype = {
   start: function () {
     if (this.running) return;
+    //log('starting Harmony');
     this.running = true;
     this.lastTime = Date.now();
     this.updateDiffusion();
   },
   stop: function () {
+    //log('stopping Harmony');
     this.running = false;
   },
   updateDiffusion: function () {
@@ -465,11 +479,11 @@ Harmony.prototype = {
 
     var priorRate = 1 - Math.exp(-dt * this.priorRateKhz);
     var newPrior = Lmf.boltzmann(this.getEnergy(this.mass));
-    this.prior.shiftTowards(newPrior, priorRate);
+    this.prior.shiftTowardsLmf(newPrior, priorRate);
 
     var sustainRate = 1 - Math.exp(-dt * this.sustainRateKhz);
     newPrior.scale(this.backgroundGain);
-    this.mass.shiftTowards(newPrior, sustainRate);
+    this.mass.shiftTowardsLmf(newPrior, sustainRate);
 
     var attackDecay = Math.exp(-dt * this.attackKhz);
     var attackRate = 1 / attackDecay - 1;
@@ -564,6 +578,7 @@ var Synthesizer = function (harmony) {
 Synthesizer.prototype = {
   start: function () {
     if (this.running) return;
+    //log('starting Synthesizer');
     this.running = true;
 
     this.worker = new Worker('synthworker.js');
@@ -598,6 +613,7 @@ Synthesizer.prototype = {
     this.update();
   },
   stop: function () {
+    //log('stopping Synthesizer');
     this.running = false;
 
     this.worker.terminate();
@@ -696,20 +712,18 @@ var Keyboard = function (harmony, synthesizer) {
   this.context = this.canvas.getContext('2d');
 
   this.running = false;
+  this.geometry = undefined;
 };
 
 Keyboard.prototype = {
   start: function () {
     if (this.running) return;
+    //log('starting Keyboard');
     this.running = true;
 
     this.update();
 
     var keyboard = this;
-    $(window).off('resize.keyboard').on('resize.keyboard', function () {
-          keyboard.updateGeometry(); // used by .draw() and .click()
-          keyboard.draw();
-        });
     $(this.canvas).on('click.keyboard', function (e) {
           keyboard.click(
             e.pageX / window.innerWidth,
@@ -717,6 +731,7 @@ Keyboard.prototype = {
         });
   },
   stop: function () {
+    //log('stopping Keyboard');
     this.running = false;
     $(this.canvas).off('click.keyboard');
   },
@@ -729,113 +744,32 @@ Keyboard.prototype = {
       setTimeout(function(){ keyboard.update(); }, this.delayMs);
     }
   },
-  onclick: function (index) {
-    this.harmony.updateAddMass(index);
-    if (this.synthesizer !== undefined) {
-      this.synthesizer.playOnset(index);
-    }
-  },
-};
 
-Keyboard.styles = {};
-
-Keyboard.setStyle = function (style) {
-  assert(style in Keyboard.styles, 'unknown keyboard style: ' + style);
-  $.extend(Keyboard.prototype, Keyboard.styles[style]);
-  log('using keyboard style = ' + style);
-};
-
-test('Keyboard.update', function(){
-  var harmony = new Harmony(4);
-
-  for (var style in Keyboard.styles) {
-    Keyboard.setStyle(style);
-
-    harmony.start();
-    harmony.stop();
-
-    var keyboard = new Keyboard(harmony);
-    keyboard.update();
-  }
-});
-
-test('Keyboard.click', function(){
-  var harmony = new Harmony(4);
-
-  for (var style in Keyboard.styles) {
-    Keyboard.setStyle(style);
-
-    var keyboard = new Keyboard(harmony);
-
-    harmony.start();
-    keyboard.start();
-    keyboard.stop();
-    harmony.stop();
-
-    for (var i = 0; i < 10; ++i) {
-      keyboard.click(Math.random(), Math.random());
-      harmony.updateDiffusion();
-      keyboard.update();
-    }
-  }  
-});
-
-//----------------------------------------------------------------------------
-// Visualization: Flow graph
-
-Keyboard.styles.flow = {
   updateGeometry: function () {
     var X = this.harmony.length;
-    var Y = Math.floor(
-        2 + Math.sqrt(window.innerHeight + window.innerWidth));
+    var Y = Math.floor(2 + Math.sqrt(window.innerHeight));
 
     var energy = this.harmony.getEnergy(this.harmony.prior);
-    var boltzmann = Lmf.boltzmann(energy).likes;
 
-    var keyExponent = 8;
-    var keyThresh = 1e-3;
-    var keys = this.keys = [];
-    var K = 0;
-    var probs = new Lmf();
-    for (var x = 0; x < X; ++x) {
-      var p = boltzmann[x] - keyThresh
-      if (p > 0) {
-        var k = K++;
-        keys[k] = x;
-        probs.likes[k] = p;
-      }
-    }
-    probs.normalize();
-    probs.scale((1 - 0.5 / keyExponent) / Math.max.apply(Math, probs.likes));
-    probs = this.probs = probs.likes;
-
-    // vertical bands of varying width
+    // vertical bands with height-varying temperature
     var geometryYX = [];
-    var width = new Lmf();
-    var widthLikes = width.likes;
     for (var y = 0; y < Y; ++y) {
-      var y01 = (y + 0.5) / Y * (1 - 0.5 / keyExponent);
-
-      for (var k = 0; k < K; ++k) {
-        var p = probs[k];
-        widthLikes[k] = Math.pow(p, keyExponent * (1 - y01))
-                      * Math.pow(1-p, keyExponent * y01);
-      }
-      width.normalize();
+      var temperature = 1 / (1 - 0.8 * y / (Y-1));
+      var width = Lmf.boltzmann(energy, temperature).likes;
 
       var geom = geometryYX[y] = [0];
-      for (var k = 0; k < K; ++k) {
-        geom[k+1] = geom[k] + widthLikes[k];
+      for (var x = 0; x < X; ++x) {
+        geom[x+1] = geom[x] + width[x];
       }
-      geom[K] = 1;
+      geom[X] = 1;
     }
 
     // transpose
     var geometryXY = this.geometry = [];
-    for (var k = 0; k <= K; ++k) {
-      var geom = geometryXY[k] = [];
+    for (var x = 0; x <= X; ++x) {
+      var geom = geometryXY[x] = [];
       for (var y = 0; y < Y; ++y) {
-        geom[y] = geometryYX[y][k];
+        geom[y] = geometryYX[y][x];
       }
     }
 
@@ -844,88 +778,74 @@ Keyboard.styles.flow = {
     var activeParam = this.harmony.dmass.likes;
     var color = this.color = [];
     var active = this.active = [];
-    for (var k = 0; k < K; ++k) {
-      var x = keys[k];
-      color[k] = Math.sqrt(colorScale * colorParam[x]);
-      active[k] = 1 - Math.exp(-activeParam[x]);
+    for (var x = 0; x < X; ++x) {
+      color[x] = Math.sqrt(colorScale * colorParam[x]);
+      active[x] = 1 - Math.exp(-activeParam[x]);
     }
   },
 
   draw: function () {
     var geom = this.geometry;
     var color = this.color;
-    var active = this.active;
     var points = this.harmony.points;
     var context = this.context;
-    var probs = this.probs;
-    var keys = this.keys;
 
-    var K = geom.length - 1;
+    var X = geom.length - 1;
     var Y = geom[0].length;
     var W = window.innerWidth - 1;
     var H = window.innerHeight - 1;
 
     context.fillStyle = 'rgb(0,0,0)';
     context.clearRect(0, 0, W+1, H+1);
-    var colorThresh = 2;
 
-    for (var k = 0; k < K; ++k) {
-      var r = Math.round(255 * Math.min(1, color[k] + active[k]));
-      var g = Math.round(255 * Math.max(0, color[k] - active[k]));
-      if (r < colorThresh) continue;
+    for (var x = 0; x < X; ++x) {
+      var r = Math.round(255 * Math.min(1, color[x] + this.active[x]));
+      var g = Math.round(255 * Math.max(0, color[x] - this.active[x]));
+      if (r < 2) continue;
       context.fillStyle = 'rgb(' + r + ',' + g + ',' + g + ')';
 
-      var lhs = geom[k];
-      var rhs = geom[k+1];
-      //if (rhs[Y-1] - lhs[Y-1] < 2 / W) continue;
+      var lhs = geom[x];
+      var rhs = geom[x+1];
+      if (rhs[Y-1] - lhs[Y-1] < 2 / W) continue;
       context.beginPath();
       context.moveTo(W * lhs[Y-1], 0);
-      for (y = Y-2; y >= 0; --y) {
+      for (y = Y-2; y > 0; --y) {
         context.lineTo(W * lhs[y], H * (1 - y / (Y - 1)));
       }
-      //context.bezierCurveTo(
-      //    W * lhs[0], H * (1 + 1/3 / (Y - 1)),
-      //    W * rhs[0], H * (1 + 1/3 / (Y - 1)),
-      //    W * rhs[1], H * (1 - 1 / (Y - 1)));
-      for (y = 0; y < Y; ++y) {
+      context.bezierCurveTo(
+          W * lhs[0], H * (1 + 1/3 / (Y - 1)),
+          W * rhs[0], H * (1 + 1/3 / (Y - 1)),
+          W * rhs[1], H * (1 - 1 / (Y - 1)));
+      for (y = 2; y < Y; ++y) {
         context.lineTo(W * rhs[y], H * (1 - y / (Y - 1)));
       }
-      //context.closePath();
+      context.closePath();
       context.fill();
     }
 
-    var textThresh = 1/4;
+    var textThresh = 0.4;
     context.font = '10pt Helvetica';
     context.textAlign = 'center';
-    for (var k = 0; k < K; ++k) {
-      var c = color[k];
-      if (c < textThresh) continue;
+    for (var x = 0; x < X; ++x) {
+      var c = color[x];
+      if (c > textThresh) {
+        var opacity = Math.sqrt((c - textThresh) / (1 - textThresh));
+        context.fillStyle = 'rgba(0,0,0,' + opacity + ')';
 
-      var opacity = Math.sqrt((c - textThresh) / (1 - textThresh));
-      context.fillStyle = 'rgba(0,0,0,' + opacity + ')';
+        var posX = W * (geom[x][1] + geom[x+1][1]) / 2;
+        var posY = H - 12;
 
-      var p = probs[k];
-      var py = (1-p) * (Y-1);
-      var y0 = Math.floor(py);
-      var y1 = 1 + y0;
-      var w0 = y1 - py;
-      var w1 = py - y0;
-      var lhs = (w0 * geom[k][y0] + w1 * geom[k][y1]);
-      var rhs = (w0 * geom[k+1][y0] + w1 * geom[k+1][y1]);
-      var posX = W * (lhs + rhs) / 2;
-      var posY = H * p + 8;
-
-      var x = keys[k];
-      var point = points[x];
-      context.fillText(point.numer, posX, posY - 8);
-      context.fillText('\u2013', posX, posY - 1); // 2014,2015 are wider
-      context.fillText(point.denom, posX, posY + 8);
+        var point = points[x];
+        context.fillText(point.numer, posX, posY - 8);
+        context.fillText('\u2013', posX, posY - 1); // 2014,2015 are wider
+        context.fillText(point.denom, posX, posY + 8);
+      }
     }
   },
 
   click: function (x01, y01) {
     var geom = this.geometry;
-    var K = geom.length - 1;
+    var X = geom.length - 1;
     var Y = geom[0].length;
 
     var y = (1 - y01) * (Y - 1);
@@ -935,19 +855,79 @@ Keyboard.styles.flow = {
     var w0 = y1 - y;
     var w1 = y - y0;
 
-    for (var k = 0; k < K; ++k) {
-      if (x01 <= w0 * geom[k+1][y0] + w1 * geom[k+1][y1]) {
-        this.onclick(this.keys[k]);
+    for (var x = 0; x < X; ++x) {
+      if (x01 <= w0 * geom[x+1][y0] + w1 * geom[x+1][y1]) {
+        this.harmony.updateAddMass(x);
+        this.synthesizer.playOnset(x);
         break;
       }
     }
   }
 };
 
+test('Keyboard.updateGeometry', function(){
+
+  var harmony = new Harmony(4);
+  for (var x = 0; x < harmony.length; ++x) {
+    harmony.mass.likes[x] = 0.01 + x;
+  }
+
+  var synthesizer = new Synthesizer(harmony);
+  var keyboard = new Keyboard(harmony, synthesizer);
+
+  keyboard.updateGeometry();
+
+  var geom = keyboard.geometry;
+  var X = geom.length - 1;
+  var Y = geom[0].length;
+  assertEqual(X, harmony.length, 'geometry X != harmony.length');
+  assert(Y > 0, 'geometry Y is not positive: ' << Y);
+
+  for (var x = 0; x <= X; ++x) {
+    for (var y = 0; y < Y; ++y) {
+      assert(0 <= geom[x][y] && geom[x][y] <= 1,
+          'bad geom['+x+']['+y+'] = ' + geom[x][y]);
+    }
+  }
+
+  for (var y = 0; y < Y; ++y) {
+    assert(geom[0][y] === 0, 'geometry left is not 0: ' + geom[0][y]);
+    assert(geom[X][y] === 1, 'geometry right is not 1: ' + geom[X][y]);
+    for (var x = 0; x < X; ++x) {
+      assert(geom[x][y] <= geom[x+1][y],
+          'geometry is not monotonic: ' + geom[x][y] + ' -> ' + geom[x+1][y]);
+    }
+  }
+
+  var color = keyboard.color;
+  assertEqual(color.length, X, 'Keyboard.color has wrong length');
+  
+  for (var x = 0; x < X; ++x) {
+    assert(0 <= color[x] && color[x] <= 1,
+        'bad color['+x+'] = ' + color[x]);
+  }
+});
+
+test('Keyboard.draw', function(){
+
+  var harmony = new Harmony(4);
+  for (var i = 0; i < harmony.length; ++i) {
+    harmony.mass.likes[i] = i;
+  }
+
+  var synthesizer = new Synthesizer(harmony);
+  var keyboard = new Keyboard(harmony, synthesizer);
+
+  keyboard.update();
+  
+  if(config.test.interactive) {
+    assert(confirm('does this look like a keyboard?'),
+        'keyboard is not drawn correctly');
+  }
+});
+
 //------------------------------------------------------------------------------
 // Main
-
-Keyboard.setStyle('flow');
 
 test('main', function(){
   var harmony = new Harmony(8);
