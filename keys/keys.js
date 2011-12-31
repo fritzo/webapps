@@ -83,6 +83,7 @@ if (window.console && window.console.log) {
   log = function (message) {}; // ignore
 }
 
+var testing = false;
 var test = function (title, callback) {
   callback = callback || function(){ globalEval(title); };
   callback.title = title;
@@ -91,6 +92,7 @@ var test = function (title, callback) {
 test._all = [];
 test.runAll = function () {
   log('[ Running ' + test._all.length + ' unit tests ]');
+  testing = true;
 
   var failCount = 0;
   for (var i = 0; i < test._all.length; ++i) {
@@ -134,10 +136,12 @@ var verifyBrowser = function () {
 
 var gcd = function (a,b)
 {
-  assert(a >= 0, 'gcd arg 1 is not positive: ' + a);
-  assert(b >= 0, 'gcd arg 2 is not positive: ' + b);
-  assert(a % 1 === 0, 'gcd arg 1 is not an integer: ' + a);
-  assert(b % 1 === 0, 'gcd arg 2 is not an integer: ' + b);
+  if (testing) {
+    assert(a >= 0, 'gcd arg 1 is not positive: ' + a);
+    assert(b >= 0, 'gcd arg 2 is not positive: ' + b);
+    assert(a % 1 === 0, 'gcd arg 1 is not an integer: ' + a);
+    assert(b % 1 === 0, 'gcd arg 2 is not an integer: ' + b);
+  }
 
   if (b > a) { var temp = a; a = b; b = temp; }
   if (b === 0) return 1;
@@ -157,13 +161,20 @@ test('assert(gcd(4,6) === 2)');
 test('assert(gcd(0,7) === 1)');
 
 var Rational = function (m,n) {
-  assert(0 <= m && m % 1 == 0, 'invalid numer: ' + m);
-  assert(0 <= n && n % 1 == 0, 'invalid denom: ' + n);
-  //assert(m || n, '0/0 is not a Rational');
+  if (testing) {
+    assert(0 <= m && m % 1 == 0, 'invalid numer: ' + m);
+    assert(0 <= n && n % 1 == 0, 'invalid denom: ' + n);
+    assert(m || n, '0/0 is not a Rational');
+  }
 
   var g = gcd(m,n);
   this.numer = m / g;
   this.denom = n / g;
+
+  if (testing) {
+    assert(this.numer % 1 === 0, 'bad Rational.numer: ' + this.numer);
+    assert(this.denom % 1 === 0, 'bad Rational.denom: ' + this.denom);
+  }
 };
 
 Rational.prototype = {
@@ -181,10 +192,6 @@ Rational.prototype = {
   },
   isNormal: function () {
     return this.numer !== 0 && this.denom !== 0;
-  },
-  validate: function () {
-    assert(this.numer % 1 === 0, 'bad Rational.numer: ' + this.numer);
-    assert(this.denom % 1 === 0, 'bad Rational.denom: ' + this.denom);
   }
 };
 
@@ -465,13 +472,11 @@ var Harmony = function (radius) {
 Harmony.prototype = {
   start: function () {
     if (this.running) return;
-    //log('starting Harmony');
     this.running = true;
     this.lastTime = Date.now();
     this.updateDiffusion();
   },
   stop: function () {
-    //log('stopping Harmony');
     this.running = false;
   },
   updateDiffusion: function () {
@@ -581,7 +586,6 @@ var Synthesizer = function (harmony) {
 Synthesizer.prototype = {
   start: function () {
     if (this.running) return;
-    //log('starting Synthesizer');
     this.running = true;
 
     this.worker = new Worker('synthworker.js');
@@ -616,7 +620,6 @@ Synthesizer.prototype = {
     this.update();
   },
   stop: function () {
-    //log('stopping Synthesizer');
     this.running = false;
 
     this.worker.terminate();
@@ -727,7 +730,6 @@ var Keyboard = function (harmony, synthesizer) {
 Keyboard.prototype = {
   start: function () {
     if (this.running) return;
-    //log('starting Keyboard');
     this.running = true;
 
     this.update();
@@ -740,7 +742,6 @@ Keyboard.prototype = {
         });
   },
   stop: function () {
-    //log('stopping Keyboard');
     this.running = false;
     $(this.canvas).off('click.keyboard');
   },
@@ -909,72 +910,38 @@ Keyboard.prototype = {
       if (x01 <= w0 * geom[k+1][y0] + w1 * geom[k+1][y1]) {
         var x = this.keys[k];
         this.harmony.updateAddMass(x);
-        this.synthesizer.playOnset(x);
+        if (this.synthesizer !== undefined) {
+          this.synthesizer.playOnset(x);
+        }
         break;
       }
     }
   }
 };
 
-test('Keyboard.updateGeometry', function(){
-
+test('Keyboard.update', function(){
   var harmony = new Harmony(4);
-  for (var x = 0; x < harmony.length; ++x) {
-    harmony.mass.likes[x] = 0.01 + x;
-  }
+  harmony.start();
+  harmony.stop();
 
-  var synthesizer = new Synthesizer(harmony);
-  var keyboard = new Keyboard(harmony, synthesizer);
-
-  keyboard.updateGeometry();
-
-  var geom = keyboard.geometry;
-  var X = geom.length - 1;
-  var Y = geom[0].length;
-  assertEqual(X, harmony.length, 'geometry X != harmony.length');
-  assert(Y > 0, 'geometry Y is not positive: ' << Y);
-
-  for (var x = 0; x <= X; ++x) {
-    for (var y = 0; y < Y; ++y) {
-      assert(0 <= geom[x][y] && geom[x][y] <= 1,
-          'bad geom['+x+']['+y+'] = ' + geom[x][y]);
-    }
-  }
-
-  for (var y = 0; y < Y; ++y) {
-    assert(geom[0][y] === 0, 'geometry left is not 0: ' + geom[0][y]);
-    assert(geom[X][y] === 1, 'geometry right is not 1: ' + geom[X][y]);
-    for (var x = 0; x < X; ++x) {
-      assert(geom[x][y] <= geom[x+1][y],
-          'geometry is not monotonic: ' + geom[x][y] + ' -> ' + geom[x+1][y]);
-    }
-  }
-
-  var color = keyboard.color;
-  assertEqual(color.length, X, 'Keyboard.color has wrong length');
-  
-  for (var x = 0; x < X; ++x) {
-    assert(0 <= color[x] && color[x] <= 1,
-        'bad color['+x+'] = ' + color[x]);
-  }
+  var keyboard = new Keyboard(harmony);
+  keyboard.update();
 });
 
-test('Keyboard.draw', function(){
-
+test('Keyboard.click', function(){
   var harmony = new Harmony(4);
-  for (var i = 0; i < harmony.length; ++i) {
-    harmony.mass.likes[i] = i;
-  }
+  var keyboard = new Keyboard(harmony);
 
-  var synthesizer = new Synthesizer(harmony);
-  var keyboard = new Keyboard(harmony, synthesizer);
+  harmony.start();
+  keyboard.start();
+  keyboard.stop();
+  harmony.stop();
 
-  keyboard.update();
-  
-  if(config.test.interactive) {
-    assert(confirm('does this look like a keyboard?'),
-        'keyboard is not drawn correctly');
-  }
+  for (var i = 0; i < 10; ++i) {
+    keyboard.click(Math.random(), Math.random());
+    harmony.updateDiffusion();
+    keyboard.update();
+  }  
 });
 
 //------------------------------------------------------------------------------
