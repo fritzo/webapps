@@ -1117,7 +1117,7 @@ Keyboard.styles.boxes = {
     var xmax = 0;
     for (var k = 0; k < K; ++k) {
       var r = radii[k];
-      var x = r + (k ? xpos[k-1] : 0);
+      var x = r;
       var y = ypos[k];
 
       for (var k2 = 0; k2 < k; ++k2) {
@@ -1125,9 +1125,9 @@ Keyboard.styles.boxes = {
         var x2 = xpos[k2];
         var y2 = ypos[k2];
 
-        //x = Math.max(x, x2 + 2 * Math.min(r, r2));
-        x = Math.max(x, y2 <= y ? r2 + r * y2 / y
-                                : r2 * y / y2 + r);
+        x = Math.max(x, x2 + 2 * Math.min(r, r2));
+        //x = Math.max(x, y2 <= y ? x2 + r2 + r * y2 / y
+        //                        : x2 + r2 * y / y2 + r);
       }
 
       xpos[k] = x;
@@ -1143,7 +1143,6 @@ Keyboard.styles.boxes = {
             'bad radius: radii[' + k + '] = ' + radii[k]);
       }
     }
-    log('DEBUG max radius = ' + Math.max.apply(Math, radii));
 
     var depthSorted = [];
     for (var k = 0; k < K; ++k) {
@@ -1170,8 +1169,6 @@ Keyboard.styles.boxes = {
   },
 
   draw: function () {
-    var textThresh = 1/4;
-
     var keys = this.keys;
     var depthSorted = this.depthSorted;
     var radii = this.radii;
@@ -1201,24 +1198,17 @@ Keyboard.styles.boxes = {
       var r = Math.round(255 * Math.min(1, color[k] + active[k]));
       var g = Math.round(255 * Math.max(0, color[k] - active[k]));
       context.fillStyle = 'rgb(' + r + ',' + g + ',' + g + ')';
-
       var Wx = W * xpos[k];
       var Hy = H * ypos[k];
       var Wr = W * radii[k];
       context.fillRect(Wx - Wr, 0, Wr + Wr, Hy);
       context.strokeRect(Wx - Wr, 0, Wr + Wr, Hy);
 
-      var c = color[k];
-      if (c > textThresh) {
-
-        var opacity = Math.sqrt((c - textThresh) / (1 - textThresh));
-        context.fillStyle = 'rgba(0,0,0,' + opacity + ')';
-
-        var point = points[keys[k]];
-        context.fillText(point.numer, xpos, ypos);
-        context.fillText('\u2013', xpos, ypos + 7); // 2014,2015 are wider
-        context.fillText(point.denom, xpos, ypos + 16);
-      }
+      var point = points[keys[k]];
+      context.fillStyle = 'rgb(0,0,0)';
+      context.fillText(point.numer, Wx, Hy - 18);
+      context.fillText('\u2013', Wx, Hy - 12); // 2014,2015 are wider
+      context.fillText(point.denom, Wx, Hy - 4);
     }
   },
 
