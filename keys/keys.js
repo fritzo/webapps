@@ -1205,16 +1205,45 @@ Keyboard.styles.boxes = {
       var Wx = W * xpos[k];
       var Hy = H * ypos[k];
       var Wr = W * radii[k];
-      context.fillRect(Wx - Wr, 0, Wr + Wr, Hy);
-      context.strokeRect(Wx - Wr, 0, Wr + Wr, Hy);
+
+      // Version 1. box w/outline
+      //context.fillRect(Wx - Wr, 0, Wr + Wr, Hy);
+      //context.strokeRect(Wx - Wr, 0, Wr + Wr, Hy);
+
+      // Version 2. curved region
+      //context.beginPath();
+      //context.moveTo(Wx - Wr, 0 - Wr);
+      //context.lineTo(Wx - Wr, Hy - Wr);
+      //context.bezierCurveTo(
+      //    Wx - Wr, Hy + Wr/3,
+      //    Wx + Wr, Hy + Wr/3,
+      //    Wx + Wr, Hy - Wr);
+      //context.lineTo(Wx + Wr, 0 - Wr);
+      //context.fill();
+      //context.stroke();
+
+      // Version 3. optimized combination
+      context.fillRect(Wx - Wr, 0 - Wr, Wr + Wr, Hy);
+      context.strokeRect(Wx - Wr, 0 - Wr, Wr + Wr, Hy);
+
+      context.beginPath();
+      context.moveTo(Wx - Wr, Hy - Wr - 2);
+      context.lineTo(Wx - Wr, Hy - Wr);
+      context.bezierCurveTo(
+          Wx - Wr, Hy + Wr/3,
+          Wx + Wr, Hy + Wr/3,
+          Wx + Wr, Hy - Wr);
+      context.lineTo(Wx + Wr, Hy - Wr - 2);
+      context.fill();
+      context.stroke();
 
       if (Wr < 6) continue;
       Hy -= 2/3 * (Wr - 6);
       var point = points[keys[k]];
       context.fillStyle = 'rgb(0,0,0)';
-      context.fillText(point.numer, Wx, Hy - 16);
-      context.fillText('\u2013', Wx, Hy - 10); // 2014,2015 are wider
-      context.fillText(point.denom, Wx, Hy - 2);
+      context.fillText(point.numer, Wx, Hy - 18);
+      context.fillText('\u2013', Wx, Hy - 12); // 2014,2015 are wider
+      context.fillText(point.denom, Wx, Hy - 4);
     }
   },
 
