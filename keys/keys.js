@@ -828,7 +828,7 @@ Keyboard.styles.thermal = {
       }
     }
 
-    var colorParam = this.harmony.prior.likes;
+    var colorParam = this.harmony.prior.likes.map(Math.sqrt);
     var colorScale = 1 / Math.max.apply(Math, colorParam);
     var activeParam = this.harmony.dmass.likes;
     var color = this.color = [];
