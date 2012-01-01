@@ -30,7 +30,8 @@ var config = {
     updateHz: 30,
     boxes: {
       keyThresh: 1e-4,
-      temperature: 3
+      temperature: 3,
+      cornerRadius: 1/3
     }
   },
 
@@ -1114,9 +1115,7 @@ Keyboard.styles.boxes = {
       }
     }
 
-    var radii = probs.likes.map(function(p){
-          return Math.pow(p, 0.5/temperature);
-        });
+    var radii = ypos.slice();
     var xpos = [];
     var xmax = 0;
     for (var k = 0; k < K; ++k) {
@@ -1190,11 +1189,12 @@ Keyboard.styles.boxes = {
     var K = keys.length;
     var W = window.innerWidth;
     var H = window.innerHeight;
+    var R = config.keyboard.boxes.cornerRadius;
 
     context.clearRect(0, 0, W, H);
     context.font = '10pt Helvetica';
     context.textAlign = 'center';
-    context.strokeStyle = 'rgb(0,0,0)';
+    context.strokeStyle = 'rgba(0,0,0,0.25)';
 
     for (var d = 0; d < K; ++d) {
       var k = depthSorted[d];
@@ -1211,39 +1211,56 @@ Keyboard.styles.boxes = {
       //context.strokeRect(Wx - Wr, 0, Wr + Wr, Hy);
 
       // Version 2. curved region
+      //context.fillRect(Wx - Wr, 0 - Wr, Wr + Wr, Hy);
+
       //context.beginPath();
-      //context.moveTo(Wx - Wr, 0 - Wr);
+      //context.moveTo(Wx - Wr, Hy - Wr - 2);
       //context.lineTo(Wx - Wr, Hy - Wr);
       //context.bezierCurveTo(
       //    Wx - Wr, Hy + Wr/3,
       //    Wx + Wr, Hy + Wr/3,
       //    Wx + Wr, Hy - Wr);
-      //context.lineTo(Wx + Wr, 0 - Wr);
+      //context.lineTo(Wx + Wr, Hy - Wr - 2);
       //context.fill();
+
+      //context.beginPath();
+      //context.moveTo(Wx - Wr, 0);
+      //context.lineTo(Wx - Wr, Hy - Wr);
+      //context.bezierCurveTo(
+      //    Wx - Wr, Hy + Wr/3,
+      //    Wx + Wr, Hy + Wr/3,
+      //    Wx + Wr, Hy - Wr);
+      //context.lineTo(Wx + Wr, 0);
       //context.stroke();
 
-      // Version 3. optimized combination
-      context.fillRect(Wx - Wr, 0 - Wr, Wr + Wr, Hy);
-      context.strokeRect(Wx - Wr, 0 - Wr, Wr + Wr, Hy);
+      // Version 3. piano keys
+      context.fillRect(Wx - Wr, 0, Wr + Wr, Hy - Wr * R);
 
       context.beginPath();
-      context.moveTo(Wx - Wr, Hy - Wr - 2);
-      context.lineTo(Wx - Wr, Hy - Wr);
-      context.bezierCurveTo(
-          Wx - Wr, Hy + Wr/3,
-          Wx + Wr, Hy + Wr/3,
-          Wx + Wr, Hy - Wr);
-      context.lineTo(Wx + Wr, Hy - Wr - 2);
+      context.moveTo(Wx - Wr, Hy - Wr * R - 2);
+      context.lineTo(Wx - Wr, Hy - Wr * R);
+      context.quadraticCurveTo(Wx - Wr, Hy, Wx - Wr * (1-R), Hy);
+      context.lineTo(Wx + Wr * (1-R), Hy);
+      context.quadraticCurveTo(Wx + Wr, Hy, Wx + Wr, Hy - Wr * R);
+      context.lineTo(Wx + Wr, Hy - Wr * R - 2);
       context.fill();
+
+      context.beginPath();
+      context.moveTo(Wx - Wr, 0);
+      context.lineTo(Wx - Wr, Hy - Wr * R);
+      context.quadraticCurveTo(Wx - Wr, Hy, Wx - Wr * (1-R), Hy);
+      context.lineTo(Wx + Wr * (1-R), Hy);
+      context.quadraticCurveTo(Wx + Wr, Hy, Wx + Wr, Hy - Wr * R);
+      context.lineTo(Wx + Wr, 0);
       context.stroke();
 
       if (Wr < 6) continue;
       Hy -= 2/3 * (Wr - 6);
       var point = points[keys[k]];
       context.fillStyle = 'rgb(0,0,0)';
-      context.fillText(point.numer, Wx, Hy - 18);
-      context.fillText('\u2013', Wx, Hy - 12); // 2014,2015 are wider
-      context.fillText(point.denom, Wx, Hy - 4);
+      context.fillText(point.numer, Wx, Hy - 16);
+      context.fillText('\u2013', Wx, Hy - 10); // 2014,2015 are wider
+      context.fillText(point.denom, Wx, Hy - 2);
     }
   },
 
@@ -1271,7 +1288,7 @@ Keyboard.styles.boxes = {
 //------------------------------------------------------------------------------
 // Main
 
-Keyboard.setStyle('flow');
+Keyboard.setStyle('boxes');
 
 test('main', function(){
   var harmony = new Harmony(8);
