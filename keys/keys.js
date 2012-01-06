@@ -1294,7 +1294,6 @@ Keyboard.styles.boxes = {
 //----------------------------------------------------------------------------
 // Visualization: wedges
 
-if(0) // TODO
 Keyboard.styles.wedges = {
 
   updateGeometry: function () {
@@ -1334,7 +1333,7 @@ Keyboard.styles.wedges = {
         });
     var ymin = Math.log(keyThresh);
     var ymax = Math.max.apply(Math, ypos);
-    ypos = ypos.map(function(y){ return (y - ymin) / (ymax - ymin); });
+    ypos = ypos.map(function(y){ return (y - ymin) / (ymax - ymin) + 1e-20; });
     if (testing) {
       for (var k = 0; k < K; ++k) {
         assert(0 <= ypos[k] && ypos[k] <= 1,
@@ -1348,88 +1347,44 @@ Keyboard.styles.wedges = {
     }
     depthSorted.sort(function(k1,k2){ return ypos[k2] - ypos[k1]; });
 
-  /*
-    // TODO compute radii at higher temperature
-    var radii = probs.likes.map(function(p){ return Math.sqrt(p / Math.PI); });
- 
-    var xbot = [0];
-    for (var k = 1; k < K; ++k) {
-      xbot[k] = xbot[k-1] + radii[k-1] + radii[k];
-    }
-    var xmin = Math.min.apply(Math, xbot);
-    var xmax = Math.max.apply(Math, xbot);
-    xbot = xbot.map(function(x){ return (x - xmin) / (xmax - xmin); });
- 
-    var forceX = [];
-    var forceY = [];
-    for (var k = 0; k < K; ++k) {
-      forceX[k] = 0;
-      forceY[k] = 0;
-    }
-
-    var active1 = [];
-    var active2 = [];
-    var C = 0;
-    for (var k1 = 0; k1 < K; ++k1) {
-      for (var k2 = 0; k2 < k1; ++k2) {
-
-        var dr = radii[k1] + radii[k2];
-        var dx = xpos[k1] - xpos[k2];
-        if (dx >= dr) continue;
-
-        var dy = ypos[k1] - ypos[k2];
-        var rr = dx * dx + dy * dy;
-        var force = dr * dr - rr;
-        if (force <= 0) continue;
-
-        active1[C] = k1;
-        active2[C] = k2;
-        ++C;
-        
-        var r = Math.sqrt(rr);
-        var fx = force * dx / r;
-        var fy = force * dy / r;
-
-        // XXX are these signs right
-        forceX[k1] = fx;
-        forceY[k1] = fy;
-        forceX[k2] = -fx;
-        forceY[k2] = -fy;
+    var xtop = keys.map(function(f){ return pitches[f]; });
+    if (testing) {
+      for (var k = 0; k < K; ++k) {
+        assert(0 <= xtop[k] && xtop[k] <= 1,
+            'bad y position: xtop[' + k + '] = ' + xtop[k]);
       }
     }
-    for (var k = 1; k < K; ++k) {
-      forceX[k] += forceX[k-1];
-      forceY[depthSorted[k]] += forceY[depthSorted[k-1]];
-    }
 
-    var time = 0;
-    TODO('compute time to feasibility');
-    */
-
-    var xtop = keys.map(function(f){ return pitches[f]; });
-
-    var radii = ypos.slice();
     var xbot = [];
-    var xmax = 0;
-    for (var k = 0; k < K; ++k) {
-      var r = radii[k];
-      var x = r;
-      var y = ypos[k];
+    // TODO symmetrize by averaging left- and right- constrained versions
+    for (var k1 = 0; k1 < K; ++k1) {
+      var xt1 = xtop[k1];
+      var xb1 = 1;
+      var y1 = ypos[k1];
 
-      for (var k2 = 0; k2 < k; ++k2) {
-        var r2 = radii[k2];
-        var x2 = xbot[k2];
+      for (var k2 = 0; k2 < k1; ++k2) {
+        var xt2 = xtop[k2];
+        var xb2 = xbot[k2];
         var y2 = ypos[k2];
 
-        var padding = (r2 + r) * Math.pow(2 / (y2 / y + y / y2), 8);
-        x = Math.max(x, x2 + padding);
+        var y = Math.min(y1, y2);
+        var avoid = 2;
+        //var avoid = Math.pow(2 / (y2 / y1 + y1 / y2), 2);
+        var padding = y * (avoid + xb2 - xb1) + (1-y) * (xt2 - xt1);
+        if (padding > 0) {
+          xb1 += padding / y;
+        }
       }
 
-      xbot[k] = x;
-      xmax = Math.max(xmax, x + r);
+      xbot[k1] = xb1;
     }
-    xbot = xbot.map(function(x){ return x / xmax; });
-    radii = radii.map(function(r){ return r / xmax; });
+    var xmax = Math.max.apply(Math, xbot) + 1;
+    var radii = [];
+    for (var k = 0; k < K; ++k) {
+      var y = ypos[k];
+      xbot[k] = y * xbot[k] / xmax + (1-y) * xtop[k];
+      radii[k] = y / xmax;
+    }
 
     this.keys = keys;
     this.depthSorted = depthSorted;
@@ -1482,16 +1437,17 @@ Keyboard.styles.wedges = {
       var r = Math.round(255 * Math.min(1, color[k] + active[k]));
       var g = Math.round(255 * Math.max(0, color[k] - active[k]));
       context.fillStyle = 'rgb(' + r + ',' + g + ',' + g + ')';
-      var Wx0 = W * xtop[k];
-      var Wx = W * xbot[k];
+
       var Hy = H * ypos[k];
+      var Wxt = W * xtop[k];
+      var Wxb = W * xbot[k];
       var Wr = W * radii[k];
 
       context.beginPath();
-      context.moveTo(Wx0, 0);
-      context.lineTo(Wx - Wr, Hy);
-      context.lineTo(Wx + Wr, Hy);
-      context.lineTo(Wx0, 0);
+      context.moveTo(Wxt, 0);
+      context.lineTo(Wxb - Wr, Hy);
+      context.lineTo(Wxb + Wr, Hy);
+      context.lineTo(Wxt, 0);
       context.fill();
       context.stroke();
 
@@ -1499,9 +1455,9 @@ Keyboard.styles.wedges = {
       Hy -= 2/3 * (Wr - 6);
       var point = points[keys[k]];
       context.fillStyle = 'rgb(0,0,0)';
-      context.fillText(point.numer, Wx, Hy - 16);
-      context.fillText('\u2013', Wx, Hy - 10); // 2014,2015 are wider
-      context.fillText(point.denom, Wx, Hy - 2);
+      context.fillText(point.numer, Wxb, Hy - 16);
+      context.fillText('\u2013', Wxb, Hy - 10); // 2014,2015 are wider
+      context.fillText(point.denom, Wxb, Hy - 2);
     }
   },
 
@@ -1509,6 +1465,7 @@ Keyboard.styles.wedges = {
     var keys = this.keys;
     var depthSorted = this.depthSorted;
     var radii = this.radii;
+    var xtop = this.xtop;
     var xbot = this.xbot;
     var ypos = this.ypos;
 
@@ -1516,8 +1473,9 @@ Keyboard.styles.wedges = {
       var k = depthSorted[d];
 
       if (y01 <= ypos[k]) {
-        var r = Math.abs(x01 - xbot[k]);
-        if (r <= radii[k]) {
+        var y = y01 / ypos[k];
+        var r = Math.abs(y * xbot[k] + (1-y) * xtop[k] - x01);
+        if (r <= y * radii[k]) {
           this.onclick(keys[k]);
           break;
         }
