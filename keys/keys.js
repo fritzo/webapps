@@ -35,6 +35,7 @@ var config = {
     },
     wedges: {
       keyThresh: 1e-4,
+      temperature: 3,
       cornerRadius: 1/3
     }
   },
@@ -1119,7 +1120,8 @@ Keyboard.styles.boxes = {
       }
     }
 
-    var radii = ypos.slice();
+    //var radii = ypos.slice();
+    var radii = ypos.map(function(y){ return 1 - (1 - y) * (1 - y); });
     var xpos = [];
     var xmax = 0;
     // TODO symmetrize by averaging left- and right- constrained versions
@@ -1298,6 +1300,7 @@ Keyboard.styles.wedges = {
 
   updateGeometry: function () {
     var keyThresh = config.keyboard.wedges.keyThresh;
+    var temperature = config.keyboard.wedges.temperature;
 
     var X = this.harmony.length;
     var Y = Math.floor(
@@ -1355,6 +1358,21 @@ Keyboard.styles.wedges = {
       }
     }
 
+    var radii = [];
+    var width = 0;
+    for (var k = 0; k < K; ++k) {
+      width += radii[k] = Math.pow(probs.likes[k], 1 / temperature);
+    }
+    for (var k = 0; k < K; ++k) {
+      radii[k] *= 0.5 / width;
+    }
+
+    var xbot = [radii[0]];
+    for (var k = 1; k < K; ++k) {
+      xbot[k] = xbot[k-1] + radii[k-1] + radii[k];
+    }
+
+    /* opimal key placement, but works poorly
     var xbot = [];
     // TODO symmetrize by averaging left- and right- constrained versions
     for (var k1 = 0; k1 < K; ++k1) {
@@ -1400,6 +1418,7 @@ Keyboard.styles.wedges = {
             'bad radii[' + k + '] = ' + radii[k]);
       }
     }
+    */
 
     for (var k = 0; k < K; ++k) {
       var y = ypos[k];
