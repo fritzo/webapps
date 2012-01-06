@@ -1358,8 +1358,9 @@ Keyboard.styles.wedges = {
     var xbot = [];
     // TODO symmetrize by averaging left- and right- constrained versions
     for (var k1 = 0; k1 < K; ++k1) {
+
       var xt1 = xtop[k1];
-      var xb1 = 1;
+      var xb1 = 0.5/K;
       var y1 = ypos[k1];
 
       for (var k2 = 0; k2 < k1; ++k2) {
@@ -1368,22 +1369,42 @@ Keyboard.styles.wedges = {
         var y2 = ypos[k2];
 
         var y = Math.min(y1, y2);
-        var avoid = 2;
-        //var avoid = Math.pow(2 / (y2 / y1 + y1 / y2), 2);
-        var padding = y * (avoid + xb2 - xb1) + (1-y) * (xt2 - xt1);
-        if (padding > 0) {
-          xb1 += padding / y;
-        }
+        var x1 = xt1 + y * (xb1 - xt1);
+        var x2 = xt2 + y * (xb2 - xt2);
+        var padding = y * 1/K;
+        //padding *= Math.pow(2 / (y2 / y1 + y1 / y2), 8);
+        if (x2 + padding < x1) continue;
+
+        xb1 += (x2 + padding - x1) / y;
       }
 
       xbot[k1] = xb1;
     }
-    var xmax = Math.max.apply(Math, xbot) + 1;
+    var xmax = Math.max.apply(Math, xbot) + 0.5/K;
     var radii = [];
+
+    // for the rhombus just computed, top width = 1, bot width = xmax.
+    // for the uniform triangle, top width = 0, bot width = 1.
+    //   (ie xtop[k] = 0, xbot[k] = (k+0.5)/K, radii[k] = 0.5/K)
+    // linearly combining the two, we achieve top width = bot width = 1.
+    var rhombicShift = 1 - xmax;
+    for (var k = 0; k < K; ++k) {
+      xbot[k] += rhombicShift * (k + 0.5) / K;
+      radii[k] = 0.5 / K * (1 + rhombicShift);
+    };
+    if (testing) {
+      for (var k = 0; k < K; ++k) {
+        assert(0 <= xbot[k] && xbot[k] <= 1,
+            'bad xbot[' + k + '] = ' + xbot[k]);
+        assert(0 <= radii[k],
+            'bad radii[' + k + '] = ' + radii[k]);
+      }
+    }
+
     for (var k = 0; k < K; ++k) {
       var y = ypos[k];
-      xbot[k] = y * xbot[k] / xmax + (1-y) * xtop[k];
-      radii[k] = y / xmax;
+      xbot[k] = xtop[k] + y * (xbot[k] - xtop[k]);
+      radii[k] *= y;
     }
 
     this.keys = keys;
