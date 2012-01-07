@@ -14,7 +14,7 @@
  * - a canvas for 2d drawing
  *
  * Provides:
- * - an obect 'livecoder'
+ * - an object 'livecoder'
  * - a mess of global variables useful for live coding
  *
  * Copyright (c) 2012, Fritz Obermeyer
