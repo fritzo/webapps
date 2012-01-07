@@ -22,9 +22,18 @@ var init = function (data) {
   self.wavEncoder = new WavEncoder(data.numSamples);
   self.samples = [];
 
+  var tasks = data.tasks;
+  assertEqual(tasks.length, self.freqs.length,
+      'tasks.length does not match freqs.length');
+
+  var startTime = Date.now();
   for (var f = 0, F = self.freqs.length; f < F; ++f) {
-    self.synthesize(f);
+    self.synthesize(tasks[f]);
   }
+  var endTime = Date.now();
+
+  log('synthesized ' + self.freqs.length + ' onsets in '
+      + (endTime - startTime) + 'ms');
 
   self.close();
 };

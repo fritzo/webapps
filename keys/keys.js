@@ -527,7 +527,7 @@ Synthesizer.prototype = {
               break;
 
             case 'log':
-              log(data.data);
+              log('Synth Worker: ' + data.data);
               break;
 
             case 'error':
@@ -572,8 +572,15 @@ Synthesizer.prototype = {
   },
 
   initOnsets: function () {
-  
+
     var onsets = this.onsets = [];
+  
+    var tasks = [];
+    var norms = this.harmony.points.map(function(q){ return q.norm(); });
+    for (var f = 0, F = norms.length; f < F; ++f) {
+      tasks[f] = f;
+    }
+    tasks.sort(function(i,j){ return norms[i] - norms[j]; });
 
     var onsetworker = new Worker('onsetworker.js');
     onsetworker.addEventListener('message', function (e) {
@@ -581,6 +588,10 @@ Synthesizer.prototype = {
           switch (data.type) {
             case 'wave':
               onsets[data.index] = data.data;
+              break;
+
+            case 'log':
+              log('Onset Worker: ' + data.data);
               break;
 
             case 'error':
@@ -593,7 +604,8 @@ Synthesizer.prototype = {
       data: {
           gain: this.onsetGain,
           freqs: this.freqs,
-          numSamples: 2 * this.windowSamples
+          numSamples: 2 * this.windowSamples,
+          tasks: tasks
         }
       });
   },
