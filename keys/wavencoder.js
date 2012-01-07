@@ -7,9 +7,9 @@
   http://www.opensource.org/licenses/mit-license.php
 */
 
-var WavEncoder = function (length) {
+var WavEncoder = function (numSamples) {
 
-  this.length = length;
+  this.numSamples = numSamples;
 
   var PCM_FORMAT = 1;
   var bytesPerSample = 1;
@@ -20,14 +20,15 @@ var WavEncoder = function (length) {
   var byteAlignment = numChannels * bytesPerSample;
 
   var formatBytes = 16;
-  var dataBytes = length * bytesPerSample * numChannels;
+  var dataBytes = numSamples * bytesPerSample * numChannels;
   var chunkBytes = 4 + (8 + formatBytes) + (8 + dataBytes);
 
   var getString = this._getString;
   var getUint16 = this._getUint16;
   var getUint32 = this._getUint32;
 
-  var bytes = this.bytes = [].concat(
+  // we encode using 8-bit words
+  var words = this.words = [].concat(
       getString('RIFF'),
 
       // only one chunk
@@ -49,10 +50,10 @@ var WavEncoder = function (length) {
       getUint32(dataBytes),
       []);
 
-  for (var h = this.headerBytes, t = 0, T = this.length; t < T; ++t, ++h) {
-    bytes[h] = 0;
+  for (var h = this.headerBytes, t = 0, T = this.numSamples; t < T; ++t, ++h) {
+    words[h] = 0;
   }
-  while (bytes.length % 3) bytes.push(0);
+  while (words.length % 3) words.push(0);
 };
 
 WavEncoder.prototype = {
@@ -87,22 +88,22 @@ WavEncoder.prototype = {
   encode: function (samples) {
     // this is hard-coded for 8-bit mono
 
-    assertEqual(samples.length, this.length, 'Wrong number of samples');
+    assertEqual(samples.length, this.numSamples, 'Wrong number of samples');
 
-    var bytes = this.bytes;
+    var words = this.words;
     var pairTable = WavEncoder.pairTable;
 
-    for (var h = this.headerBytes, t = 0, T = this.length; t < T; ++t, ++h) {
+    for (var h = this.headerBytes, t = 0, T = this.numSamples; t < T; ++t, ++h) {
       var x = samples[t];
-      //bytes[h] = Math.max(0, Math.min(255, Math.floor(128 * (x + 1))));
-      bytes[h] = Math.floor(128 * (x + 1));
+      //words[h] = Math.max(0, Math.min(255, Math.floor(128 * (x + 1))));
+      words[h] = Math.floor(128 * (x + 1));
     }
 
     var result = 'data:audio/wav;base64,';
-    for (var t = 0, T = bytes.length; t < T; t += 3) {
-      var a8 = bytes[t + 0];
-      var b8 = bytes[t + 1];
-      var c8 = bytes[t + 2];
+    for (var t = 0, T = words.length; t < T; t += 3) {
+      var a8 = words[t + 0];
+      var b8 = words[t + 1];
+      var c8 = words[t + 2];
 
       var a12 = ((a8 << 4) | (b8 >> 4)) & 4095;
       var b12 = ((b8 << 8) | c8) & 4095;
