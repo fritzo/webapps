@@ -505,17 +505,8 @@ var Synthesizer = function (harmony) {
   var freqs = this.freqs = harmony.points.map(function(q){
         return centerFreq * q.toNumber();
       });
-  var onsets = this.onsets = [];
 
-  this._wavEncoder = new WavEncoder(2 * this.windowSamples);
-  this._samples = [];
-  var startTime = Date.now();
-  for (var i = 0; i < freqs.length; ++i) {
-    onsets[i] = this.synthesizeOnset(freqs[i]);
-  }
-  var endTime = Date.now();
-  log('generated ' + freqs.length + ' audio samples in '
-      + (endTime - startTime) + 'ms');
+  this.initOnsets();
 
   this.running = false;
   this.targetTime = Date.now();
@@ -525,10 +516,10 @@ Synthesizer.prototype = {
   start: function () {
     if (this.running) return;
     this.running = true;
-
-    this.worker = new Worker('synthworker.js');
     var synth = this;
-    this.worker.addEventListener('message', function (e) {
+
+    this.synthworker = new Worker('synthworker.js');
+    this.synthworker.addEventListener('message', function (e) {
           var data = e.data;
           switch (data.type) {
             case 'wave':
@@ -540,17 +531,17 @@ Synthesizer.prototype = {
               break;
 
             case 'error':
-              log('Worker Error: ' + data.data);
+              log('Synth Worker Error: ' + data.data);
               break;
           }
         }, false);
-    this.worker.postMessage({
+    this.synthworker.postMessage({
       cmd: 'init',
       data: {
           gain: this.sustainGain,
           freqs: this.freqs,
           numVoices: this.numVoices,
-          windowSamples: this.windowSamples
+          numSamples: this.windowSamples
         }
       });
 
@@ -560,12 +551,12 @@ Synthesizer.prototype = {
   stop: function () {
     this.running = false;
 
-    this.worker.terminate();
+    this.synthworker.terminate();
   },
 
   update: function () {
     var mass = this.harmony.mass.likes;
-    this.worker.postMessage({cmd:'synthesize', data:mass});
+    this.synthworker.postMessage({cmd:'synthesize', data:mass});
   },
   play: function (uri) {
     var audio = new Audio(uri);
@@ -580,22 +571,37 @@ Synthesizer.prototype = {
     }
   },
 
-  synthesizeOnset: function (freq) {
-    var T = 2 * this.windowSamples;
-    var amp = this.onsetGain * Math.sqrt(this.centerFreq / freq) / T;
-    var samples = this._samples;
-    for (var t = 0; t < T; ++t) {
-      var tone = amp * (T - t) * Math.sin(freq * t);
-      tone /= Math.sqrt(1 + tone * tone); // clip
-      samples[t] = tone;
-    }
+  initOnsets: function () {
+  
+    var onsets = this.onsets = [];
 
-    var uri = this._wavEncoder.encode(samples);
+    var onsetworker = new Worker('onsetworker.js');
+    onsetworker.addEventListener('message', function (e) {
+          var data = e.data;
+          switch (data.type) {
+            case 'wave':
+              onsets[data.index] = data.data;
+              break;
 
-    return uri;
+            case 'error':
+              log('Onset Worker Error: ' + data.data);
+              break;
+          }
+        }, false);
+    onsetworker.postMessage({
+      cmd: 'init',
+      data: {
+          gain: this.onsetGain,
+          freqs: this.freqs,
+          numSamples: 2 * this.windowSamples
+        }
+      });
   },
   playOnset: function (index) {
-    (new Audio(this.onsets[index])).play();
+    var uri = this.onsets[index];
+    if (uri !== undefined) {
+      (new Audio(uri)).play();
+    }
   }
 };
 

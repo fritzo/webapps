@@ -19,9 +19,9 @@ var init = function (data) {
   self.centerFreq = self.freqs[(self.freqs.length - 1) / 2];
   self.numVoices = data.numVoices;
   self.F = self.freqs.length;
-  self.T = data.windowSamples;
+  self.T = data.numSamples;
 
-  self.wavEncoder = new WavEncoder(data.windowSamples);
+  self.wavEncoder = new WavEncoder(data.numSamples);
   self.samples = [];
 
   self.initialized = true;
