@@ -1,7 +1,7 @@
 /*
   The Rational Keybard: version (2012-01-07)
   http://fritzo.org/keys
-  
+
   Copyright (c) 2012, Fritz Obermeyer
   Licensed under the MIT license:
   http://www.opensource.org/licenses/mit-license.php

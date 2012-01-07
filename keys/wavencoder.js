@@ -1,14 +1,18 @@
 /*
   The Rational Keybard: version (2012-01-07)
   http://fritzo.org/keys
-  
+
   Copyright (c) 2012, Fritz Obermeyer
   Licensed under the MIT license:
   http://www.opensource.org/licenses/mit-license.php
 */
 
+//------------------------------------------------------------------------------
+// 16-bit WavEncoder
+
 var WavEncoder = function (numSamples) {
 
+  assert(numSamples % 2 === 0, 'encoder requires an even number of samples');
   this.numSamples = numSamples;
 
   var PCM_FORMAT = 1;
@@ -27,7 +31,13 @@ var WavEncoder = function (numSamples) {
   var getUint16 = this._getUint16;
   var getUint32 = this._getUint32;
 
-  // we encode using 8-bit words
+  switch (bytesPerSample) {
+    case 1: this.encode = this.encode8; break;
+    case 2: this.encode = this.encode16; break;
+    default: throw 'unsupported bytesPerSamp;e: ' + bytesPerSample;
+  }
+
+  // we encode using 16-bit words
   var words = this.words = [].concat(
       getString('RIFF'),
 
@@ -50,8 +60,9 @@ var WavEncoder = function (numSamples) {
       getUint32(dataBytes),
       []);
 
-  for (var h = this.headerBytes, t = 0, T = this.numSamples; t < T; ++t, ++h) {
-    words[h] = 0;
+  var h = this.headerWords;
+  for (var t = 0, T = numSamples / 2; t < T; ++t) {
+    words[h++] = 0;
   }
   while (words.length % 3) words.push(0);
 };
@@ -68,30 +79,55 @@ WavEncoder.prototype = {
   */
 
   headerBytes: 44,
+  headerWords: 22,
 
   _getString: function (s) {
+    assert(s.length % 2 === 0, 'expected a string length to be even');
     var result = [];
-    for (var i = 0, I = s.length; i < I; ++i) {
-      var c = s.charCodeAt(i);
-      assert(c < 256, 'bad character: ' + c);
-      result[i] = c;
+    for (var i = 0, I = s.length; i < I; i += 2) {
+      var c1 = s.charCodeAt(i + 0);
+      var c2 = s.charCodeAt(i + 1);
+      assert(c1 < 256, 'bad character: ' + c1);
+      assert(c2 < 256, 'bad character: ' + c2);
+      result.push((c1 << 8) | c2);
     }
     return result;
   },
   _getUint16: function (i) {
-    return [i & 255, (i >> 8) & 255];
+    var swapBytes = function (j) { return ((j >> 8) | (j << 8)) & 65535; };
+    return [i & 65535].map(swapBytes);
   },
   _getUint32: function (i) {
-    return [i & 255, (i >> 8) & 255, (i >> 16) & 255, (i >> 24) & 255];
+    var swapBytes = function (j) { return ((j >> 8) | (j << 8)) & 65535; };
+    return [i & 65535, (i >> 16) & 65535].map(swapBytes);
   },
-      
-  encode: function (samples) {
+
+  encode8: function (samples) {
     // this is hard-coded for 8-bit mono
 
     assertEqual(samples.length, this.numSamples, 'Wrong number of samples');
 
     var words = this.words;
-    var pairTable = WavEncoder.pairTable;
+
+    var h = this.headerWords;
+    for (var t = 0, T = this.numSamples; t < T; t += 2) {
+      var x1 = samples[t + 0];
+      var x2 = samples[t + 1];
+      var sample1 = Math.floor(128 * (x1 + 1));
+      var sample2 = Math.floor(128 * (x2 + 1));
+      words[h++] = (sample1 << 8) | sample2;
+    }
+
+    return this._encodeWords();
+  },
+
+  encode16: function (samples) {
+    TODO('implement 16-bit encoder');
+    // this is hard-coded for 8-bit mono
+
+    assertEqual(samples.length, this.numSamples, 'Wrong number of samples');
+
+    var words = this.words;
 
     for (var h = this.headerBytes, t = 0, T = this.numSamples; t < T; ++t, ++h) {
       var x = samples[t];
@@ -99,18 +135,33 @@ WavEncoder.prototype = {
       words[h] = Math.floor(128 * (x + 1));
     }
 
+    return this._encodeWords();
+  },
+
+  _encodeWords: function () {
+    var words = this.words;
+    var pairTable = WavEncoder.pairTable;
+
     var result = 'data:audio/wav;base64,';
     for (var t = 0, T = words.length; t < T; t += 3) {
-      var a8 = words[t + 0];
-      var b8 = words[t + 1];
-      var c8 = words[t + 2];
+      var a16 = words[t + 0];
+      var b16 = words[t + 1];
+      var c16 = words[t + 2];
 
-      var a12 = ((a8 << 4) | (b8 >> 4)) & 4095;
-      var b12 = ((b8 << 8) | c8) & 4095;
+      // with 4 bits per letter:
+      // A A A A B B B B C C C C 
+      // A A A B B B C C C D D D 
 
-      result += pairTable[a12] + pairTable[b12];
+      var a12 = (a16 >> 4) & 4095;
+      var b12 = ((a16 << 8) | (b16 >> 8)) & 4095;
+      var c12 = ((b16 << 4) | (c16 >> 12)) & 4095;
+      var d12 = c16 & 4095;
+
+      result += ( pairTable[a12]
+                + pairTable[b12]
+                + pairTable[c12]
+                + pairTable[d12] );
     }
-
     return result;
   }
 };
@@ -124,7 +175,8 @@ WavEncoder.prototype = {
   for (var ij = 0, IJ = 64*64; ij < IJ; ++ij) {
     pairTable[ij] = charTable[ij >> 6] + charTable[ij & 63];
   }
-  
+
   WavEncoder.pairTable = pairTable;
 })();
+
 

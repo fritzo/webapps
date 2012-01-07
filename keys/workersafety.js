@@ -1,7 +1,7 @@
 /*
   The Rational Keybard: version (2012-01-07)
   http://fritzo.org/keys
-  
+
   Copyright (c) 2012, Fritz Obermeyer
   Licensed under the MIT license:
   http://www.opensource.org/licenses/mit-license.php
@@ -9,6 +9,16 @@
 
 //------------------------------------------------------------------------------
 // Global safety
+
+var TodoException = function (message) {
+  this.message = message || '(unfinished code)';
+};
+TodoException.prototype.toString = function () {
+  return 'TODO: ' + this.message;
+};
+var TODO = function (message) {
+  throw new TodoException(message);
+};
 
 var AssertException = function (message) {
   this.message = message || '(unspecified)';
@@ -27,7 +37,7 @@ var assertEqual = function (actual, expected, message) {
     expected = JSON.stringify(expected);
   }
   assert(actual === expected,
-    (message || '') + 
+    (message || '') +
     '\n    actual = ' + actual +
     '\n    expected = ' + expected);
 };

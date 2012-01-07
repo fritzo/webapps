@@ -1,7 +1,7 @@
 /*
   The Rational Keybard: version (2012-01-07)
   http://fritzo.org/keys
-  
+
   Copyright (c) 2012, Fritz Obermeyer
   Licensed under the MIT license:
   http://www.opensource.org/licenses/mit-license.php
@@ -385,7 +385,7 @@ var Harmony = function (radius) {
       row[j] = Rational.dist(this.points[i], this.points[j]);
     }
   }
-  
+
   var freqEnergy = this.freqEnergy = [];
   for (var i = 0; i < this.length; ++i) {
     var logFreq = Math.log(this.points[i].toNumber());
@@ -735,7 +735,7 @@ test('Keyboard.click', function(){
       harmony.updateDiffusion();
       keyboard.update();
     }
-  }  
+  }
 });
 
 //----------------------------------------------------------------------------

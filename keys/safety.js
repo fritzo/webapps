@@ -1,7 +1,7 @@
 /*
   The Rational Keybard: version (2012-01-07)
   http://fritzo.org/keys
-  
+
   Copyright (c) 2012, Fritz Obermeyer
   Licensed under the MIT license:
   http://www.opensource.org/licenses/mit-license.php
@@ -43,7 +43,7 @@ var assertEqual = function (actual, expected, message) {
     expected = JSON.stringify(expected);
   }
   assert(actual === expected,
-    (message || '') + 
+    (message || '') +
     '\n    actual = ' + actual +
     '\n    expected = ' + expected);
 };
