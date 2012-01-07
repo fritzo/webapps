@@ -12,7 +12,6 @@
 
 var WavEncoder = function (numSamples) {
 
-  assert(numSamples % 2 === 0, 'encoder requires an even number of samples');
   this.numSamples = numSamples;
 
   var PCM_FORMAT = 1;
@@ -32,8 +31,16 @@ var WavEncoder = function (numSamples) {
   var getUint32 = this._getUint32;
 
   switch (bytesPerSample) {
-    case 1: this.encode = this.encode8; break;
-    case 2: this.encode = this.encode16; break;
+    case 1:
+      assert(numSamples % 2 === 0,
+          '8-bit encoder requires an even number of samples');
+      this.encode = this.encode8;
+      break;
+
+    case 2:
+      this.encode = this.encode16;
+      break;
+
     default: throw 'unsupported bytesPerSamp;e: ' + bytesPerSample;
   }
 
@@ -61,22 +68,15 @@ var WavEncoder = function (numSamples) {
       []);
 
   var h = this.headerWords;
-  for (var t = 0, T = numSamples / 2; t < T; ++t) {
+  var bytesPerWord = 2;
+  var dataWords = dataBytes / bytesPerWord;
+  for (var t = 0, T = dataWords; t < T; ++t) {
     words[h++] = 0;
   }
   while (words.length % 3) words.push(0);
 };
 
 WavEncoder.prototype = {
-
-  /*
-  quantize8: function (x) { // convert real [-1,1] to integer [0,65535]
-    return Math.max(0, Math.min(255, Math.floor(128 * (x + 1))));
-  },
-  quantize16: function (x) { // convert real [-1,1] to integer [0,65535]
-    return Math.max(0, Math.min(65535, Math.floor(32768 * (x + 1))));
-  },
-  */
 
   headerBytes: 44,
   headerWords: 22,
@@ -108,7 +108,6 @@ WavEncoder.prototype = {
     assertEqual(samples.length, this.numSamples, 'Wrong number of samples');
 
     var words = this.words;
-
     var h = this.headerWords;
     for (var t = 0, T = this.numSamples; t < T; t += 2) {
       var x1 = samples[t + 0];
@@ -122,17 +121,17 @@ WavEncoder.prototype = {
   },
 
   encode16: function (samples) {
-    TODO('implement 16-bit encoder');
-    // this is hard-coded for 8-bit mono
+    // this is hard-coded for 16-bit mono
 
     assertEqual(samples.length, this.numSamples, 'Wrong number of samples');
 
     var words = this.words;
-
-    for (var h = this.headerBytes, t = 0, T = this.numSamples; t < T; ++t, ++h) {
+    var h = this.headerWords;
+    for (var t = 0, T = this.numSamples; t < T; ++t) {
       var x = samples[t];
-      //words[h] = Math.max(0, Math.min(255, Math.floor(128 * (x + 1))));
-      words[h] = Math.floor(128 * (x + 1));
+      var sample = Math.floor(32768 * (x + 1));
+      words[h++] = ((sample >> 8) | (sample << 8)) & 65535;
+      //words[h++] = sample;
     }
 
     return this._encodeWords();
