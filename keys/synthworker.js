@@ -20,7 +20,9 @@ var init = function (data) {
   self.numVoices = data.numVoices;
   self.F = self.freqs.length;
   self.T = data.windowSamples;
+
   self.wavEncoder = new WavEncoder(data.windowSamples);
+  self.samples = [];
 
   self.initialized = true;
 };
@@ -53,7 +55,7 @@ var synthesize = function (mass) {
     bestFreqs[g] = freqs[f];
   }
 
-  var samples = [];
+  var samples = self.samples;
   for (var t = 0; t < T; ++t) {
     var chord = 0;
     for (var g = 0; g < G; ++g) {

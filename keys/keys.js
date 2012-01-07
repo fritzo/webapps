@@ -507,7 +507,8 @@ var Synthesizer = function (harmony) {
       });
   var onsets = this.onsets = [];
 
-  this.wavEncoder = new WavEncoder(2 * this.windowSamples);
+  this._wavEncoder = new WavEncoder(2 * this.windowSamples);
+  this._samples = [];
   var startTime = Date.now();
   for (var i = 0; i < freqs.length; ++i) {
     onsets[i] = this.synthesizeOnset(freqs[i]);
@@ -582,14 +583,14 @@ Synthesizer.prototype = {
   synthesizeOnset: function (freq) {
     var T = 2 * this.windowSamples;
     var amp = this.onsetGain * Math.sqrt(this.centerFreq / freq) / T;
-    var samples = [];
+    var samples = this._samples;
     for (var t = 0; t < T; ++t) {
       var tone = amp * (T - t) * Math.sin(freq * t);
       tone /= Math.sqrt(1 + tone * tone); // clip
       samples[t] = tone;
     }
 
-    var uri = this.wavEncoder.encode(samples);
+    var uri = this._wavEncoder.encode(samples);
 
     return uri;
   },
