@@ -45,84 +45,6 @@ var config = {
   }
 };
 
-//------------------------------------------------------------------------------
-// Global safety & testing
-
-var globalEval = eval;
-
-var TodoException = function (message) {
-  this.message = message || '(unfinished code)';
-};
-TodoException.prototype.toString = function () {
-  return 'TODO: ' + this.message;
-};
-var TODO = function (message) {
-  throw new TodoException(message);
-};
-
-var AssertException = function (message) {
-  this.message = message || '(unspecified)';
-};
-AssertException.prototype.toString = function () {
-  return 'Assertion Failed: ' + this.message;
-};
-var assert = function (condition, message) {
-  if (!condition) {
-    throw new AssertException(message);
-  }
-};
-
-var assertEval = function (message) {
-  assert(eval(message), message);
-};
-var assertEqual = function (actual, expected, message) {
-  if (!(actual instanceof String) || !(expected instanceof String)) {
-    actual = JSON.stringify(actual);
-    expected = JSON.stringify(expected);
-  }
-  assert(actual === expected,
-    (message || '') + 
-    '\n    actual = ' + actual +
-    '\n    expected = ' + expected);
-};
-
-var log;
-if (window.console && window.console.log) {
-  log = function (message) { console.log(message); };
-} else {
-  log = function (message) {}; // ignore
-}
-
-var testing = false;
-var test = function (title, callback) {
-  callback = callback || function(){ globalEval(title); };
-  callback.title = title;
-  test._all.push(callback);
-};
-test._all = [];
-test.runAll = function () {
-  log('[ Running ' + test._all.length + ' unit tests ]');
-  testing = true;
-
-  var failCount = 0;
-  for (var i = 0; i < test._all.length; ++i) {
-    var callback = test._all[i];
-    try {
-      callback();
-    }
-    catch (err) {
-      log('FAILED ' + callback.title + '\n  ' + err);
-      failCount += 1;
-    }
-  }
-
-  if (failCount) {
-    log('[ failed ' + failCount + ' tests ]');
-  } else {
-    log('[ passed all tests :) ]');
-  }
-};
-
 var verifyBrowser = function () {
   var missing = [];
   if (!Modernizr.canvas) missing.push('canvas element');
@@ -576,9 +498,15 @@ var Synthesizer = function (harmony) {
         return centerFreq * q.toNumber();
       });
   var onsets = this.onsets = [];
+
+  this.wavEncoder = new WavEncoder(2 * this.windowSamples);
+  var startTime = Date.now();
   for (var i = 0; i < freqs.length; ++i) {
     onsets[i] = this.synthesizeOnset(freqs[i]);
   }
+  var endTime = Date.now();
+  log('generated ' + freqs.length + ' audio samples in '
+      + (endTime - startTime) + 'ms');
 
   this.running = false;
   this.targetTime = Date.now();
@@ -650,11 +578,12 @@ Synthesizer.prototype = {
     for (var t = 0; t < T; ++t) {
       var tone = amp * (T - t) * Math.sin(freq * t);
       tone /= Math.sqrt(1 + tone * tone); // clip
-      samples[t] = Math.round(255/2 * (tone + 1)); // quantize
+      samples[t] = tone;
     }
 
-    var wave = new RIFFWAVE(samples);
-    return wave.dataURI;
+    var uri = this.wavEncoder.encode(samples);
+
+    return uri;
   },
   playOnset: function (index) {
     (new Audio(this.onsets[index])).play();

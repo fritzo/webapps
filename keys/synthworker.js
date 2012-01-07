@@ -1,5 +1,5 @@
 
-importScripts('riffwave.js');
+importScripts('wavencoder.js');
 
 //------------------------------------------------------------------------------
 // Global safety
@@ -14,6 +14,16 @@ var assert = function (condition, message) {
   if (!condition) {
     throw new AssertException(message);
   }
+};
+var assertEqual = function (actual, expected, message) {
+  if (!(actual instanceof String) || !(expected instanceof String)) {
+    actual = JSON.stringify(actual);
+    expected = JSON.stringify(expected);
+  }
+  assert(actual === expected,
+    (message || '') + 
+    '\n    actual = ' + actual +
+    '\n    expected = ' + expected);
 };
 
 var log = function (message) {
@@ -30,6 +40,7 @@ var init = function (data) {
   self.numVoices = data.numVoices;
   self.F = self.freqs.length;
   self.T = data.windowSamples;
+  self.wavEncoder = new WavEncoder(data.windowSamples);
 
   self.initialized = true;
 };
@@ -70,11 +81,11 @@ var synthesize = function (mass) {
     }
     chord *= (t + 1) * (T - t); // envelope
     chord /= Math.sqrt(1 + chord * chord); // clip
-    samples[t] = Math.round(255/2 * (chord + 1)); // quantize
+    samples[t] = chord;
   }
 
-  var wave = new RIFFWAVE(samples);
-  self.postMessage({type:'wave', data:wave.dataURI});
+  var uri = self.wavEncoder.encode(samples);
+  self.postMessage({type:'wave', data:uri});
 };
 
 //------------------------------------------------------------------------------
