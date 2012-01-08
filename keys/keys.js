@@ -31,6 +31,8 @@ var config = {
     windowSec: 0.2,
     onsetGain: 2.0,
     sustainGain: 0.3,
+    clickGain: 1.0,
+    swipeGain: 0.3,
     numVoices: 32
   },
 
@@ -438,8 +440,8 @@ Harmony.prototype = {
     }
   },
 
-  updateAddMass: function (index) {
-    this.dmass.likes[index] += 1;
+  updateAddMass: function (index, mass) {
+    this.dmass.likes[index] += mass;
   },
 
   getEnergy: function (mass) {
@@ -683,11 +685,37 @@ Keyboard.prototype = {
           keyboard.updateGeometry(); // used by .draw() and .click()
           keyboard.draw();
         });
-    $(this.canvas).on('click.keyboard', function (e) {
-          keyboard.click(
-            e.pageX / window.innerWidth,
-            e.pageY / window.innerHeight);
-        });
+
+    var $canvas = $(this.canvas);
+    if (this.updateSwipe === undefined) {
+
+      $canvas.on('click.keyboard', function (e) {
+            keyboard.click(
+                e.pageX / window.innerWidth,
+                e.pageY / window.innerHeight);
+          });
+
+    } else {
+
+      $canvas.on('mousedown.keyboard', function (e) {
+            keyboard._swiped = false;
+            keyboard.swipeX0 = keyboard.swipeX1 = e.pageX / window.innerWidth;
+            keyboard.swipeY0 = keyboard.swipeY1 = e.pageY / window.innerHeight;
+            $canvas.on('mousemove.keyboard', function (e) {
+                  keyboard.swipeX1 = e.pageX / window.innerWidth;
+                  keyboard.swipeY1 = e.pageY / window.innerHeight;
+                });
+          });
+      $canvas.on('mouseup.keyboard', function (e) {
+            $canvas.off('mousemove.keyboard');
+            if (!keyboard._swiped) {
+              keyboard.click(
+                  e.pageX / window.innerWidth,
+                  e.pageY / window.innerHeight);
+            }
+            keyboard._swiped = true;
+          });
+    }
   },
 
   stop: function () {
@@ -696,6 +724,9 @@ Keyboard.prototype = {
   },
 
   update: function () {
+    if (this.updateSwipe !== undefined) {
+      this.updateSwipe();
+    }
     this.updateGeometry();
     this.draw();
 
@@ -706,11 +737,17 @@ Keyboard.prototype = {
   },
 
   onclick: function (index) {
-    this.harmony.updateAddMass(index);
+    this.harmony.updateAddMass(index, config.synth.clickGain);
     if (this.synthesizer !== undefined) {
       this.synthesizer.playOnset(index);
     }
   },
+  onswipe: function (indices) {
+    this._swiped = true;
+    for (var i = 0, I = indices.length; i < I; ++i) {
+      this.harmony.updateAddMass(indices[i], config.synth.swipeGain);
+    }
+  }
 };
 
 Keyboard.styles = {};
@@ -1476,6 +1513,42 @@ Keyboard.styles.wedges = {
           break;
         }
       }
+    }
+  },
+
+  updateSwipe: function () {
+    var x0 = this.swipeX0;
+    var y0 = this.swipeY0;
+    var x1 = this.swipeX1;
+    var y1 = this.swipeY1;
+    this.swipeX0 = x1;
+    this.swipeY0 = y1;
+
+    // TODO compute old,new vectors using old,new geometry (not new,new)
+    if ((x0 === x1) && (y0 === y1)) return; // only works for new,new geometry
+
+    var keys = this.keys;
+    var ypos = this.ypos;
+    var xtop = this.xtop;
+    var xbot = this.xbot;
+
+    var indices = [];
+    for (var k = 0, K = keys.length; k < K; ++k) {
+      var y = ypos[k];
+      if ((y0 > y) || (y1 > y)) continue; // approximate
+
+      var xt = xtop[k];
+      var xb = xbot[k];
+      var a = (xb - xt) / y;
+      var a0 = (x0 - xt) / y0;
+      var a1 = (x1 - xt) / y1;
+      if ((a0 - a) * (a - a1) > 0) {
+        indices.push(keys[k]);
+      }
+    }
+
+    if (indices.length > 0) {
+      this.onswipe(indices);
     }
   }
 };
