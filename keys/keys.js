@@ -46,7 +46,8 @@ var config = {
     wedges: {
       keyThresh: 1e-4,
       temperature: 3,
-      cornerRadius: 1/3
+      cornerRadius: 1/3,
+      textHeight: 28
     }
   },
 
@@ -417,8 +418,11 @@ Harmony.prototype = {
   stop: function () {
     this.running = false;
 
-    var profileRate = this.profileCount * 1e3 / (Date.now() - this.profileTime);
-    log('Harmony update rate = ' + profileRate + ' Hz');
+    if (!testing) {
+      var profileRate =
+        this.profileCount * 1e3 / (Date.now() - this.profileTime);
+      log('Harmony update rate = ' + profileRate + ' Hz');
+    }
   },
   updateDiffusion: function () {
     var now = Date.now();
@@ -571,8 +575,10 @@ Synthesizer.prototype = {
 
     this.synthworker.terminate();
 
-    var profileMean = 1e-3 * this.profileElapsed / this.profileCount;
-    log('Synthesizer mean time = ' + profileMean + ' sec');
+    if (!testing) {
+      var profileMean = 1e-3 * this.profileElapsed / this.profileCount;
+      log('Synthesizer mean time = ' + profileMean + ' sec');
+    }
   },
 
   update: function () {
@@ -733,8 +739,11 @@ Keyboard.prototype = {
   stop: function () {
     this.running = false;
 
-    var profileRate = this.profileCount * 1e3 / (Date.now() - this.profileTime);
-    log('Keyboard update rate = ' + profileRate + ' Hz');
+    if (!testing) {
+      var profileRate =
+        this.profileCount * 1e3 / (Date.now() - this.profileTime);
+      log('Keyboard update rate = ' + profileRate + ' Hz');
+    }
 
     var $canvas = $(this.canvas);
     if (this.updateSwipe === undefined) {
@@ -1321,9 +1330,9 @@ Keyboard.styles.boxes = {
 // Visualization: wedges
 
 // TODO update for simple wedge placement:
-// * reverse depth sorting for text depth
 // * move numbers to above line and color same as keys
 // * narrow number line so that endpoints are drawn correctly
+// * added corner radius
 
 Keyboard.styles.wedges = {
 
@@ -1373,11 +1382,16 @@ Keyboard.styles.wedges = {
       }
     }
 
+    var makeRoomForText = 1 - config.keyboard.wedges.textHeight / innerHeight;
+    for (var k = 0; k < K; ++k) {
+      ypos[k] *= makeRoomForText;
+    }
+
     var depthSorted = [];
     for (var k = 0; k < K; ++k) {
       depthSorted[k] = k;
     }
-    depthSorted.sort(function(k1,k2){ return ypos[k2] - ypos[k1]; });
+    depthSorted.sort(function(k1,k2){ return ypos[k1] - ypos[k2]; });
 
     var xtop = keys.map(function(f){ return pitches[f]; });
     if (testing) {
@@ -1400,54 +1414,6 @@ Keyboard.styles.wedges = {
     for (var k = 1; k < K; ++k) {
       xbot[k] = xbot[k-1] + radii[k-1] + radii[k];
     }
-
-    /* opimal key placement, but works poorly
-    var xbot = [];
-    // TODO symmetrize by averaging left- and right- constrained versions
-    for (var k1 = 0; k1 < K; ++k1) {
-
-      var xt1 = xtop[k1];
-      var xb1 = 0.5/K;
-      var y1 = ypos[k1];
-
-      for (var k2 = 0; k2 < k1; ++k2) {
-        var xt2 = xtop[k2];
-        var xb2 = xbot[k2];
-        var y2 = ypos[k2];
-
-        var y = Math.min(y1, y2);
-        var x1 = xt1 + y * (xb1 - xt1);
-        var x2 = xt2 + y * (xb2 - xt2);
-        var padding = y * 1/K;
-        //padding *= Math.pow(2 / (y2 / y1 + y1 / y2), 8);
-        if (x2 + padding < x1) continue;
-
-        xb1 += (x2 + padding - x1) / y;
-      }
-
-      xbot[k1] = xb1;
-    }
-    var xmax = Math.max.apply(Math, xbot) + 0.5/K;
-    var radii = [];
-
-    // for the rhombus just computed, top width = 1, bot width = xmax.
-    // for the uniform triangle, top width = 0, bot width = 1.
-    //   (ie xtop[k] = 0, xbot[k] = (k+0.5)/K, radii[k] = 0.5/K)
-    // linearly combining the two, we achieve top width = bot width = 1.
-    var rhombicShift = 1 - xmax;
-    for (var k = 0; k < K; ++k) {
-      xbot[k] += rhombicShift * (k + 0.5) / K;
-      radii[k] = 0.5 / K * (1 + rhombicShift);
-    };
-    if (testing) {
-      for (var k = 0; k < K; ++k) {
-        assert(0 <= xbot[k] && xbot[k] <= 1,
-            'bad xbot[' + k + '] = ' + xbot[k]);
-        assert(0 <= radii[k],
-            'bad radii[' + k + '] = ' + radii[k]);
-      }
-    }
-    */
 
     for (var k = 0; k < K; ++k) {
       var y = ypos[k];
@@ -1520,13 +1486,11 @@ Keyboard.styles.wedges = {
       context.fill();
       context.stroke();
 
-      if (Wr < 6) continue;
-      Hy -= 2/3 * (Wr - 6);
+      if (color[k] < 0.1) continue;
       var point = points[keys[k]];
-      context.fillStyle = 'rgb(0,0,0)';
-      context.fillText(point.numer, Wxb, Hy - 16);
-      context.fillText('\u2013', Wxb, Hy - 10); // 2014,2015 are wider
-      context.fillText(point.denom, Wxb, Hy - 2);
+      context.fillText(point.numer, Wxb, Hy + 12);
+      context.fillText('\u2013', Wxb, Hy + 18); // 2014,2015 are wider
+      context.fillText(point.denom, Wxb, Hy + 26);
     }
   },
 
@@ -1592,7 +1556,7 @@ Keyboard.styles.wedges = {
 //------------------------------------------------------------------------------
 // Main
 
-Keyboard.setStyle('boxes');
+Keyboard.setStyle('wedges');
 
 test('main', function(){
   var harmony = new Harmony(8);
