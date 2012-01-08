@@ -10,6 +10,8 @@
 //------------------------------------------------------------------------------
 // Global safety
 
+var globalEval = eval;
+
 var TodoException = function (message) {
   this.message = message || '(unfinished code)';
 };
@@ -31,6 +33,10 @@ var assert = function (condition, message) {
     throw new AssertException(message);
   }
 };
+
+var assertEval = function (message) {
+  assert(eval(message), message);
+};
 var assertEqual = function (actual, expected, message) {
   if (!(actual instanceof String) || !(expected instanceof String)) {
     actual = JSON.stringify(actual);
@@ -45,4 +51,7 @@ var assertEqual = function (actual, expected, message) {
 var log = function (message) {
   self.postMessage({type:'log', data:message});
 };
+
+var testing = false;
+var test = function (title, callback) {}; // ignore
 

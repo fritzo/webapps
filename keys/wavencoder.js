@@ -15,7 +15,7 @@ var WavEncoder = function (numSamples) {
   this.numSamples = numSamples;
 
   var PCM_FORMAT = 1;
-  var bytesPerSample = 1;
+  var bytesPerSample = 2;
   var bitsPerSample = bytesPerSample * 8;
   var numChannels = 1; // mono
   var sampleRateHz = 22050;
@@ -112,6 +112,7 @@ WavEncoder.prototype = {
     for (var t = 0, T = this.numSamples; t < T; t += 2) {
       var x1 = samples[t + 0];
       var x2 = samples[t + 1];
+      // 8-bit samples are unsigned
       var sample1 = Math.floor(128 * (x1 + 1));
       var sample2 = Math.floor(128 * (x2 + 1));
       words[h++] = (sample1 << 8) | sample2;
@@ -129,7 +130,9 @@ WavEncoder.prototype = {
     var h = this.headerWords;
     for (var t = 0, T = this.numSamples; t < T; ++t) {
       var x = samples[t];
-      var sample = Math.floor(32768 * (x + 1));
+      // 16-bit samples are signed with 2's compliment
+      var sample = Math.floor(32768 * x);
+      if (sample < 0) sample += 65536;
       words[h++] = ((sample >> 8) | (sample << 8)) & 65535;
       //words[h++] = sample;
     }
@@ -177,5 +180,4 @@ WavEncoder.prototype = {
 
   WavEncoder.pairTable = pairTable;
 })();
-
 
