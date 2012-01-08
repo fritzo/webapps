@@ -1636,19 +1636,6 @@ $(document).ready(function(){
     }
   };
 
-  var hideAbout = function () {
-    $('#canvas').off('click.about');
-    $('#aboutButton').show();
-    $('#about').fadeOut('fast');
-    if (!running) toggleRunning();
-  };
-  var showAbout = function () {
-    $('#canvas').on('click.about', hideAbout);
-    $('#aboutButton').hide();
-    $('#about').fadeIn('fast');
-    if (running) toggleRunning();
-  };
-
   $(document).on('keyup', function (e) {
         switch (e.which) {
           case 27:
@@ -1656,7 +1643,6 @@ $(document).ready(function(){
             break;
             }
       });
-  $('#aboutButton').on('click', showAbout);
 
   toggleRunning();
 });
