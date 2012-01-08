@@ -9,7 +9,8 @@
 
 //------------------------------------------------------------------------------
 // WaveEncoder
-// converts [0,1]-valued array |-> base64-encoded data uri in 16-bit chunks
+// Converts [0,1]-valued array |-> base64-encoded data uri.
+// The base64 encoding is implemented using 16-bit words.
 
 var WavEncoder = function (numSamples) {
 

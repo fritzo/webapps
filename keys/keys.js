@@ -403,14 +403,22 @@ var Harmony = function (radius) {
 };
 
 Harmony.prototype = {
+
   start: function () {
     if (this.running) return;
     this.running = true;
+
+    this.profileTime = Date.now();
+    this.profileCount = 0;
+
     this.lastTime = Date.now();
     this.updateDiffusion();
   },
   stop: function () {
     this.running = false;
+
+    var profileRate = this.profileCount * 1e3 / (Date.now() - this.profileTime);
+    log('Harmony update rate = ' + profileRate + ' Hz');
   },
   updateDiffusion: function () {
     var now = Date.now();
@@ -438,6 +446,8 @@ Harmony.prototype = {
       var harmony = this;
       setTimeout(function(){ harmony.updateDiffusion(); }, this.delayMs);
     }
+
+    this.profileCount += 1;
   },
 
   updateAddMass: function (index, mass) {
@@ -515,10 +525,14 @@ var Synthesizer = function (harmony) {
 };
 
 Synthesizer.prototype = {
+
   start: function () {
     if (this.running) return;
     this.running = true;
     var synth = this;
+
+    this.profileCount = 0;
+    this.profileElapsed = 0;
 
     this.synthworker = new Worker('synthworker.js');
     this.synthworker.addEventListener('message', function (e) {
@@ -526,6 +540,8 @@ Synthesizer.prototype = {
           switch (data.type) {
             case 'wave':
               synth.play(data.data);
+              synth.profileCount += 1;
+              synth.profileElapsed += data.profileElapsed;
               break;
 
             case 'log':
@@ -554,6 +570,9 @@ Synthesizer.prototype = {
     this.running = false;
 
     this.synthworker.terminate();
+
+    var profileMean = 1e-3 * this.profileElapsed / this.profileCount;
+    log('Synthesizer mean time = ' + profileMean + ' sec');
   },
 
   update: function () {
@@ -645,19 +664,6 @@ test('web worker echo', function(){
   worker.postMessage(message);
 });
 
-if(0) // TODO
-test('Synthesizer.worker', function(){
-  var harmony = new Harmony(3);
-  var synthesizer = new Synthesizer(harmony);
-  harmony.start();
-  synthesizer.start();
-
-  // TODO test web worker here
-
-  synthesizer.stop();
-  harmony.stop();
-});
-
 //------------------------------------------------------------------------------
 // Visualization
 
@@ -677,6 +683,9 @@ Keyboard.prototype = {
   start: function () {
     if (this.running) return;
     this.running = true;
+
+    this.profileTime = Date.now();
+    this.profileCount = 0;
 
     this.update();
 
@@ -724,6 +733,9 @@ Keyboard.prototype = {
   stop: function () {
     this.running = false;
 
+    var profileRate = this.profileCount * 1e3 / (Date.now() - this.profileTime);
+    log('Keyboard update rate = ' + profileRate + ' Hz');
+
     var $canvas = $(this.canvas);
     if (this.updateSwipe === undefined) {
 
@@ -749,6 +761,8 @@ Keyboard.prototype = {
       var keyboard = this;
       setTimeout(function(){ keyboard.update(); }, this.delayMs);
     }
+
+    this.profileCount += 1;
   },
 
   onclick: function (index) {
@@ -1091,6 +1105,8 @@ Keyboard.styles.flow = {
 //----------------------------------------------------------------------------
 // Visualization: boxes
 
+// TODO implement swiping gestures
+
 Keyboard.styles.boxes = {
 
   updateGeometry: function () {
@@ -1303,6 +1319,11 @@ Keyboard.styles.boxes = {
 
 //----------------------------------------------------------------------------
 // Visualization: wedges
+
+// TODO update for simple wedge placement:
+// * reverse depth sorting for text depth
+// * move numbers to above line and color same as keys
+// * narrow number line so that endpoints are drawn correctly
 
 Keyboard.styles.wedges = {
 

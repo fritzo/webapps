@@ -28,6 +28,8 @@ var init = function (data) {
 };
 
 var synthesize = function (mass) {
+  var profileStartTime = Date.now();
+
   assert(self.initialized, 'worker has not been initialized');
   assert(mass.length === self.freqs.length,
       'mass,freqs have different length');
@@ -67,7 +69,9 @@ var synthesize = function (mass) {
   }
 
   var uri = self.wavEncoder.encode(samples);
-  self.postMessage({type:'wave', data:uri});
+
+  var profileElapsed = Date.now() - profileStartTime;
+  self.postMessage({type:'wave', data:uri, profileElapsed:profileElapsed});
 };
 
 //------------------------------------------------------------------------------
