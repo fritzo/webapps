@@ -15,7 +15,7 @@ var config = {
     //maxRadius: 16.45, // 127 keys
     //maxRadius: 20, // 191 keys
     //maxRadius: 21, // 207 keys
-    maxRadius: 25, // 297 keys
+    maxRadius: Math.sqrt(24*24 + 1*1 + 1e-4), // 279 keys
     priorSec: 8.0,
     priorRadius: 3,
     priorWidthOctaves: 4.0,
@@ -715,12 +715,27 @@ Keyboard.prototype = {
             }
             keyboard._swiped = true;
           });
+      $canvas.on('mouseout.keyboard', function (e) {
+            $canvas.off('mousemove.keyboard');
+          });
     }
   },
 
   stop: function () {
     this.running = false;
-    $(this.canvas).off('click.keyboard');
+
+    var $canvas = $(this.canvas);
+    if (this.updateSwipe === undefined) {
+
+      $canvas.off('click.keyboard');
+
+    } else {
+
+      $canvas.off('mousedown.keyboard');
+      $canvas.off('mousemove.keyboard');
+      $canvas.on('mouseup.keyboard');
+      $canvas.off('mouseout.keyboard');
+    }
   },
 
   update: function () {

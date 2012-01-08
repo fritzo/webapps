@@ -8,7 +8,8 @@
 */
 
 //------------------------------------------------------------------------------
-// 16-bit WavEncoder
+// WaveEncoder
+// converts [0,1]-valued array |-> base64-encoded data uri in 16-bit chunks
 
 var WavEncoder = function (numSamples) {
 
@@ -130,11 +131,10 @@ WavEncoder.prototype = {
     var h = this.headerWords;
     for (var t = 0, T = this.numSamples; t < T; ++t) {
       var x = samples[t];
-      // 16-bit samples are signed with 2's compliment
+      // 16-bit samples are signed
       var sample = Math.floor(32768 * x);
-      if (sample < 0) sample += 65536;
+      if (sample < 0) sample += 65536; // 2's compliment
       words[h++] = ((sample >> 8) | (sample << 8)) & 65535;
-      //words[h++] = sample;
     }
 
     return this._encodeWords();
