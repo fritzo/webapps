@@ -790,6 +790,8 @@ Keyboard.prototype = {
   fracBars: '\u2013\u2014\u2015', // narrow, medium, wide
 };
 
+// TODO add button to switch styles
+
 Keyboard.styles = {};
 
 Keyboard.setStyle = function (style) {
@@ -827,6 +829,36 @@ test('Keyboard.click', function(){
 
     for (var i = 0; i < 10; ++i) {
       keyboard.click(Math.random(), Math.random());
+      harmony.updateDiffusion();
+      keyboard.update();
+    }
+  }
+});
+
+test('Keyboard.swipe', function(){
+  var harmony = new Harmony(4);
+
+  for (var style in Keyboard.styles) {
+    if (Keyboard.styles[style].updateSwipe === null) continue;
+    Keyboard.setStyle(style);
+
+    var keyboard = new Keyboard(harmony);
+
+    harmony.start();
+    keyboard.start();
+    keyboard.stop();
+    harmony.stop();
+
+    keyboard._swiped = false;
+    keyboard.swipeX0 = keyboard.swipeX1 = Math.random();
+    keyboard.swipeY0 = keyboard.swipeY1 = Math.random();
+
+    for (var i = 0; i < 10; ++i) {
+
+      keyboard._swiped = false;
+      keyboard.swipeX1 = Math.random();
+      keyboard.swipeY1 = Math.random();
+
       harmony.updateDiffusion();
       keyboard.update();
     }
@@ -1088,6 +1120,7 @@ Keyboard.styles.flow = {
       var posX = W * (lhs + rhs) / 2;
       var posY = H * p + 8;
 
+      var point = points[keys[k]];
       var bar = fracBars[(point.numer > 9) + (point.denom > 9)];
       context.fillText(point.numer, posX, posY - 8);
       context.fillText(bar, posX, posY - 1);
@@ -1659,7 +1692,7 @@ $(document).ready(function(){
           case 27:
             toggleRunning();
             break;
-            }
+        }
       });
 
   toggleRunning();
