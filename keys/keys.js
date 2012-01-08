@@ -1329,11 +1329,6 @@ Keyboard.styles.boxes = {
 //----------------------------------------------------------------------------
 // Visualization: wedges
 
-// TODO update for simple wedge placement:
-// * move numbers to above line and color same as keys
-// * narrow number line so that endpoints are drawn correctly
-// * added corner radius
-
 Keyboard.styles.wedges = {
 
   updateGeometry: function () {
@@ -1464,7 +1459,6 @@ Keyboard.styles.wedges = {
     context.clearRect(0, 0, W, H);
     context.font = '10pt Helvetica';
     context.textAlign = 'center';
-    context.strokeStyle = 'rgba(0,0,0,0.25)';
 
     for (var d = 0; d < K; ++d) {
       var k = depthSorted[d];
@@ -1478,13 +1472,27 @@ Keyboard.styles.wedges = {
       var Wxb = W * xbot[k];
       var Wr = W * radii[k];
 
+      // Version 1: triangles
       context.beginPath();
       context.moveTo(Wxt, 0);
       context.lineTo(Wxb - Wr, Hy);
       context.lineTo(Wxb + Wr, Hy);
       context.lineTo(Wxt, 0);
       context.fill();
-      context.stroke();
+
+      // Version 2: curved triangles
+      //var Wxl = Wxb - Wr;
+      //var Wxr = Wxb + Wr;
+      //var Rx = R;
+      //var Ry = Rx * Wr / Hy;
+      //context.beginPath();
+      //context.moveTo(Wxt - 0.5, 0);
+      //context.lineTo(Wxl + (Wxt - Wxl) * Ry, Hy * (1-Ry));
+      //context.quadraticCurveTo(Wxl, Hy, Wxl + Wr * Rx, Hy);
+      //context.lineTo(Wxr - Wr * Rx, Hy);
+      //context.quadraticCurveTo(Wxr, Hy, Wxr + (Wxt - Wxr) * Ry, Hy * (1-Ry));
+      //context.lineTo(Wxt + 0.5, 0);
+      //context.fill();
 
       if (color[k] < 0.1) continue;
       var point = points[keys[k]];
