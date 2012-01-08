@@ -23,6 +23,12 @@ body {
   height: 100%;
   margin: 0px;
 }
+.warning {
+  font-size: 24pt;
+  color: red;
+  background-color: white;
+}
+
 canvas {
   position: fixed; 
   top: 0px;
@@ -30,16 +36,92 @@ canvas {
   width: 100%;
   height: 100%;
 }
-.warning {
-  font-size: 24pt;
-  color: red;
-  background-color: white;
+
+#aboutButton {
+  position: fixed;
+  right: 0px;
+  bottom: 0px;
 }
+button {
+  margin: 0px;
+  border: solid 2px black;
+  border-radius: 16px;
+  padding-top:  0.5ex;
+  padding-bottom:  0ex;
+  padding-left:  0.9ex;
+  padding-right: 0.9ex;
+
+  background-color: #444444;
+  color: white;
+  font-family: helvetica, verdana, sans;
+  font-size: 16px;
+  font-weight: bold;
+}
+button:hover {
+  background-color: #666666;
+}
+
+#about {
+  position: absolute;
+  width: 80%;
+  left: 10%;
+  border: solid 2ex white;
+  border-radius: 2ex;
+
+  color: black;
+  background-color: white;
+  display: none;
+}
+#about h1,
+#about .author {
+  text-align: center;
+}
+
+#canvas { z-index: 0; }
+#aboutButton { z-index: 1; }
+#about { z-index: 2; }
 </style>
 </head>
 <!----------------------------------------------------------------------------->
 <body>
 <canvas id='canvas'></canvas>
+<div id='aboutButton'>
+  <button>?</button>
+</div>
+<div id='about'>
+  <h1>The Rational Keyboard</h1>
+  <p class=author><a href='http://fritzo.org'>Fritz Obermeyer</a></p>
+  <p>
+    The Rational Keyboard is an experiment attemtpting to overcome some of the flaws in the piano keyboard layout and the equal temperment 12-tone scale.
+  </p>
+  <p>
+    Let us begin with a psychoacoustic model of harmony and consonance.
+    Given that the ear uses both place-coding and temporal coding of pitch,
+    and that temporal coding is used to associate partials of a tone,
+    we postulate a scalar quantity <i>consonance</i> which which is monotone
+    decreasing in the complexity of a temporally coded signal.
+    One model of signal complexity in a population of coupled oscillators
+    (such as neurons in the efferent fibers leaving the cochlea)
+    is the average coupling energy in the population.
+  </p>
+  <p>
+    ...
+    We approximate the Arnold tongue scenario with a simple quadratic energy
+    function on the activation vector over frequencies.
+    Let QQ be the set of positive rational numbers,
+    each expressed as m/n for relatively prime integers m,n.
+    We endow QQ with the following pseudometric:
+    Suppose p,q:QQ, and p/q = m/n for relatively prime m,n.
+    then d(p,q) = m^2 + n^2.
+    Then d(-,-) is symmetric and obeys the triangle inequality.
+  </p>
+  <p>
+    In The Rational Keyboard,
+    audio accompaniment is determined by the coupled ODE ...,
+    key length is determined by energy,
+    and key color is determined by the current audio.
+  </p>
+</div>
 </body>
 </html>
 
