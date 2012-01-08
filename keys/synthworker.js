@@ -41,7 +41,7 @@ var synthesize = function (mass) {
   var amps = [];
   var best = [];
   var normalizeEnvelope = 4 / ((T+1) * (T+1));
-  var gain = self.gain * normalizeEnvelope * Math.sqrt(self.centerFreq);
+  var gain = self.gain * normalizeEnvelope * self.centerFreq;
   for (var f = 0; f < F; ++f) {
     amps[f] = gain * Math.sqrt(mass[f]);
     best[f] = f;
@@ -53,7 +53,7 @@ var synthesize = function (mass) {
   var bestFreqs = [];
   for (var g = 0; g < G; ++g) {
     var f = best[g];
-    bestAmps[g] = amps[f] / Math.sqrt(freqs[f]);
+    bestAmps[g] = amps[f] / freqs[f];
     bestFreqs[g] = freqs[f];
   }
 
@@ -64,7 +64,7 @@ var synthesize = function (mass) {
       chord += bestAmps[g] * Math.sin(bestFreqs[g] * t);
     }
     chord *= (t + 1) * (T - t); // envelope
-    chord /= Math.sqrt(1 + chord * chord); // clip
+    chord *= 0.5 / Math.sqrt(1 + chord * chord); // clip to [-0.5,0.5]
     samples[t] = chord;
   }
 

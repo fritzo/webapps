@@ -42,12 +42,12 @@ var synthesize = function (f) {
 
   var freq = self.freqs[f];
   var T = self.T;
-  var gain = self.gain * Math.sqrt(self.centerFreq / freq) / T;
+  var gain = self.gain * self.centerFreq / freq / T;
   var samples = self.samples;
 
   for (var t = 0; t < T; ++t) {
     var tone = gain * (T - t) * Math.sin(freq * t);
-    tone /= Math.sqrt(1 + tone * tone); // clip
+    tone *= 0.5 / Math.sqrt(1 + tone * tone); // clip to [-0.5,0.5]
     samples[t] = tone;
   }
 

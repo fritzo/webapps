@@ -29,7 +29,7 @@ var config = {
     sampleRateHz: 22050,
     centerFreqHz: 261.625565, // middle C
     windowSec: 0.2,
-    onsetGain: 2.0,
+    onsetGain: 1.0,
     sustainGain: 0.3,
     clickGain: 1.0,
     swipeGain: 0.3,
@@ -702,7 +702,7 @@ Keyboard.prototype = {
         });
 
     var $canvas = $(this.canvas);
-    if (this.updateSwipe === undefined) {
+    if (this.updateSwipe === null) {
 
       $canvas.on('click.keyboard', function (e) {
             keyboard.click(
@@ -746,7 +746,7 @@ Keyboard.prototype = {
     }
 
     var $canvas = $(this.canvas);
-    if (this.updateSwipe === undefined) {
+    if (this.updateSwipe === null) {
 
       $canvas.off('click.keyboard');
 
@@ -760,7 +760,7 @@ Keyboard.prototype = {
   },
 
   update: function () {
-    if (this.updateSwipe !== undefined) {
+    if (this.updateSwipe !== null) {
       this.updateSwipe();
     }
     this.updateGeometry();
@@ -785,7 +785,9 @@ Keyboard.prototype = {
     for (var i = 0, I = indices.length; i < I; ++i) {
       this.harmony.updateAddMass(indices[i], config.synth.swipeGain);
     }
-  }
+  },
+
+  fracBars: '\u2013\u2014\u2015', // narrow, medium, wide
 };
 
 Keyboard.styles = {};
@@ -914,6 +916,7 @@ Keyboard.styles.thermal = {
     }
 
     var textThresh = 0.4;
+    var fracBars = this.fracBars;
     context.font = '10pt Helvetica';
     context.textAlign = 'center';
     for (var x = 0; x < X; ++x) {
@@ -926,8 +929,9 @@ Keyboard.styles.thermal = {
         var posY = H - 12;
 
         var point = points[x];
+        var bar = fracBars[(point.numer > 9) + (point.denom > 9)];
         context.fillText(point.numer, posX, posY - 8);
-        context.fillText('\u2013', posX, posY - 1); // 2014,2015 are wider
+        context.fillText(bar, posX, posY - 1);
         context.fillText(point.denom, posX, posY + 8);
       }
     }
@@ -951,7 +955,8 @@ Keyboard.styles.thermal = {
         break;
       }
     }
-  }
+  },
+  updateSwipe: null
 };
 
 //----------------------------------------------------------------------------
@@ -1062,6 +1067,7 @@ Keyboard.styles.flow = {
     }
 
     var textThresh = 1/4;
+    var fracBars = this.fracBars;
     context.font = '10pt Helvetica';
     context.textAlign = 'center';
     for (var k = 0; k < K; ++k) {
@@ -1082,10 +1088,9 @@ Keyboard.styles.flow = {
       var posX = W * (lhs + rhs) / 2;
       var posY = H * p + 8;
 
-      var x = keys[k];
-      var point = points[x];
+      var bar = fracBars[(point.numer > 9) + (point.denom > 9)];
       context.fillText(point.numer, posX, posY - 8);
-      context.fillText('\u2013', posX, posY - 1); // 2014,2015 are wider
+      context.fillText(bar, posX, posY - 1);
       context.fillText(point.denom, posX, posY + 8);
     }
   },
@@ -1108,7 +1113,8 @@ Keyboard.styles.flow = {
         break;
       }
     }
-  }
+  },
+  updateSwipe: null
 };
 
 //----------------------------------------------------------------------------
@@ -1233,6 +1239,7 @@ Keyboard.styles.boxes = {
     var R = config.keyboard.boxes.cornerRadius;
 
     context.clearRect(0, 0, W, H);
+    var fracBars = this.fracBars;
     context.font = '10pt Helvetica';
     context.textAlign = 'center';
     context.strokeStyle = 'rgba(0,0,0,0.25)';
@@ -1298,9 +1305,10 @@ Keyboard.styles.boxes = {
       if (Wr < 6) continue;
       Hy -= 2/3 * (Wr - 6);
       var point = points[keys[k]];
+      var bar = fracBars[(point.numer > 9) + (point.denom > 9)];
       context.fillStyle = 'rgb(0,0,0)';
       context.fillText(point.numer, Wx, Hy - 16);
-      context.fillText('\u2013', Wx, Hy - 10); // 2014,2015 are wider
+      context.fillText(bar, Wx, Hy - 10);
       context.fillText(point.denom, Wx, Hy - 2);
     }
   },
@@ -1323,7 +1331,8 @@ Keyboard.styles.boxes = {
         }
       }
     }
-  }
+  },
+  updateSwipe: null
 };
 
 //----------------------------------------------------------------------------
@@ -1457,6 +1466,7 @@ Keyboard.styles.wedges = {
     var R = config.keyboard.wedges.cornerRadius;
 
     context.clearRect(0, 0, W, H);
+    var fracBars = this.fracBars;
     context.font = '10pt Helvetica';
     context.textAlign = 'center';
 
@@ -1496,8 +1506,9 @@ Keyboard.styles.wedges = {
 
       if (color[k] < 0.1) continue;
       var point = points[keys[k]];
+      var bar = fracBars[(point.numer > 9) + (point.denom > 9)];
       context.fillText(point.numer, Wxb, Hy + 12);
-      context.fillText('\u2013', Wxb, Hy + 18); // 2014,2015 are wider
+      context.fillText(bar, Wxb, Hy + 18);
       context.fillText(point.denom, Wxb, Hy + 26);
     }
   },
@@ -1523,7 +1534,6 @@ Keyboard.styles.wedges = {
       }
     }
   },
-
   updateSwipe: function () {
     var x0 = this.swipeX0;
     var y0 = this.swipeY0;
