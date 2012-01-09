@@ -34,8 +34,6 @@ var WavEncoder = function (numSamples) {
 
   switch (bytesPerSample) {
     case 1:
-      assert(numSamples % 2 === 0,
-          '8-bit encoder requires an even number of samples');
       this.encode = this.encode8;
       break;
 
@@ -111,13 +109,18 @@ WavEncoder.prototype = {
 
     var words = this.words;
     var h = this.headerWords;
-    for (var t = 0, T = this.numSamples; t < T; t += 2) {
+    for (var t = 0, T = this.numSamples - 1; t < T; t += 2) {
       var x1 = samples[t + 0];
       var x2 = samples[t + 1];
       // 8-bit samples are unsigned
       var sample1 = Math.floor(128 * (x1 + 1));
       var sample2 = Math.floor(128 * (x2 + 1));
       words[h++] = (sample1 << 8) | sample2;
+    }
+    if (this.numSamples % 2) {
+      var x1 = samples[t + 0];
+      var sample1 = Math.floor(128 * (x1 + 1));
+      words[h++] = sample1 << 8;
     }
 
     return this._encodeWords();
