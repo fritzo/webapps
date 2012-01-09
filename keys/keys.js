@@ -38,7 +38,7 @@ var config = {
 
   keyboard: {
     updateHz: 30,
-    boxes: {
+    piano: {
       keyThresh: 1e-4,
       temperature: 3,
       cornerRadius: 1/3
@@ -797,7 +797,7 @@ Keyboard.styles = {};
 Keyboard.setStyle = function (style) {
   assert(style in Keyboard.styles, 'unknown keyboard style: ' + style);
   $.extend(Keyboard.prototype, Keyboard.styles[style]);
-  log('using keyboard style = ' + style);
+  log('setting keyboard style = ' + style);
 };
 
 test('Keyboard.update', function(){
@@ -1151,15 +1151,15 @@ Keyboard.styles.flow = {
 };
 
 //----------------------------------------------------------------------------
-// Visualization: boxes
+// Visualization: piano
 
 // TODO implement swiping gestures
 
-Keyboard.styles.boxes = {
+Keyboard.styles.piano = {
 
   updateGeometry: function () {
-    var keyThresh = config.keyboard.boxes.keyThresh;
-    var temperature = config.keyboard.boxes.temperature;
+    var keyThresh = config.keyboard.piano.keyThresh;
+    var temperature = config.keyboard.piano.temperature;
 
     var X = this.harmony.length;
     var Y = Math.floor(
@@ -1269,7 +1269,7 @@ Keyboard.styles.boxes = {
     var K = keys.length;
     var W = window.innerWidth;
     var H = window.innerHeight;
-    var R = config.keyboard.boxes.cornerRadius;
+    var R = config.keyboard.piano.cornerRadius;
 
     context.clearRect(0, 0, W, H);
     var fracBars = this.fracBars;
@@ -1658,8 +1658,8 @@ $(document).ready(function(){
       return;
     }
     else if (window.location.hash.substr(1,6) === 'style=') {
-      document.title = 'The Rational Keyboard - ' + style + ' style';
       var style = window.location.hash.substr(7);
+      $('#style').val(style);
       Keyboard.setStyle(style);
     }
   }
@@ -1671,20 +1671,26 @@ $(document).ready(function(){
   log('using ' + harmony.length + ' keys');
 
   var running = false;
-  var toggleRunning = function () {
-    if (running) {
-      document.title = 'The Rational Keyboard (paused)';
-      synthesizer.stop();
-      keyboard.stop();
-      harmony.stop();
-      running = false;
-    } else {
+  var startRunning = function () {
+    if (!running) {
       document.title = 'The Rational Keyboard';
       harmony.start();
       keyboard.start();
       synthesizer.start();
       running = true;
     }
+  };
+  var stopRunning = function () {
+    if (running) {
+      document.title = 'The Rational Keyboard (paused)';
+      synthesizer.stop();
+      keyboard.stop();
+      harmony.stop();
+      running = false;
+    }
+  };
+  var toggleRunning = function () {
+    running ? stopRunning() : startRunning();
   };
 
   $(document).on('keyup', function (e) {
@@ -1695,6 +1701,18 @@ $(document).ready(function(){
         }
       });
 
-  toggleRunning();
+  var $style = $('#style');
+  $style.on('change', function(){
+        var wasRunning = running;
+        stopRunning();
+
+        var style = $style.val();
+        window.location.hash = 'style=' + style;
+        Keyboard.setStyle(style);
+
+        wasRunning ? startRunning() : $(window).resize();
+      });
+
+  startRunning();
 });
 

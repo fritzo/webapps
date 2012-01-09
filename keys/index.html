@@ -37,38 +37,49 @@ canvas {
   height: 100%;
 }
 
-#about {
+#toolbar {
   position: fixed;
   right: 0px;
   bottom: 0px;
 }
-button {
-  margin: 0px;
-  border: solid 2px black;
-  border-radius: 16px;
-  padding-top:  0.5ex;
-  padding-bottom:  0ex;
-  padding-left:  0.9ex;
-  padding-right: 0.9ex;
 
+#toolbar button,
+#toolbar select,
+#toolbar option {
   background-color: #444444;
   color: white;
   font-family: helvetica, verdana, sans;
   font-size: 16px;
   font-weight: bold;
 }
-button:hover {
+button,
+select {
+  margin: 0px;
+  border: solid 2px black;
+  border-radius: 16px;
+  padding-left:  0.9ex;
+  padding-right: 0.9ex;
+}
+button:hover,
+select:hover,
+option:hover {
   background-color: #666666;
 }
 
 #canvas { z-index: 0; }
-#about { z-index: 1; }
+#toolbar { z-index: 1; }
 </style>
 </head>
 <!----------------------------------------------------------------------------->
 <body>
 <canvas id='canvas'></canvas>
-<div id='about'>
+<div id='toolbar'>
+<select id='style' title='set visual style'>
+  <option value='wedges'>wedges</option>
+  <option value='piano'>piano</option>
+  <option value='flow'>flow</option>
+  <option value='thermal'>thermal</option>
+</select>
   <a href='http://fritzobermeyer.wordpress.com/2012/01/08/the-rational-keyboard' target='_blank'><button>?</button></a>
 </div>
 </body>
