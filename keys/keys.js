@@ -957,14 +957,18 @@ Keyboard.styles.thermal = {
         var opacity = Math.sqrt((c - textThresh) / (1 - textThresh));
         context.fillStyle = 'rgba(0,0,0,' + opacity + ')';
 
-        var posX = W * (geom[x][1] + geom[x+1][1]) / 2;
-        var posY = H - 12;
+        var posX0 = W * (geom[x][Y-1] + geom[x+1][Y-1]) / 2;
+        var posdX = W * (geom[x][Y-2] + geom[x+1][Y-2]) / 2 - posX0;
+        var posXnumer = posX0 + posdX * 0.3;
+        var posXbar = posX0 + posdX * 0.8;
+        var posXdenom = posX0 + posdX * 1.1;
+        var posY = 18;
 
         var point = points[x];
         var bar = fracBars[(point.numer > 9) + (point.denom > 9)];
-        context.fillText(point.numer, posX, posY - 8);
-        context.fillText(bar, posX, posY - 1);
-        context.fillText(point.denom, posX, posY + 8);
+        context.fillText(point.numer, posXnumer, posY - 7);
+        context.fillText(bar, posXbar, posY - 1);
+        context.fillText(point.denom, posXdenom, posY + 7);
       }
     }
   },
