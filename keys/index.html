@@ -41,6 +41,7 @@ canvas {
   position: fixed;
   right: 0px;
   bottom: 0px;
+  opacity: 0.8;
 }
 
 #toolbar button,
@@ -50,22 +51,55 @@ canvas {
   color: white;
   font-family: helvetica, verdana, sans;
   font-size: 16px;
-  font-weight: bold;
 }
 button,
 select {
   margin: 0px;
   border: solid 2px black;
-  border-radius: 16px;
-  padding-top:  0.4ex;
-  padding-bottom:  0ex;
+  border-radius: 12px;
   padding-left:  0.9ex;
   padding-right: 0.9ex;
+}
+option {
+  padding: 0px;
+  margin: 0px;
 }
 button:hover,
 select:hover,
 option:hover {
   background-color: #666666;
+}
+.roundRound {
+  border-top-left-radius:     12px;
+  border-bottom-left-radius:  12px;
+  border-top-right-radius:    12px;
+  border-bottom-right-radius: 12px;
+  padding-left:  0.7em;
+  padding-right: 0.7em;
+}
+.roundFlat {
+  border-top-left-radius:     12px;
+  border-bottom-left-radius:  12px;
+  border-top-right-radius:    4px;
+  border-bottom-right-radius: 4px;
+  padding-left:  0.7em;
+  padding-right: 0.5em;
+}
+.flatRound {
+  border-top-left-radius:     4px;
+  border-bottom-left-radius:  4px;
+  border-top-right-radius:    12px;
+  border-bottom-right-radius: 12px;
+  padding-left:  0.5em;
+  padding-right: 0.7em;
+}
+.flatFlat {
+  border-top-left-radius:     4px;
+  border-bottom-left-radius:  4px;
+  border-top-right-radius:    4px;
+  border-bottom-right-radius: 4px;
+  padding-left:  0.5em;
+  padding-right: 0.5em;
 }
 
 #canvas { z-index: 0; }
@@ -76,13 +110,13 @@ option:hover {
 <body>
 <canvas id='canvas'></canvas>
 <div id='toolbar'>
-<select id='style' title='set visual style'>
+<select id='style' title='set visual style' class='roundFlat'>
   <option value='wedges'>wedges</option>
   <option value='piano'>piano</option>
-  <option value='flow'>flow</option>
   <option value='thermal'>thermal</option>
-</select>
-  <a href='http://fritzobermeyer.wordpress.com/2012/01/08/the-rational-keyboard' target='_blank'><button>?</button></a>
+  <option value='flow'>flow</option>
+</select><!--
+  --><a href='http://fritzobermeyer.wordpress.com/2012/01/08/the-rational-keyboard' target='_blank' title='read blog post'><button class='flatRound'>about</button></a>
 </div>
 </body>
 </html>
