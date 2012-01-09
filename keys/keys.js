@@ -1369,7 +1369,36 @@ Keyboard.styles.piano = {
       }
     }
   },
-  updateSwipe: null
+  updateSwipe: function () {
+    var x0 = this.swipeX0;
+    var y0 = this.swipeY0;
+    var x1 = this.swipeX1;
+    var y1 = this.swipeY1;
+    this.swipeX0 = x1;
+    this.swipeY0 = y1;
+
+    // TODO compute old,new vectors using old,new geometry (not new,new)
+    if ((x0 === x1) && (y0 === y1)) return; // only works for new,new geometry
+
+    var keys = this.keys;
+    var ypos = this.ypos;
+    var xpos = this.xpos;
+
+    var indices = [];
+    for (var k = 0, K = keys.length; k < K; ++k) {
+      var y = ypos[k];
+      if ((y0 > y) || (y1 > y)) continue; // approximate
+
+      var x = xpos[k];
+      if ((x0 - x) * (x - x1) > 0) {
+        indices.push(keys[k]);
+      }
+    }
+
+    if (indices.length > 0) {
+      this.onswipe(indices);
+    }
+  }
 };
 
 //----------------------------------------------------------------------------
