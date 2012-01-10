@@ -23,24 +23,6 @@
  */
 
 //------------------------------------------------------------------------------
-// Global safety
-
-var globalEval = eval;
-'use strict';
-
-function AssertException (message) {
-  this.message = message;
-}
-AssertException.prototype.toString = function () {
-  return 'Assertion Failed: ' + this.message;
-}
-function assert (condition, message) {
-  if (!condition) {
-    throw new AssertException(message);
-  }
-}
-
-//------------------------------------------------------------------------------
 // Live module
 
 var live = (function(){
@@ -419,7 +401,7 @@ var live = (function(){
       this.beat = this.beatScale * max(0, cos(a) - this.beatFloor);
 
       tasks[this._id = taskCount++] = this;
-      //console.log('created task ' + taskCount);
+      //log('created task ' + taskCount);
     };
 
     Task.prototype = {
@@ -516,7 +498,7 @@ var live = (function(){
     }
     catch (err) {
       error(err);
-      console.log(err);
+      log(err);
       _context2d = undefined;
     }
 

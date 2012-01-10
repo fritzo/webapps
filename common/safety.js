@@ -10,6 +10,7 @@
 // Global safety & testing
 
 var globalEval = eval;
+'use strict';
 
 var TodoException = function (message) {
   this.message = message || '(unfinished code)';
