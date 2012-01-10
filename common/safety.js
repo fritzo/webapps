@@ -1,10 +1,10 @@
 /*
-  The Rational Keybard
-
-  Copyright (c) 2012, Fritz Obermeyer
-  Licensed under the MIT license:
-  http://www.opensource.org/licenses/mit-license.php
-*/
+ * Tools for safe coding and unit testing in the main window
+ *
+ * Copyright (c) 2012, Fritz Obermeyer
+ * Licensed under the MIT license:
+ * http://www.opensource.org/licenses/mit-license.php
+ */
 
 //------------------------------------------------------------------------------
 // Global safety & testing

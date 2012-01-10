@@ -1,6 +1,5 @@
 /*
- * livecoder: version (2011-12-05)
- * http://livecoder.net
+ * livecoder: version (2012-01-10)
  *
  * Livecoder is toolset to make browser-based javascript live coding easy.
  * It includes a language extension, a live coding editor, a task scheduler,

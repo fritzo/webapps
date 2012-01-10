@@ -1,15 +1,12 @@
 /*
-  The Rational Keybard
-
-  Copyright (c) 2012, Fritz Obermeyer
-  Licensed under the MIT license:
-  http://www.opensource.org/licenses/mit-license.php
-*/
-
-//------------------------------------------------------------------------------
-// WaveEncoder
-// Converts [0,1]-valued array |-> base64-encoded data uri.
-// The base64 encoding is implemented using 16-bit words.
+ * WaveEncoder
+ * Converts [0,1]-valued array --> base64-encoded data uri.
+ * The base64 encoding is implemented using 16-bit words.
+ *
+ * Copyright (c) 2012, Fritz Obermeyer
+ * Licensed under the MIT license:
+ * http://www.opensource.org/licenses/mit-license.php
+ */
 
 var WavEncoder = function (numSamples) {
 

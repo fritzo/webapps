@@ -1,10 +1,10 @@
 /*
-  The Rational Keybard
-
-  Copyright (c) 2012, Fritz Obermeyer
-  Licensed under the MIT license:
-  http://www.opensource.org/licenses/mit-license.php
-*/
+ * The Rational Keybard
+ *
+ * Copyright (c) 2012, Fritz Obermeyer
+ * Licensed under the MIT license:
+ * http://www.opensource.org/licenses/mit-license.php
+ */
 
 importScripts('../common/workersafety.js');
 importScripts('../common/wavencoder.js');
