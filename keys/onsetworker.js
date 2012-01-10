@@ -6,8 +6,8 @@
   http://www.opensource.org/licenses/mit-license.php
 */
 
-importScripts('workersafety.js');
-importScripts('wavencoder.js');
+importScripts('../common/workersafety.js');
+importScripts('../common/wavencoder.js');
 
 //------------------------------------------------------------------------------
 // Commands
