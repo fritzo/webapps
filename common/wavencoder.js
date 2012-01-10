@@ -15,6 +15,7 @@ var WavEncoder = function (numSamples) {
 
   this.numSamples = numSamples;
 
+  // TODO add these as parameters
   var PCM_FORMAT = 1;
   var bytesPerSample = 2;
   var bitsPerSample = bytesPerSample * 8;
@@ -183,4 +184,11 @@ WavEncoder.prototype = {
 
   WavEncoder.pairTable = pairTable;
 })();
+
+// WavEncoder is optimized to encode many data sequences of the same length,
+// but we provide a one-off function for convenience.
+WavEncoder.encode = function (data) {
+  var encoder = new WavEncoder(data.length);
+  return encoder.encode(data);
+};
 

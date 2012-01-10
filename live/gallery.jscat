@@ -9,14 +9,10 @@ var tone = function (freq, duration, gain) {
   for (var i=0, I=duration*sampleRate; i < I; ++i) {
     var env = (I - i) / I;
     var a = 2 * pi * freq / sampleRate * i;
-    data[i] = quantize8(sin(a) * gain * env);
+    data[i] = sin(a) * gain * env;
   }
-  return (new RIFFWAVE(data)).dataURI;
+  return WavEncoder.encode(data);
 }
-
-var play = function (sound) {
-  (new Audio(sound)).play();
-};
 
 var T = 500;
 
@@ -82,9 +78,9 @@ var noise = function (duration, gain) {
   var data = []; // just an array
   for (var i=0, I=duration*sampleRate; i < I; ++i) {
     var env = (I - i) / I;
-    data[i] = quantize8((2*random()-1) * gain * env);
+    data[i] = (2*random()-1) * gain * env;
   }
-  return (new RIFFWAVE(data)).dataURI;
+  return WavEncoder.encode(data);
 }
 
 var play = function (sound) {
@@ -159,9 +155,9 @@ var noise = function (duration, gain) {
   var data = []; // just an array
   for (var i=0, I=duration*sampleRate; i < I; ++i) {
     var env = (I - i) / I;
-    data[i] = quantize8((2*random()-1) * gain * env);
+    data[i] = (2 * random() - 1) * gain * env;
   }
-  return (new RIFFWAVE(data)).dataURI;
+  return WavEncoder.encode(data);
 }
 
 var play = function (sound) {
@@ -267,9 +263,9 @@ var noise = function (duration, gain) {
   var data = []; // just an array
   for (var i=0, I=duration*sampleRate; i < I; ++i) {
     var env = (I - i) / I;
-    data[i] = quantize8((2*random()-1) * gain * env);
+    data[i] = (2 * random() - 1) * gain * env;
   }
-  return (new RIFFWAVE(data)).dataURI;
+  return WavEncoder.encode(data);
 }
 
 var play = function (sound) {
@@ -350,8 +346,7 @@ if (t < dt) { // is true once per second
     //e = 4/(I*I) * i * (I-i);
     data[i] = bound(0, 255, 255/2 * (1 + sin(i / 500)));
   }
-  var wave = new RIFFWAVE(data);
-  var audio = new Audio(wave.dataURI);
+  var audio = new Audio(WavEncoder.encode(data));
   audio.play();
 }
 
@@ -363,9 +358,8 @@ if (t < dt) { // is true once per second
 var T = 1000, t = (time % T) / T, dt = dtime / T;
 if (t < dt) { // is true once per second
   var data = []; // just an array
-  for (var i=0; i<1000; i++) data[i] = round(255 * random());
-  var wave = new RIFFWAVE(data);
-  var audio = new Audio(wave.dataURI);
+  for (var i=0; i<1000; i++) data[i] = 2 * random() - 1;
+  var audio = new Audio(WavEncoder.encode(data));
   audio.play();
 }
 

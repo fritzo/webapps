@@ -589,8 +589,6 @@ var draw2d;                   // clears & returns the 2d canvas context
 
 // Audio TODO get play,tone,noise working
 var sampleRate = 22.05; // in kHz
-var quantize8 = function (x) { return round(255/2 * (x+1)); };
-var quantize16 = function (x) { return round(65535/2 * (x+1)); };
 var play;//(seq:Uint8Array) plays an audio sequence (mono 8bit 22050Hz)
 var tone;//(freqkHz, durationMs) returns a sequence for a single tone
 var noise; // TODO
@@ -632,7 +630,7 @@ random.index = function (/* likelihoods */) {
 
 //------------------------------------------------------------------------------
 // Audio (mono 8bit 22050 Hz -- hey, it's just a browser)
-if (1) { // use riffwave.js
+if (1) { // use wavencoder.js
 
 tone = function (frequency, duration, gain) {
   if (gain === undefined) gain = 1;
@@ -640,9 +638,9 @@ tone = function (frequency, duration, gain) {
   for (var i = 0, I = duration * sampleRate; i < I; ++i) {
     var env = (I - i) / I;
     var a = 2 * pi * frequency / sampleRate * i;
-    data[i] = quantize8(sin(a) * gain * env);
+    data[i] = sin(a) * gain * env;
   }
-  return (new RIFFWAVE(data)).dataURI;
+  return WavEncoder.encode(data);
 };
 
 noise = function (duration, gain) {
@@ -650,9 +648,9 @@ noise = function (duration, gain) {
   var data = []; // just an array
   for (var i = 0, I = duration * sampleRate; i < I; ++i) {
     var env = (I - i) / I;
-    data[i] = quantize8((2*random()-1) * gain * env);
+    data[i] = (2 * random() - 1) * gain * env;
   }
-  return (new RIFFWAVE(data)).dataURI;
+  return WavEncoder.encode(data);
 };
 
 noise.band = function (param) {
@@ -690,16 +688,16 @@ noise.band = function (param) {
     y0 = y1;
 
     var env = (I - i) / I;
-    data[i] = quantize8(clip(x0 * env));
+    data[i] = clip(x0 * env);
   }
-  return (new RIFFWAVE(data)).dataURI;
+  return WavEncoder.encode(data);
 };
 
 play = function (sound) {
   (new Audio(sound)).play();
 };
 
-} else { // do not use riffwave.js
+} else { // do not use wavencoder.js
 // see http://davidflanagan.com/Talks/jsconf11/BytesAndBlobs.html
 // typed arrays are not universally supported
 
@@ -773,5 +771,5 @@ play = function (sound) {
   }
 
 })();
-} // whether to use riffwave.js
+} // whether to use wavencoder.js
 
