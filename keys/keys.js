@@ -1,6 +1,5 @@
 /*
-  The Rational Keybard: version (2012-01-07)
-  http://fritzo.org/keys
+  The Rational Keybard
 
   Copyright (c) 2012, Fritz Obermeyer
   Licensed under the MIT license:
@@ -1681,11 +1680,13 @@ $(document).ready(function(){
   if (window.location.hash) {
     if (window.location.hash.substr(1) === 'test') {
       document.title = 'The Rational Keyboard - Unit Test';
+      $('#toolbar').hide();
       test.runAll();
       return;
     }
     else if (window.location.hash.substr(1) === 'test=interactive') {
       document.title = 'The Rational Keyboard - Interactive Unit Test';
+      $('#toolbar').hide();
       config.test.interactive = true;
       test.runAll();
       return;

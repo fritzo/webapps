@@ -1,6 +1,5 @@
 /*
-  The Rational Keybard: version (2012-01-07)
-  http://fritzo.org/keys
+  The Rational Keybard
 
   Copyright (c) 2012, Fritz Obermeyer
   Licensed under the MIT license:
@@ -41,7 +40,7 @@ var WavEncoder = function (numSamples) {
       this.encode = this.encode16;
       break;
 
-    default: throw 'unsupported bytesPerSamp;e: ' + bytesPerSample;
+    default: throw 'unsupported bytesPerSample: ' + bytesPerSample;
   }
 
   // we encode using 16-bit words
