@@ -1,6 +1,5 @@
 /*
- * livecoder: version (2011-12-05)
- * http://livecoder.net
+ * livecoder: version (2012-01-10)
  *
  * Livecoder is toolset to make browser-based javascript live coding easy.
  * It includes a language extension, a live coding editor, a task scheduler,
@@ -14,31 +13,13 @@
  * - a canvas for 2d drawing
  *
  * Provides:
- * - an obect 'livecoder'
+ * - an object 'livecoder'
  * - a mess of global variables useful for live coding
  *
  * Copyright (c) 2012, Fritz Obermeyer
  * Licensed under the MIT license:
  * http://www.opensource.org/licenses/mit-license.php
  */
-
-//------------------------------------------------------------------------------
-// Global safety
-
-var globalEval = eval;
-'use strict';
-
-function AssertException (message) {
-  this.message = message;
-}
-AssertException.prototype.toString = function () {
-  return 'Assertion Failed: ' + this.message;
-}
-function assert (condition, message) {
-  if (!condition) {
-    throw new AssertException(message);
-  }
-}
 
 //------------------------------------------------------------------------------
 // Live module
@@ -375,6 +356,13 @@ var live = (function(){
 
     //------------------------------------
     // Coupled tasks
+    //
+    // TODO replace this Synchronized::Phasor with Synchronized::Geometric
+    //   * this at least has a debuggable energy minimization interpretation
+    //   * it also allows syncopation of two beats separated by pi
+    //   * and the energy interpreatation can fit into larger energy
+    //     minimization frameworks.
+    //   (see kazoo/src/synchronization.h "struct Geometric"
 
     var taskCount = 0;
     var tasks = {};
@@ -412,7 +400,7 @@ var live = (function(){
       this.beat = this.beatScale * max(0, cos(a) - this.beatFloor);
 
       tasks[this._id = taskCount++] = this;
-      //console.log('created task ' + taskCount);
+      //log('created task ' + taskCount);
     };
 
     Task.prototype = {
@@ -430,7 +418,7 @@ var live = (function(){
         var dt = bound(1, 1000, _evalTime - this.time);
         this.time = _evalTime;
 
-        var a = 2 * pi * this.phase;
+        var a = 2 * pi * (this.phase + this.offset); // XXX is this right?
         var z = new Complex(cos(a), sin(a));
         var bend = this.beat * Complex.cross(z, force);
 
@@ -509,7 +497,7 @@ var live = (function(){
     }
     catch (err) {
       error(err);
-      console.log(err);
+      log(err);
       _context2d = undefined;
     }
 
@@ -536,6 +524,7 @@ var live = (function(){
 
     toggleCompiling: _toggleCompiling,
     oncompile: live.oncompile,
+    clear: _clear,
 
     now: function () { return _evalTime; },
 
@@ -604,8 +593,6 @@ var draw2d;                   // clears & returns the 2d canvas context
 
 // Audio TODO get play,tone,noise working
 var sampleRate = 22.05; // in kHz
-var quantize8 = function (x) { return round(255/2 * (x+1)); };
-var quantize16 = function (x) { return round(65535/2 * (x+1)); };
 var play;//(seq:Uint8Array) plays an audio sequence (mono 8bit 22050Hz)
 var tone;//(freqkHz, durationMs) returns a sequence for a single tone
 var noise; // TODO
@@ -647,8 +634,75 @@ random.index = function (/* likelihoods */) {
 
 //------------------------------------------------------------------------------
 // Audio (mono 8bit 22050 Hz -- hey, it's just a browser)
-// see http://davidflanagan.com/Talks/jsconf11/BytesAndBlobs.html
+if (1) { // use wavencoder.js
 
+tone = function (frequency, duration, gain) {
+  if (gain === undefined) gain = 1;
+  var data = []; // just an array
+  for (var i = 0, I = duration * sampleRate; i < I; ++i) {
+    var env = (I - i) / I;
+    var a = 2 * pi * frequency / sampleRate * i;
+    data[i] = sin(a) * gain * env;
+  }
+  return WavEncoder.encode(data);
+};
+
+noise = function (duration, gain) {
+  if (gain === undefined) gain = 1;
+  var data = []; // just an array
+  for (var i = 0, I = duration * sampleRate; i < I; ++i) {
+    var env = (I - i) / I;
+    data[i] = (2 * random() - 1) * gain * env;
+  }
+  return WavEncoder.encode(data);
+};
+
+noise.band = function (param) {
+  assert('frequency' in param, 'param.frequency is undefined');
+  assert('bandwidth' in param, 'param.bandwidth is undefined');
+  assert('duration' in param, 'param.duration is undefined');
+  assert('gain' in param, 'param.gain is undefined');
+
+  var frequency = param.frequency;
+  var bandwidth = param.bandwidth;
+  var duration = param.duration;
+  var gain = param.gain;
+
+  var omega = 2 * pi * frequency / sampleRate;
+  var cos_omega = cos(omega);
+  var sin_omega = sin(omega);
+  var oldPart = exp(-bandwidth * frequency / sampleRate);
+  var newPart = 1 - oldPart;
+
+  var clip = function (x) {
+    var scaled = gain * x / bandwidth;
+    return scaled / sqrt(1 + scaled * scaled);
+  };
+
+  var x0 = 0;
+  var y0 = 0;
+  var data = [];
+  for (var i = 0, I = duration * sampleRate; i < I; ++i) {
+
+    var x1 = newPart * (2 * random() - 1)
+           + oldPart * (cos_omega * x0 - sin_omega * y0);
+    var y1 = newPart * (2 * random() - 1)
+           + oldPart * (cos_omega * y0 + sin_omega * x0);
+    x0 = x1;
+    y0 = y1;
+
+    var env = (I - i) / I;
+    data[i] = clip(x0 * env);
+  }
+  return WavEncoder.encode(data);
+};
+
+play = function (sound) {
+  (new Audio(sound)).play();
+};
+
+} else { // do not use wavencoder.js
+// see http://davidflanagan.com/Talks/jsconf11/BytesAndBlobs.html
 // typed arrays are not universally supported
 
 (function(){
@@ -714,11 +768,12 @@ random.index = function (/* likelihoods */) {
       player.addEventListener("ended", function () {
             URL.revokeObjectURL(url);
           }, false);
-    }
+    };
   }
   catch (err) {
     alert(err);
   }
 
 })();
+} // whether to use wavencoder.js
 

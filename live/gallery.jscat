@@ -1,5 +1,51 @@
 
 //==============================================================================
+// 1324384763822.js
+
+// faray tone scale (by hand)
+
+var tone = function (freq, duration, gain) {
+  var data = []; // just an array
+  for (var i=0, I=duration*sampleRate; i < I; ++i) {
+    var env = (I - i) / I;
+    var a = 2 * pi * freq / sampleRate * i;
+    data[i] = sin(a) * gain * env;
+  }
+  return WavEncoder.encode(data);
+}
+
+var T = 500;
+
+nonce { // generate samples
+  var note = function(freq) { return tone(freq, T, 0.5); };
+  live.scale = [
+    note(1/1),
+    note(5/4),
+    note(4/3),
+    note(7/5),
+    note(3/2),
+    note(8/5),
+    note(5/3),
+    note(7/4),
+    note(2/1)
+  ];
+}
+
+nonce live.n = 0;
+
+live.S = function () {
+  live.n = (live.n + 1) % live.scale.length;
+  play(live.scale[live.n]);
+  print(now());
+  sync({delay:T,acuity:7}, live.S);
+};
+
+nonce live.S(); // start
+nonce sync.clear(); // stop
+
+print(live.scale.length)
+
+//==============================================================================
 // 1323367681157.js
 
 // Hello World
@@ -32,9 +78,9 @@ var noise = function (duration, gain) {
   var data = []; // just an array
   for (var i=0, I=duration*sampleRate; i < I; ++i) {
     var env = (I - i) / I;
-    data[i] = quantize8((2*random()-1) * gain * env);
+    data[i] = (2*random()-1) * gain * env;
   }
-  return (new RIFFWAVE(data)).dataURI;
+  return WavEncoder.encode(data);
 }
 
 var play = function (sound) {
@@ -109,9 +155,9 @@ var noise = function (duration, gain) {
   var data = []; // just an array
   for (var i=0, I=duration*sampleRate; i < I; ++i) {
     var env = (I - i) / I;
-    data[i] = quantize8((2*random()-1) * gain * env);
+    data[i] = (2 * random() - 1) * gain * env;
   }
-  return (new RIFFWAVE(data)).dataURI;
+  return WavEncoder.encode(data);
 }
 
 var play = function (sound) {
@@ -217,9 +263,9 @@ var noise = function (duration, gain) {
   var data = []; // just an array
   for (var i=0, I=duration*sampleRate; i < I; ++i) {
     var env = (I - i) / I;
-    data[i] = quantize8((2*random()-1) * gain * env);
+    data[i] = (2 * random() - 1) * gain * env;
   }
-  return (new RIFFWAVE(data)).dataURI;
+  return WavEncoder.encode(data);
 }
 
 var play = function (sound) {
@@ -300,8 +346,7 @@ if (t < dt) { // is true once per second
     //e = 4/(I*I) * i * (I-i);
     data[i] = bound(0, 255, 255/2 * (1 + sin(i / 500)));
   }
-  var wave = new RIFFWAVE(data);
-  var audio = new Audio(wave.dataURI);
+  var audio = new Audio(WavEncoder.encode(data));
   audio.play();
 }
 
@@ -313,9 +358,8 @@ if (t < dt) { // is true once per second
 var T = 1000, t = (time % T) / T, dt = dtime / T;
 if (t < dt) { // is true once per second
   var data = []; // just an array
-  for (var i=0; i<1000; i++) data[i] = round(255 * random());
-  var wave = new RIFFWAVE(data);
-  var audio = new Audio(wave.dataURI);
+  for (var i=0; i<1000; i++) data[i] = 2 * random() - 1;
+  var audio = new Audio(WavEncoder.encode(data));
   audio.play();
 }
 
