@@ -413,10 +413,15 @@ Harmony.prototype = {
     this.profileCount = 0;
 
     this.lastTime = Date.now();
+    this.updateTask = undefined;
     this.updateDiffusion();
   },
   stop: function () {
     this.running = false;
+    if (this.updateTask !== undefined) {
+      clearTimeout(this.updateTask);
+      this.updateTask = undefined;
+    }
 
     if (!testing) {
       var profileRate =
@@ -448,7 +453,10 @@ Harmony.prototype = {
 
     if (this.running) {
       var harmony = this;
-      setTimeout(function(){ harmony.updateDiffusion(); }, this.delayMs);
+      this.updateTask = setTimeout(function(){
+            harmony.updateTask = undefined;
+            harmony.updateDiffusion();
+          }, this.delayMs);
     }
 
     this.profileCount += 1;
@@ -567,11 +575,16 @@ Synthesizer.prototype = {
         }
       });
 
-    this.targetTime = Date.now();
+    this.targetTime = Date.now() + this.delayMs;
+    this.updateTask = undefined;
     this.update();
   },
   stop: function () {
     this.running = false;
+    if (this.updateTask !== undefined) {
+      clearTimeout(this.updateTask);
+      this.updateTask = undefined;
+    }
 
     this.synthworker.terminate();
 
@@ -588,13 +601,21 @@ Synthesizer.prototype = {
   play: function (uri) {
     var audio = new Audio(uri);
 
+    // XXX TODO there seems to be a bug here.
+    //   about 20sec after app starts, audio gets choppy.
+    //   goes away when pause-resume
+    //   does not go away when switching screens
     var now = Date.now();
-    var delay = this.targetTime - now;
+    var delay = Math.min(this.delayMs, this.targetTime - now);
     this.targetTime = Math.max(now, this.targetTime + this.delayMs);
 
     if (this.running) {
       var synth = this;
-      setTimeout(function () { audio.play(); synth.update(); }, delay);
+      this.updateTask = setTimeout(function () {
+            synth.updateTask = undefined;
+            audio.play();
+            synth.update();
+          }, delay);
     }
   },
 
@@ -693,6 +714,7 @@ Keyboard.prototype = {
     this.profileTime = Date.now();
     this.profileCount = 0;
 
+    this.updateTask = undefined;
     this.update();
 
     var keyboard = this;
@@ -738,6 +760,10 @@ Keyboard.prototype = {
 
   stop: function () {
     this.running = false;
+    if (this.updateTask !== undefined) {
+      clearTimeout(this.updateTask);
+      this.updateTask = undefined;
+    }
 
     if (!testing) {
       var profileRate =
@@ -768,7 +794,10 @@ Keyboard.prototype = {
 
     if (this.running) {
       var keyboard = this;
-      setTimeout(function(){ keyboard.update(); }, this.delayMs);
+      this.updateTask = setTimeout(function(){
+            keyboard.updateTask = undefined;
+            keyboard.update();
+          }, this.delayMs);
     }
 
     this.profileCount += 1;
