@@ -526,6 +526,7 @@ var live = (function(){
 
     init: live.init,
     initShadow: live.initShadow,
+    clear: _clear,
 
     setSource: live.setSource,
     getSource: live.getSource,
@@ -537,6 +538,10 @@ var live = (function(){
     oncompile: live.oncompile,
 
     now: function () { return _evalTime; },
+
+    // TODO these should have keyword syntax like
+    // after({delay:0.5, action:myFunction});
+    // sync({delay:1.0, syncopate:0.5, action:myFunction})
     after: _after,
     sync: _sync,
 

@@ -270,43 +270,43 @@ ui.blink = function ($button) {
 };
 
 $(window).keydown(function (event) {
-      switch (event.which) {
+  switch (event.which) {
 
-        // ESCAPE = hold/continue compiling
-        case 27:
-          live.toggleCompiling();
-          event.preventDefault();
-          break;
+    // ESCAPE = hold/continue compiling
+    case 27:
+      live.toggleCompiling();
+      event.preventDefault();
+      break;
 
-        // CTRL+S to save
-        case 115: // WTF?
-        case 83:
-          if (!event.ctrlKey) break;
-        case 19: // cmd+S on mac
-          ui.blink($('#save'));
-          ui.saveScript();
-          event.preventDefault();
-          break;
+    // CTRL+S to save
+    case 115: // WTF?
+    case 83:
+      if (!event.ctrlKey) break;
+    case 19: // cmd+S on mac
+      ui.blink($('#save'));
+      ui.saveScript();
+      event.preventDefault();
+      break;
 
-        // CTRL+O to show gallery
-        case 79:
-          if (!event.ctrlKey) break;
-        //case ???: // cmd+O on mac
-          ui.blink($('#showGallery'));
-          $('#gallery').fadeToggle('fast');
-          ui.buildScriptList();
-          event.preventDefault();
-          break;
+    // CTRL+O to show gallery
+    case 79:
+      if (!event.ctrlKey) break;
+    //case ???: // cmd+O on mac
+      ui.blink($('#showGallery'));
+      $('#gallery').fadeToggle('fast');
+      ui.buildScriptList();
+      event.preventDefault();
+      break;
 
-        // F1 = show help
-        case 112:
-          ui.blink($('#showHelp'));
-          $('#about').hide();
-          $('#help').toggle();
-          event.preventDefault();
-          break;
-      }
-    });
+    // F1 = show help
+    case 112:
+      ui.blink($('#showHelp'));
+      $('#about').hide();
+      $('#help').toggle();
+      event.preventDefault();
+      break;
+  }
+});
 
 $(document).ready(function() {
 
@@ -797,6 +797,9 @@ canvas { z-index: 0; }
       <dd>a browser-based code editor supporting e.g. javascript and coffeescript</dd>
     <dt><a href='http://code.google.com/p/oflivecoding/'>OFLiveCoding</a></dt>
       <dd>a javascript live-coding framework developed with openframeworks</dd>
+    
+    <dt><a href='http://livecoder.sugyan.com'>Livecoder</a></dt>
+      <dd>a browser-based broadcast code editor using Eclipse Orion (also called livecoder)</dd>
     <dt><a href='http://paperjs.org'>paper.js</a></dt>
       <dd>a vector graphics library with a sexy demo</dd>
     <dt><a href='https://github.com/christopherdebeer/speak.js'>speak.js</a></dt>
