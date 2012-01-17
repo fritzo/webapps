@@ -1408,18 +1408,20 @@ Keyboard.styles.piano = {
     this.swipeY0 = y1;
 
     // TODO compute old,new vectors using old,new geometry (not new,new)
-    if ((x0 === x1) && (y0 === y1)) return; // only works for new,new geometry
+    if (x0 === x1) return; // only works for new,new geometry
 
     var keys = this.keys;
     var ypos = this.ypos;
-    var xpos = this.xpos;
+    var xpos = this.xpos
+    var radii = this.radii;
+    var dir = x0 < x1 ? -1 : 1;
 
     var indices = [];
     for (var k = 0, K = keys.length; k < K; ++k) {
       var y = ypos[k];
       if ((y0 > y) || (y1 > y)) continue; // approximate
 
-      var x = xpos[k];
+      var x = xpos[k] + dir * radii[k];
       if ((x0 - x) * (x - x1) > 0) {
         indices.push(keys[k]);
       }
