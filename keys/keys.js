@@ -1730,6 +1730,14 @@ $(document).ready(function(){
   window.location.hash = 'style=' + style;
   Keyboard.setStyle(style);
 
+  $(window).hashchange(function(){
+        if (window.location.hash.substr(1,6) === 'style=') {
+          style = window.location.hash.substr(7);
+          $style.val(style);
+          Keyboard.setStyle(style);
+        }
+      });
+
   var harmony = new Harmony(config.harmony.maxRadius);
   var synthesizer = new Synthesizer(harmony);
   var keyboard = new Keyboard(harmony, synthesizer);
