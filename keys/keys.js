@@ -1770,6 +1770,7 @@ $(document).ready(function(){
     running ? stopRunning() : startRunning();
   };
 
+  $('#pauseButton').on('click', toggleRunning);
   $(document).on('keyup', function (e) {
         switch (e.which) {
           case 27:
