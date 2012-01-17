@@ -1700,6 +1700,7 @@ $(document).ready(function(){
   if (!verifyBrowser()) return;
 
   var canvas = document.getElementById('canvas');
+  var $style = $('#style');
   var style = config.keyboard.defaultStyle;
   $(window).resize(function(){
         canvas.width = window.innerWidth;
@@ -1725,7 +1726,8 @@ $(document).ready(function(){
     }
   }
 
-  $('#style').val(style);
+  $style.val(style);
+  window.location.hash = 'style=' + style;
   Keyboard.setStyle(style);
 
   var harmony = new Harmony(config.harmony.maxRadius);
@@ -1765,7 +1767,6 @@ $(document).ready(function(){
         }
       });
 
-  var $style = $('#style');
   $style.on('change', function(){
         var wasRunning = running;
         stopRunning();
