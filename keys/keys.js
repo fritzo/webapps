@@ -47,7 +47,8 @@ var config = {
       temperature: 3,
       cornerRadius: 1/3,
       textHeight: 28
-    }
+    },
+    defaultStyle: 'piano'
   },
 
   test: {
@@ -1639,8 +1640,6 @@ Keyboard.styles.wedges = {
 //------------------------------------------------------------------------------
 // Main
 
-Keyboard.setStyle('wedges');
-
 test('main', function(){
   var harmony = new Harmony(8);
   var synthesizer = new Synthesizer(harmony);
@@ -1672,6 +1671,7 @@ $(document).ready(function(){
   if (!verifyBrowser()) return;
 
   var canvas = document.getElementById('canvas');
+  var style = config.keyboard.defaultStyle;
   $(window).resize(function(){
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -1692,11 +1692,12 @@ $(document).ready(function(){
       return;
     }
     else if (window.location.hash.substr(1,6) === 'style=') {
-      var style = window.location.hash.substr(7);
-      $('#style').val(style);
-      Keyboard.setStyle(style);
+      style = window.location.hash.substr(7);
     }
   }
+
+  $('#style').val(style);
+  Keyboard.setStyle(style);
 
   var harmony = new Harmony(config.harmony.maxRadius);
   var synthesizer = new Synthesizer(harmony);
