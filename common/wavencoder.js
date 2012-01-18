@@ -52,7 +52,7 @@ var WavEncoder = function (numSamples, options) {
   }
 
   // we encode using 16-bit words
-  var words = this.words = Array.concat(
+  var words = this.words = [].concat(
       getString('RIFF'),
 
       // only one chunk
@@ -152,11 +152,13 @@ WavEncoder.prototype = {
     var words = this.words;
     var pairTable = WavEncoder.pairTable;
 
-    var result = 'data:audio/wav;base64,';
-    for (var t = 0, T = words.length; t < T; t += 3) {
-      var a16 = words[t + 0];
-      var b16 = words[t + 1];
-      var c16 = words[t + 2];
+    var result = new Array(1 + words.length * 4/3);
+    var r = 0;
+    result[r++] = 'data:audio/wav;base64,';
+    for (var r = 1, t = 0, T = words.length; t < T;) {
+      var a16 = words[t++];
+      var b16 = words[t++];
+      var c16 = words[t++];
 
       // with 4 bits per letter:
       // A A A A B B B B C C C C 
@@ -167,12 +169,12 @@ WavEncoder.prototype = {
       var c12 = ((b16 << 4) | (c16 >> 12)) & 4095;
       var d12 = c16 & 4095;
 
-      result += ( pairTable[a12]
-                + pairTable[b12]
-                + pairTable[c12]
-                + pairTable[d12] );
+      result[r++] = pairTable[a12];
+      result[r++] = pairTable[b12];
+      result[r++] = pairTable[c12];
+      result[r++] = pairTable[d12];
     }
-    return result;
+    return result.join('');
   }
 };
 
