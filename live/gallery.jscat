@@ -1,5 +1,108 @@
 
 //==============================================================================
+// 1326994044727.js
+
+// devil's staircase scale
+
+var gcd = function (a,b)
+{
+  if (b > a) { var temp = a; a = b; b = temp; }
+
+  while (true) {
+    a %= b;  if (a === 0) return b;
+    b %= a;  if (b === 0) return a;
+  }
+};
+
+var Rational = function (numer,denom) {
+  this.numer = numer;
+  this.denom = denom;
+};
+
+Rational.prototype = {
+  toNumber: function(){
+    return this.numer / this.denom;
+  },
+  norm: function(){
+    return Math.sqrt( this.numer * this.numer
+                    + this.denom * this.denom );
+  }
+};
+
+Rational.cmp = function (lhs, rhs) {
+  return lhs.numer * rhs.denom - rhs.numer * lhs.denom;
+};
+
+Rational.ball = function (radius) {
+  var result = [];
+  for (var i = 1; i < radius; ++i) {
+    for (var j = 1; j < radius; ++j) {
+      if (gcd(i,j) !== 1) continue;
+      var q = new Rational(i,j);
+      if (q.norm() > radius) continue;
+      result.push(q);
+    }
+  }
+  result.sort(Rational.cmp);
+  return result;
+};
+//print(Rational.ball(5).map(function(q){ return q.toNumber(); }));
+
+var radius = 16;
+var temperature = 3;
+var totalTime = 4000;
+once {
+
+  var QQ = Rational.ball(radius);
+  live.freqs = QQ.map(function(q){
+    return middleC * q.toNumber();
+  });
+  var times = QQ.map(function(q){
+    return Math.exp(-q.norm() / temperature);
+  });
+  var total = sum.apply(Math,times);
+  var timeScale = totalTime / total;
+  live.times = times.map(function(t){ return timeScale * t; });
+
+  live.starts = [0];
+  live.ends = [live.times[0]];
+  for (var i = 1; i < QQ.length; ++i) {
+    live.starts[i] = live.starts[i-1] + live.times[i-1];
+    live.ends[i] = live.starts[i] + live.times[i];
+  }
+
+  live.tones = [];
+  for (var i = 0; i < QQ.length; ++i) {
+    live.tones[i] = tone(live.freqs[i], live.times[i]);
+  }
+}
+
+// Version 1. sequence of notes
+nonce {
+  var wait = 50;
+  for (var i = 0; i < live.tones.length; ++i) {
+    (function(){
+      var tone = live.tones[i];
+      after(wait + live.starts[i], function(){ play(tone); });
+    })();
+  }
+}
+
+// Version 2. a chirp
+once {
+  var samples = new Array(totalTime * sampleRate);
+  var phase = 0;
+  for (var i = 0, t = 0, T = samples.length; t < T; ++t) {
+    while (t / sampleRate > live.ends[i]) ++i;
+    samples[t] = sin2pi(phase);
+    phase = (phase + live.freqs[i] / sampleRate) % 1;
+  }
+  live.scale = WavEncoder.encode(samples);
+
+  play(live.scale);
+}
+
+//==============================================================================
 // 1324384763822.js
 
 // faray tone scale (by hand)

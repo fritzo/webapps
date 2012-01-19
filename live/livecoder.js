@@ -619,6 +619,14 @@ var sin2pi = function (t) { return sin(2*pi*t) };
 var cos2pi = function (t) { return cos(2*pi*t) };
 var tan2pi = function (t) { return tan(2*pi*t) };
 
+var sum = function () {
+  var result = 0;
+  for (var i = 0; i < arguments.length; ++i) {
+    result += arguments[i];
+  }
+  return result;
+};
+
 var random  = Math.random;
 random.index = function (/* likelihoods */) {
   var total = 0;
