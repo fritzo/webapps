@@ -593,6 +593,7 @@ var draw2d;                   // clears & returns the 2d canvas context
 
 // Audio TODO get play,tone,noise working
 var sampleRate = 22.05; // in kHz
+var middleC = 0.261625565; // in kHz
 var play;//(seq:Uint8Array) plays an audio sequence (mono 8bit 22050Hz)
 var tone;//(freqkHz, durationMs) returns a sequence for a single tone
 var noise; // TODO
@@ -633,8 +634,7 @@ random.index = function (/* likelihoods */) {
 };
 
 //------------------------------------------------------------------------------
-// Audio (mono 8bit 22050 Hz -- hey, it's just a browser)
-if (1) { // use wavencoder.js
+// Audio (mono 16bit 22050 Hz -- hey, it's just a browser)
 
 tone = function (frequency, duration, gain) {
   if (gain === undefined) gain = 1;
@@ -697,83 +697,9 @@ noise.band = function (param) {
   return WavEncoder.encode(data);
 };
 
-play = function (sound) {
-  (new Audio(sound)).play();
+play = function (sound, volume) {
+  var audio = new Audio(sound);
+  if (volume !== undefined) audio.volume = volume;
+  audio.play();
 };
-
-} else { // do not use wavencoder.js
-// see http://davidflanagan.com/Talks/jsconf11/BytesAndBlobs.html
-// typed arrays are not universally supported
-
-(function(){
-
-  try {
-
-    if (!window.BlobBuilder && window.WebKitBlobBuilder) {
-      window.BlobBuilder = window.WebKitBlobBuilder;
-    }
-    if (!window.URL && window.webkitURL) {
-      window.URL = window.webkitURL;
-    }
-
-    var _riffHeader = new Uint8Array([
-          0x52,0x49,0x46,0x46, // "RIFF"
-          0, 0, 0, 0,          // total file size = FILLME
-          0x57,0x41,0x56,0x45, // "WAVE"
-          0x66,0x6d,0x74,0x20, // "fmt "
-          16,0,0,0,            // size of the following
-          1, 0,                // PCM format
-          1, 0,                // channels = 1 (mono)
-          22,56,0,0,           // sample rate = 22050 Hz
-          22,56,0,0,           // byte rate = one byte per sample 
-          1, 0,                // byte alignment = 1
-          8, 0,                // bits per sample = 8
-          0x64,0x61,0x74,0x61, // "data"
-          0, 0, 0, 0           // data size in bytes = FILLME
-        ]).buffer;  // Note: we just want the ArrayBuffer
-
-    var _makeWav = function (samples) {
-
-      // overwrite the header each time we make a wav
-      var dv = new DataView(_riffHeader);
-      dv.setInt32(4, 36 + samples.length, true);
-      dv.setInt32(40, samples.length, true);
-
-      var bb = new BlobBuilder();
-      bb.append(_riffHeader);
-      bb.append(samples.buffer);
-      return bb.getBlob("audio/wav");
-    };
-
-    tone = function (frequency, duration) {
-
-      var samplespercycle = sampleRate / frequency;
-      var samples = new Uint8Array(sampleRate * duration);
-
-      var phase = 0, dphase = 2 * pi / samplespercycle;
-      for(var i = 0, I = samples.length, phase = 0; i < I; ++i) {
-        samples[i] = round(255 * 0.49 * (1 + sin(phase)));
-        phase += dphase;
-      }
-
-      return samples;
-    };
-
-    play = function (samples) {
-
-      var blob = _makeWav(samples);
-      var url = URL.createObjectURL(blob);
-      var player = new Audio(url);
-      player.play();
-      player.addEventListener("ended", function () {
-            URL.revokeObjectURL(url);
-          }, false);
-    };
-  }
-  catch (err) {
-    alert(err);
-  }
-
-})();
-} // whether to use wavencoder.js
 
