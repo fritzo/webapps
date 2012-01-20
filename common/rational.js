@@ -4,9 +4,6 @@
  * Copyright (c) 2012, Fritz Obermeyer
  */
 
-//------------------------------------------------------------------------------
-// Rational numbers (more precisely, extended nonnegative rational pairs)
-
 var gcd = function (a,b)
 {
   if (testing) {
@@ -33,7 +30,14 @@ test('assert(gcd(2,2) === 2)');
 test('assert(gcd(4,6) === 2)');
 test('assert(gcd(0,7) === 1)');
 
-/** @constructor */
+//------------------------------------------------------------------------------
+// Rational numbers (more precisely, extended nonnegative rational pairs)
+
+/**
+ * @constructor
+ * @param {number}
+ * @param {number}
+ */
 var Rational = function (m,n) {
   if (testing) {
     assert(0 <= m && m % 1 == 0, 'invalid numer: ' + m);
@@ -52,50 +56,111 @@ var Rational = function (m,n) {
 };
 
 Rational.prototype = {
+
+  /** @returns {number} */
   toNumber: function () {
     return this.numer / this.denom;
   },
+
+  /** @returns {Rational} */
   recip: function () {
     return new Rational(this.denom, this.numer);
   },
+
+  /** @returns {number} */
   normSquared: function () {
     return this.numer * this.numer + this.denom * this.denom;
   },
+
+  /** @returns {number} */
   norm: function () {
     return Math.sqrt(this.numer * this.numer + this.denom * this.denom);
   },
+
+  /** @returns {boolean} */
   isNormal: function () {
     return this.numer !== 0 && this.denom !== 0;
   }
 };
 
+/** 
+ * @const
+ * @type {Rational}
+ */
 Rational.ZERO = new Rational(0,1);
+
+/** 
+ * @const
+ * @type {Rational}
+ */
 Rational.INF = new Rational(1,0);
+
+/** 
+ * @const
+ * @type {Rational}
+ */
 Rational.ONE = new Rational(1,1);
 
+/**
+ * @param {Rational}
+ * @param {Rational}
+ * @returns {Rational}
+ */
 Rational.mul = function (lhs, rhs) {
   return new Rational(lhs.numer * rhs.numer, lhs.denom * rhs.denom);
 };
+
+/**
+ * @param {Rational}
+ * @param {Rational}
+ * @returns {Rational}
+ */
 Rational.div = function (lhs, rhs) {
   return new Rational(lhs.numer * rhs.denom, lhs.denom * rhs.numer);
 };
+
+/**
+ * @param {Rational}
+ * @param {Rational}
+ * @returns {Rational}
+ */
 Rational.add = function (lhs, rhs) {
   return new Rational(
       lhs.numer * rhs.denom + lhs.denom * rhs.numer,
       lhs.denom * rhs.denom);
 };
 
+/**
+ * @param {Rational}
+ * @param {Rational}
+ * @returns {number}
+ */
 Rational.cmp = function (lhs, rhs) {
   return lhs.numer * rhs.denom - rhs.numer * lhs.denom;
 };
 
+/**
+ * @param {Rational}
+ * @param {Rational}
+ * @returns {number}
+ */
 Rational.distSquared = function (lhs, rhs) {
   return Rational.div(lhs, rhs).normSquared();
 };
+
+/**
+ * @param {Rational}
+ * @param {Rational}
+ * @returns {number}
+ */
 Rational.dist = function (lhs, rhs) {
   return Rational.div(lhs, rhs).norm();
 };
 
+/**
+ * @param {number}
+ * @returns {Rational[]}
+ */
 Rational.ball = function (radius) {
   var result = [];
   for (var i = 1; i <= radius; ++i) {
@@ -117,7 +182,7 @@ test('Rational.ball', function(){
 
 test('Rational.ball of size 88', function(){
   var target = 191; // needs to be odd; 88 is even
-  var f = function(r) { return Rational.ball(r).length; }
+  var f = function (r) { return Rational.ball(r).length; }
 
   var r0, r1;
   for (r0 = 3; f(r0) >= target; --r0) {}
@@ -136,4 +201,39 @@ test('Rational.ball of size 88', function(){
   if (f(Math.round(r)) === target) r = Math.round(r);
   log('Rational.ball(' + r + ').length = ' + target);
 });
+
+//------------------------------------------------------------------------------
+// Rational grids
+
+/**
+ * @constructor
+ * @param {Rational}
+ * @param {Rational}
+ */
+var Raffine = function (q,r) {
+
+  // ensure q in [0,1]
+  if (q.numer >= q.denom) {
+    q = new Rational(q.numer % q.denom, q.denom);
+  }
+
+  this.base = q;
+  this.step = r;
+};
+
+Raffine.prototype = {
+
+  /** @returns {number} */
+  normSquared: function () {
+    TODO('implement Raffine norm');
+  }
+};
+
+/**
+ * @param {number}
+ * @returns {Raffine[]}
+ */
+Raffine.ball = function (radius) {
+  TODO('implement Raffine.ball');
+};
 

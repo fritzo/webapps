@@ -27,11 +27,13 @@ compiler:
 
 COMPILE1=java -jar compiler/compiler.jar \
 	--compilation_level SIMPLE_OPTIMIZATIONS \
-	--language_in=ECMASCRIPT5_STRICT
+	--language_in=ECMASCRIPT5_STRICT \
+	--generate_exports
 
 COMPILE2=java -jar compiler/compiler.jar \
 	--compilation_level ADVANCED_OPTIMIZATIONS \
-	--language_in=ECMASCRIPT5_STRICT
+	--language_in=ECMASCRIPT5_STRICT \
+	--generate_exports
 
 #-------------------------------------------------------------------------------
 # live

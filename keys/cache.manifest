@@ -27,6 +27,7 @@ http://www.google-analytics.com/ga.js
 ../common/wavencoder.js
 ../common/rational.js
 modernizr.custom.js
+testworker.js
 synthworker.js
 onsetworker.js
 keys.js
