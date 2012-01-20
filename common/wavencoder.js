@@ -86,6 +86,10 @@ WavEncoder.prototype = {
   headerBytes: 44,
   headerWords: 22,
 
+  /**
+   * @param {string}
+   * @returns {number[]}
+   */
   _getString: function (s) {
     assert(s.length % 2 === 0, 'expected a string length to be even');
     var result = [];
@@ -98,15 +102,27 @@ WavEncoder.prototype = {
     }
     return result;
   },
+  /**
+   * @param {number}
+   * @returns {number[]}
+   */
   _getUint16: function (i) {
     var swapBytes = function (j) { return ((j >> 8) | (j << 8)) & 65535; };
     return [i & 65535].map(swapBytes);
   },
+  /**
+   * @param {number}
+   * @returns {number[]}
+   */
   _getUint32: function (i) {
     var swapBytes = function (j) { return ((j >> 8) | (j << 8)) & 65535; };
     return [i & 65535, (i >> 16) & 65535].map(swapBytes);
   },
 
+  /**
+   * @param {number[]}
+   * @returns {string}
+   */
   encode8: function (samples) {
     // this is hard-coded for 8-bit mono
 
@@ -131,6 +147,10 @@ WavEncoder.prototype = {
     return this._encodeWords();
   },
 
+  /**
+   * @param {number[]}
+   * @returns {string}
+   */
   encode16: function (samples) {
     // this is hard-coded for 16-bit mono
 
@@ -149,6 +169,9 @@ WavEncoder.prototype = {
     return this._encodeWords();
   },
 
+  /**
+   * @returns {string}
+   */
   _encodeWords: function () {
     var words = this.words;
     var pairTable = WavEncoder.pairTable;
@@ -198,8 +221,13 @@ WavEncoder.defaults = {
   WavEncoder.pairTable = pairTable;
 })();
 
-// WavEncoder is optimized to encode many data sequences of the same length,
-// but we provide a one-off function for convenience.
+/**
+ * WavEncoder is optimized to encode many data sequences of the same length,
+ * but we provide a one-off function for convenience.
+ *
+ * @param {number[]}
+ * @returns {string}
+ */
 WavEncoder.encode = function (data) {
   var encoder = new WavEncoder(data.length);
   return encoder.encode(data);
