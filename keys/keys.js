@@ -7,6 +7,7 @@
  * http://www.opensource.org/licenses/mit-license.php
  */
 
+/** @const */
 var config = {
   harmony: {
     //maxRadius: 11.44, // 63 keys
@@ -50,10 +51,6 @@ var config = {
       textHeight: 28
     },
     defaultStyle: 'piano'
-  },
-
-  test: {
-    interactive: false
   }
 };
 
@@ -1607,21 +1604,9 @@ test('main', function(){
   synthesizer.start();
   keyboard.start();
 
-  try {
-    if(config.test.interactive) {
-      TODO('implement an asynchronous query dialog box');
-      assert(confirm('do you hear a tone?'),
-          'synthesizer did not make a tone');
-      assert(confirm('do you see a keyboard?'),
-          'keyboard was not drawn correctly');
-    }
-  }
-
-  finally {
-    keyboard.stop();
-    synthesizer.stop();
-    harmony.stop();
-  }
+  keyboard.stop();
+  synthesizer.stop();
+  harmony.stop();
 });
 
 $(document).ready(function(){
@@ -1640,13 +1625,6 @@ $(document).ready(function(){
     if (window.location.hash.substr(1) === 'test') {
       document.title = 'The Rational Keyboard - Unit Test';
       $('#toolbar').hide();
-      test.runAll();
-      return;
-    }
-    else if (window.location.hash.substr(1) === 'test=interactive') {
-      document.title = 'The Rational Keyboard - Interactive Unit Test';
-      $('#toolbar').hide();
-      config.test.interactive = true;
       test.runAll();
       return;
     }
