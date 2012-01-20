@@ -1,9 +1,11 @@
 /*
- * Tools for safe coding and unit testing in web workers
+ * Tools for safe coding in web workers.
+ * (see safety.js for analogs in the main window)
  *
  * Copyright (c) 2012, Fritz Obermeyer
- * Licensed under the MIT license:
- * http://www.opensource.org/licenses/mit-license.php
+ * Dual licensed under the MIT or GPL Version 2 licenses.
+ * http://www.opensource.org/licenses/MIT
+ * http://www.opensource.org/licenses/GPL-2.0
  */
 
 //------------------------------------------------------------------------------
