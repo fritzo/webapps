@@ -52,7 +52,7 @@ var synthesize = function (f) {
   }
 
   var uri = self.wavEncoder.encode(samples);
-  self.postMessage({type:'wave', index:f, data:uri});
+  self.postMessage({'type':'wave', 'index':f, 'data':uri});
 };
 
 //------------------------------------------------------------------------------
@@ -72,7 +72,7 @@ self.addEventListener('message', function (e) {
     }
   }
   catch (err) {
-    self.postMessage({type:'error', data:err.toString()});
+    self.postMessage({'type':'error', 'data':err.toString()});
   }
 }, false);
 

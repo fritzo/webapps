@@ -571,8 +571,8 @@ Synthesizer.prototype = {
           }
         }, false);
     this.synthworker.postMessage({
-      cmd: 'init',
-      data: {
+      'cmd': 'init',
+      'data': {
           gain: this.sustainGain,
           freqs: this.freqs,
           numVoices: this.numVoices,
@@ -601,7 +601,7 @@ Synthesizer.prototype = {
 
   update: function () {
     var mass = this.harmony.mass.likes;
-    this.synthworker.postMessage({cmd:'synthesize', data:mass});
+    this.synthworker.postMessage({'cmd':'synthesize', 'data':mass});
   },
   play: function (uri) {
     var audio = new Audio(uri);
@@ -653,8 +653,8 @@ Synthesizer.prototype = {
           }
         }, false);
     onsetworker.postMessage({
-      cmd: 'init',
-      data: {
+      'cmd': 'init',
+      'data': {
           gain: this.onsetGain,
           freqs: this.freqs,
           numSamples: 2 * this.windowSamples,
@@ -671,7 +671,7 @@ Synthesizer.prototype = {
 };
 
 test('web worker echo', function(){
-  var message = {a:0, b:[0,1,2], c:'asdf', d:{}}; // just some JSON
+  var message = {'a':0, 'b':[0,1,2], 'c':'asdf', d:{}}; // just some JSON
   var received = false;
   var error = null;
 

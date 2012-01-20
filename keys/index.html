@@ -17,44 +17,22 @@
 <link rel="apple-touch-icon" href="apple-touch-icon-57x57.png" />
 <link rel="apple-touch-icon" sizes="72x72" href="apple-touch-icon-72x72.png" />
 <link rel="apple-touch-icon" sizes="114x114" href="appletouch-icon-114x114.png" />
-<!--
-webapp tools as recommended by
-http://matt.might.net/articles/how-to-native-iphone-ipad-apps-in-javascript
--->
 <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black" />
 
-<!----------------------------------------------------------------------------->
-
-<!-- MIT,GPL2 -->
-<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
-<script>!window.jQuery && document.write('<script src="jquery.min.js"><\/script>')</script>
-
-<!-- MIT,GPL2 -->
+<!-- DEVEL
+<script type='text/javascript' src='jquery.min.js'></script>
 <script type='text/javascript' src='jquery.ba-hashchange.min.js'></script>
-
-<!-- MIT,BSD -->
 <script type='text/javascript' src='modernizr.custom.js'></script>
 
-<!-- MIT -->
 <script type='text/javascript' src='safety.js'></script>
 <script type='text/javascript' src='keys.js'></script>
+<script type='text/javascript' src='ui.js'></script>
+-->
 
-<script type='text/javascript'>
-$(document).ready(function(){
-  $('#showToolbar').hide().on('click', function(){
-        $('#showToolbar').fadeOut(50);
-        $('#toolbar').fadeIn(100);
-      });
-  $('#hideToolbar').on('click', function(){
-        $('#toolbar').fadeOut(200);
-        $('#showToolbar').fadeIn(50);
-      });
-});
-</script>
-
-<!----------------------------------------------------------------------------->
+<!-- RELEASE -->
+<script type='text/javascript' src='keys.min.js'></script>
 
 <style>
 body {

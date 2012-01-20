@@ -22,7 +22,11 @@ compiler:
 build:
 	mkdir build
 
-COMPILE=java -jar compiler/compiler.jar \
+COMPILE1=java -jar compiler/compiler.jar \
+	--compilation_level SIMPLE_OPTIMIZATIONS \
+	--language_in=ECMASCRIPT5_STRICT
+
+COMPILE2=java -jar compiler/compiler.jar \
 	--compilation_level ADVANCED_OPTIMIZATIONS \
 	--language_in=ECMASCRIPT5_STRICT
 
@@ -32,7 +36,7 @@ COMPILE=java -jar compiler/compiler.jar \
 build/live.min.js: build FORCE
 	@echo 'TODO add exports to live.min to support ui javascript'
 	@echo '  (or just clean up live/index.html)'
-	@# $(COMPILE) \
+	@# $(COMPILE2) \
 	  --js=common/jquery.js \
 	  --js=common/jquery.timeago.js \
 	  --js=common/jquery.caret.js \
@@ -48,32 +52,36 @@ live.min: FORCE
 #-------------------------------------------------------------------------------
 # keys
 
+build/synthworker.min.js: build FORCE
+	sed '/importScripts/d' < keys/synthworker.js > build/synthworker.js
+	$(COMPILE1) \
+	  --js=common/workersafety.js \
+	  --js=common/wavencoder.js \
+	  --js=build/synthworker.js \
+	  --js_output_file=build/synthworker.min.js
+
+build/onsetworker.min.js: build FORCE
+	sed '/importScripts/d' < keys/onsetworker.js > build/onsetworker.js
+	$(COMPILE1) \
+	  --js=common/workersafety.js \
+	  --js=common/wavencoder.js \
+	  --js=build/onsetworker.js \
+	  --js_output_file=build/onsetworker.min.js
+
 build/keys.min.js: build FORCE
-	$(COMPILE) \
+	sed 's/worker\.js\>/worker.min.js/g' < keys/keys.js > build/keys.js
+	$(COMPILE1) \
 	  --js=common/jquery.js \
 	  --js=common/jquery.ba-hashchange.js \
 	  --js=common/jquery.caret.js \
 	  --js=common/modernizr.js \
 	  --js=common/safety.js \
 	  --js=common/wavencoder.js \
-	  --js=keys/keys.js \
+	  --js=build/keys.js \
+	  --js=keys/ui.js \
 	  --js_output_file=build/keys.min.js
 
-build/synthworker.min.js: build FORCE
-	$(COMPILE) \
-	  --js=common/workersafety.js \
-	  --js=common/wavencoder.js \
-	  --js=keys/synthworker.js \
-	  --js_output_file=build/synthworker.min.js
-
-build/onsetworker.min.js: build FORCE
-	$(COMPILE) \
-	  --js=common/workersafety.js \
-	  --js=common/wavencoder.js \
-	  --js=keys/onsetworker.js \
-	  --js_output_file=build/onsetworker.min.js
-
-keys.min: build/keys.min.js build/synthworker.min.js build/onsetworker.min.js
+keys.min: build/synthworker.min.js build/onsetworker.min.js build/keys.min.js
 
 #-------------------------------------------------------------------------------
 

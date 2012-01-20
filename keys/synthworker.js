@@ -75,7 +75,11 @@ var synthesize = function (mass) {
   var uri = self.wavEncoder.encode(samples);
 
   var profileElapsed = Date.now() - profileStartTime;
-  self.postMessage({type:'wave', data:uri, profileElapsed:profileElapsed});
+  self.postMessage({
+        'type': 'wave',
+        'data': uri,
+        'profileElapsed': profileElapsed
+      });
 };
 
 //------------------------------------------------------------------------------
@@ -99,7 +103,7 @@ self.addEventListener('message', function (e) {
     }
   }
   catch (err) {
-    self.postMessage({type:'error', data:err.toString()});
+    self.postMessage({'type':'error', 'data':err.toString()});
   }
 }, false);
 
