@@ -64,9 +64,18 @@ var verifyBrowser = function () {
   if (!Modernizr.webworkers) missing.push('web workers');
 
   if (missing.length) {
-    var message = 'The Rational Keyboard ' +
-        'needs some features not available in your browser: ' +
-        missing.join(', ') + '.';
+    var message = [
+        '<p>The Rational Keyboard ',
+        'needs features not available in your browser: ',
+        '<ul><li>',
+        missing.join('</li><li>'),
+        '</li></ul>',
+        '</p>',
+        '<p>',
+        'User Agent String = ',
+        navigator.userAgent,
+        '</p>'].join('');
+
     $(document.body).empty().html(message).attr('class', 'warning');
 
     return false;
