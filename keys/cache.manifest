@@ -1,5 +1,5 @@
 CACHE MANIFEST
-# version 2011-01-20-09-19
+# version 2011-01-20-10-52
 
 # use CACHE or NETWORK here
 NETWORK:
@@ -18,4 +18,17 @@ apple-touch-icon-114x114.png
 
 # External
 http://www.google-analytics.com/ga.js
+
+# DEVEL-ONLY
+../common/jquery.min.js
+../common/jquery.ba-hashchange.min.js
+../common/safety.js
+../common/workersafety.js
+../common/wavencoder.js
+../common/rational.js
+modernizr.custom.js
+synthworker.js
+onsetworker.js
+keys.js
+ui.js
 

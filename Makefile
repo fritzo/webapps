@@ -6,10 +6,16 @@ rationalkeyboard: FORCE
 	rm -rf ~/rationalkeyboard/keys
 	cp -rL keys ~/rationalkeyboard/keys
 	rm -rf ~/rationalkeyboard/keys/temp*
-	sed -i 's/NETWORK:/CACHE:/g' ~/rationalkeyboard/keys/cache.manifest
+	sed -i 's/NETWORK:/CACHE:/g;/DEVEL-ONLY/,$d' ~/rationalkeyboard/keys/cache.manifest
 
 #-------------------------------------------------------------------------------
-# closure compiler
+# build & release tools
+
+build:
+	mkdir build
+
+release:
+	mkdir release
 
 compiler:
 	mkdir compiler
@@ -18,9 +24,6 @@ compiler:
 	    -O /tmp/closure-compiler.zip ) && \
 	unzip /tmp/closure-compiler.zip -d compiler || \
 	rm -rf compiler
-
-build:
-	mkdir build
 
 COMPILE1=java -jar compiler/compiler.jar \
 	--compilation_level SIMPLE_OPTIMIZATIONS \
@@ -76,12 +79,21 @@ build/keys.min.js: build FORCE
 	  --js=common/jquery.caret.js \
 	  --js=common/modernizr.js \
 	  --js=common/safety.js \
-	  --js=common/wavencoder.js \
+	  --js=common/rational.js \
 	  --js=build/keys.js \
 	  --js=keys/ui.js \
 	  --js_output_file=build/keys.min.js
 
 keys.min: build/synthworker.min.js build/onsetworker.min.js build/keys.min.js
+
+release/keys: keys.min release FORCE
+	rm -rf release/keys
+	cp -rL keys release/keys
+	rm -rf release/keys/temp*
+	find release/keys | grep '\.js$$' | grep -v '\.min\.js$$' | xargs rm
+	sed -i 's/NETWORK:/CACHE:/g;/DEVEL-ONLY/,$$d' release/keys/cache.manifest
+	sed -i '/BEGIN DEVEL/,/END DEVEL/d;/RELEASE/d' release/keys/index.html
+	tar -cjf keys.tbz2 -C release keys
 
 #-------------------------------------------------------------------------------
 

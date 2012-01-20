@@ -1,5 +1,7 @@
 temp.*
 compiler
 build
+release
+*.tbz2
 live/gallery.js
 
