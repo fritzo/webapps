@@ -13,6 +13,7 @@
 var globalEval = eval;
 'use strict';
 
+/** @constructor */
 var TodoException = function (message) {
   this.message = message || '(unfinished code)';
 };
@@ -23,6 +24,7 @@ var TODO = function (message) {
   throw new TodoException(message);
 };
 
+/** @constructor */
 var AssertException = function (message) {
   this.message = message || '(unspecified)';
 };
@@ -108,13 +110,13 @@ test.runAll = function () {
     log('[ failed ' + failCount + ' tests ]');
     $log.css({
           'background-color': '#ffaaaa',
-          'border-color': '#ffaaaa',
+          'border-color': '#ffaaaa'
         });
   } else {
     log('[ passed all tests :) ]');
     $log.css({
           'background-color': '#aaffaa',
-          'border-color': '#aaffaa',
+          'border-color': '#aaffaa'
         });
   }
 };

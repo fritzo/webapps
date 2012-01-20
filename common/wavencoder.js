@@ -16,6 +16,7 @@
  * http://www.opensource.org/licenses/mit-license.php
  */
 
+/** @constructor */
 var WavEncoder = function (numSamples, options) {
 
   this.numSamples = numSamples;

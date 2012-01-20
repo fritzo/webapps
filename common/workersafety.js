@@ -12,6 +12,7 @@
 var globalEval = eval;
 'use strict';
 
+/** @constructor */
 var TodoException = function (message) {
   this.message = message || '(unfinished code)';
 };
@@ -22,6 +23,7 @@ var TODO = function (message) {
   throw new TodoException(message);
 };
 
+/** @constructor */
 var AssertException = function (message) {
   this.message = message || '(unspecified)';
 };

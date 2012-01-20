@@ -104,6 +104,7 @@ test('assert(gcd(2,2) === 2)');
 test('assert(gcd(4,6) === 2)');
 test('assert(gcd(0,7) === 1)');
 
+/** @constructor */
 var Rational = function (m,n) {
   if (testing) {
     assert(0 <= m && m % 1 == 0, 'invalid numer: ' + m);
@@ -190,8 +191,8 @@ test('Rational.ball of size 88', function(){
   var f = function(r) { return Rational.ball(r).length; }
 
   var r0, r1;
-  for (r0 = 3; f(r0) >= target; --r0);
-  for (r1 = 3; f(r1) <= target; ++r1);
+  for (r0 = 3; f(r0) >= target; --r0) {}
+  for (r1 = 3; f(r1) <= target; ++r1) {}
 
   var r;
   while (r0 < r1) {
@@ -210,6 +211,7 @@ test('Rational.ball of size 88', function(){
 //----------------------------------------------------------------------------
 // Probability vectors
 
+/** @constructor */
 var Lmf = function (initProbs) {
   if (initProbs instanceof Array) {
     this.likes = initProbs.slice();
@@ -363,12 +365,13 @@ test('Lmf.shiftTowards', function(){
   var p1 = new Lmf([0,1/2,1/2]);
   var rate = 1/3;
   p0.shiftTowards(p1, rate);
-  assertEqual(p0.likes, [0, 1/6, 5/6]);delaySec: 0.05
+  assertEqual(p0.likes, [0, 1/6, 5/6]);
 });
 
 //------------------------------------------------------------------------------
 // Harmony
 
+/** @constructor */
 var Harmony = function (radius) {
   this.priorRateKhz = 1e-3 / config.harmony.priorSec;
   this.sustainRateKhz = 1e-3 / config.harmony.sustainSec;
@@ -514,6 +517,7 @@ test('Harmony.updateDiffusion', function(){
 //------------------------------------------------------------------------------
 // Synthesis
 
+/** @constructor */
 var Synthesizer = function (harmony) {
   var windowMs = 1000 * config.synth.windowSec;
 
@@ -695,6 +699,7 @@ test('web worker echo', function(){
 //------------------------------------------------------------------------------
 // Visualization
 
+/** @constructor */
 var Keyboard = function (harmony, synthesizer) {
   this.harmony = harmony;
   this.synthesizer = synthesizer;
@@ -901,6 +906,7 @@ test('Keyboard.swipe', function(){
 
 Keyboard.styles.thermal = {
 
+  /** @this {Keyboard} */
   updateGeometry: function () {
     var X = this.harmony.length;
     var Y = Math.floor(2 + Math.sqrt(window.innerHeight));
@@ -940,6 +946,7 @@ Keyboard.styles.thermal = {
     }
   },
 
+  /** @this {Keyboard} */
   draw: function () {
     var geom = this.geometry;
     var color = this.color;
@@ -1004,6 +1011,7 @@ Keyboard.styles.thermal = {
     }
   },
 
+  /** @this {Keyboard} */
   click: function (x01, y01) {
     var geom = this.geometry;
     var X = geom.length - 1;
@@ -1031,6 +1039,7 @@ Keyboard.styles.thermal = {
 
 Keyboard.styles.flow = {
 
+  /** @this {Keyboard} */
   updateGeometry: function () {
     var keyThresh = 1e-3;
     var keyExponent = 8;
@@ -1091,6 +1100,7 @@ Keyboard.styles.flow = {
     }
   },
 
+  /** @this {Keyboard} */
   draw: function () {
     var geom = this.geometry;
     var color = this.color;
@@ -1163,6 +1173,7 @@ Keyboard.styles.flow = {
     }
   },
 
+  /** @this {Keyboard} */
   click: function (x01, y01) {
     var geom = this.geometry;
     var K = geom.length - 1;
@@ -1190,6 +1201,7 @@ Keyboard.styles.flow = {
 
 Keyboard.styles.piano = {
 
+  /** @this {Keyboard} */
   updateGeometry: function () {
     var keyThresh = config.keyboard.piano.keyThresh;
     var temperature = config.keyboard.piano.temperature;
@@ -1313,6 +1325,7 @@ Keyboard.styles.piano = {
     }
   },
 
+  /** @this {Keyboard} */
   draw: function () {
     var keys = this.keys;
     var depthSorted = this.depthSorted;
@@ -1408,6 +1421,7 @@ Keyboard.styles.piano = {
     }
   },
 
+  /** @this {Keyboard} */
   click: function (x01, y01) {
     var keys = this.keys;
     var depthSorted = this.depthSorted;
@@ -1427,6 +1441,7 @@ Keyboard.styles.piano = {
       }
     }
   },
+  /** @this {Keyboard} */
   updateSwipe: function () {
     var x0 = this.swipeX0;
     var y0 = this.swipeY0;
@@ -1466,6 +1481,7 @@ Keyboard.styles.piano = {
 
 Keyboard.styles.wedges = {
 
+  /** @this {Keyboard} */
   updateGeometry: function () {
     var keyThresh = config.keyboard.wedges.keyThresh;
     var temperature = config.keyboard.wedges.temperature;
@@ -1570,6 +1586,7 @@ Keyboard.styles.wedges = {
     }
   },
 
+  /** @this {Keyboard} */
   draw: function () {
     var keys = this.keys;
     var depthSorted = this.depthSorted;
@@ -1639,6 +1656,7 @@ Keyboard.styles.wedges = {
     }
   },
 
+  /** @this {Keyboard} */
   click: function (x01, y01) {
     var keys = this.keys;
     var depthSorted = this.depthSorted;
@@ -1660,6 +1678,7 @@ Keyboard.styles.wedges = {
       }
     }
   },
+  /** @this {Keyboard} */
   updateSwipe: function () {
     var x0 = this.swipeX0;
     var y0 = this.swipeY0;
