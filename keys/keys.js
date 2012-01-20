@@ -420,30 +420,30 @@ Synthesizer.prototype = {
 
     this.synthworker = new Worker('synthworker.js');
     this.synthworker.addEventListener('message', function (e) {
-          var data = e.data;
-          switch (data.type) {
+          var data = e['data'];
+          switch (data['type']) {
             case 'wave':
-              synth.play(data.data);
+              synth.play(data['data']);
               synth.profileCount += 1;
-              synth.profileElapsed += data.profileElapsed;
+              synth.profileElapsed += data['profileElapsed'];
               break;
 
             case 'log':
-              log('Synth Worker: ' + data.data);
+              log('Synth Worker: ' + data['data']);
               break;
 
             case 'error':
-              log('Synth Worker Error: ' + data.data);
+              log('Synth Worker Error: ' + data['data']);
               break;
           }
         }, false);
     this.synthworker.postMessage({
       'cmd': 'init',
       'data': {
-          gain: this.sustainGain,
-          freqs: this.freqs,
-          numVoices: this.numVoices,
-          numSamples: this.windowSamples
+          'gain': this.sustainGain,
+          'freqs': this.freqs,
+          'numVoices': this.numVoices,
+          'numSamples': this.windowSamples
         }
       });
 
@@ -468,7 +468,10 @@ Synthesizer.prototype = {
 
   update: function () {
     var mass = this.harmony.mass.likes;
-    this.synthworker.postMessage({'cmd':'synthesize', 'data':mass});
+    this.synthworker.postMessage({
+          'cmd': 'synthesize',
+          'data': mass
+        });
   },
   play: function (uri) {
     var audio = new Audio(uri);
@@ -504,28 +507,28 @@ Synthesizer.prototype = {
 
     var onsetworker = new Worker('onsetworker.js');
     onsetworker.addEventListener('message', function (e) {
-          var data = e.data;
-          switch (data.type) {
+          var data = e['data'];
+          switch (data['type']) {
             case 'wave':
-              onsets[data.index] = data.data;
+              onsets[data['index']] = data['data'];
               break;
 
             case 'log':
-              log('Onset Worker: ' + data.data);
+              log('Onset Worker: ' + data['data']);
               break;
 
             case 'error':
-              log('Onset Worker Error: ' + data.data);
+              log('Onset Worker Error: ' + data['data']);
               break;
           }
         }, false);
     onsetworker.postMessage({
       'cmd': 'init',
       'data': {
-          gain: this.onsetGain,
-          freqs: this.freqs,
-          numSamples: 2 * this.windowSamples,
-          tasks: tasks
+          'gain': this.onsetGain,
+          'freqs': this.freqs,
+          'numSamples': 2 * this.windowSamples,
+          'tasks': tasks
         }
       });
   },

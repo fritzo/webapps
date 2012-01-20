@@ -60,15 +60,15 @@ var synthesize = function (f) {
 
 self.addEventListener('message', function (e) {
   try {
-    var data = e.data;
-    switch (data.cmd) {
+    var data = e['data'];
+    switch (data['cmd']) {
 
       case 'init':
-        init(data.data);
+        init(data['data']);
         break;
 
       default:
-        throw 'unknown command: ' + e.data.cmd;
+        throw 'unknown command: ' + data['cmd'];
     }
   }
   catch (err) {
