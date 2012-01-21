@@ -145,6 +145,19 @@ Ratio.add = function (lhs, rhs) {
 /**
  * @param {Ratio}
  * @param {Ratio}
+ * @returns {Ratio}
+ */
+Ratio.sub = function (lhs, rhs) {
+
+  var numer = lhs.numer * rhs.denom - lhs.denom * rhs.numer;
+  if (numer < 0) throw RangeError('Ratio.sub result is negative');
+
+  return new Ratio(numer, lhs.denom * rhs.denom);
+};
+
+/**
+ * @param {Ratio}
+ * @param {Ratio}
  * @returns {number}
  */
 Ratio.cmp = function (lhs, rhs) {
@@ -206,8 +219,7 @@ test('Ratio.ball of size 88', function(){
 });
 
 //------------------------------------------------------------------------------
-// Affine numbers
-if(0){
+// Affine trajectories
 
 /**
  * @constructor
@@ -222,8 +234,8 @@ var Affino = function (freq, base) {
 
   this.freq = freq;
   this.base = base.numer < base.denom
-              ? base
-              : new Ratio(base.numer % base.denom, base.denom);
+            ? base
+            : new Ratio(base.numer % base.denom, base.denom);
 
   if (testing) {
     var base = this.base;
@@ -239,27 +251,9 @@ Affino.prototype = {
     return this.freq + ' (t + ' + this.base + ')';
   },
 
-  /** @returns {Affino} */
-  inv: function () {
-    var f = this.freq;
-    var b = this.base;
-    var freq = this.freq.inv();
-    var base = new Ratio(
-        f.numer * b.denom - f.denom * b.numer,
-        f.denom * b.denom);
-    return new Affion(freq, base);
-  },
-
   /** @returns {number} */
   norm: function () {
-    var freq = this.freq;
-    var base = this.base;
-    var result = freq.norm();
-    var offset = (base.numer / base.denom) % (1 / freq.denom);
-    if (offset !== 0) {
-      result /= Math.min(offset, 1 - offset);
-    }
-    return result;
+    return Affino.dist(this, Affino.UNIT);
   }
 };
 
@@ -281,43 +275,49 @@ Affino.equal = function (lhs, rhs) {
 
 /**
  *
- * @param {Affino}
- * @param {Affino}
- * @returns {Affino}
- */
-Affino.div = function (lhs, rhs) {
-  var rf = rhs.freq;
-  var rb = rhs.base;
-  var freq = Ratio.div(lhs.freq, rhs.freq);
-  var base = Ratio.add(
-      lhs.base,
-      new Ratio(
-          rf.numer * rb.denom - rf.denom * rb.numer,
-          rf.denom * rb.denom));
-  return new Affion(freq, base);
-};
-
-/**
+ * valid rules:
+ * (1) shift t on both sides
+ * (2) scale t on both sides
+ * (3) add an integer to either side
  *
- * @param {Affino}
- * @param {Affino}
- * @returns {Affino}
- */
-Affino.mul = function (lhs, rhs) {
-  var freq = Ratio.mul(lhs.freq, rhs.freq);
-  var base = Ratio.add(
-      lhs.base,
-      Ratio.mul(lhs.freq, rhs.base));
-  return new Affion(freq, base);
-};
-
-/**
+ * freq (t + base) : freq' (t + base')
+ *          freq t : freq' (t + base' - base)
+ *          freq t : freq' (t + base' - base)
+ *               t : freq' (t/freq + base' - base)
+ *               t : freq'/freq (t + freq * (base' - base))
+ *
  * @param {Affino}
  * @param {Affino}
  * @returns {number}
  */
 Affino.dist = function (lhs, rhs) {
-  return Affino.div(lhs, rhs).norm();
+
+  var cmp = Ratio.cmp(lhs.base, rhs.base);
+  if (cmp === 0) {
+    return Ratio.dist(lhs.freq, rhs.freq);
+  } else if (cmp < 0) {
+    var temp = lhs;
+    lhs = rhs;
+    rhs = temp;
+  }
+
+  var lf = lhs.freq;
+  var lb = lhs.base;
+  var rf = rhs.freq;
+  var rb = rhs.base;
+
+  var freq = Ratio.div(lf, rf);
+  var base = Ratio.mul(rf, new Ratio.sub(lb, rb));
+  var normalForm = new Affino(freq,base);
+  freq = normalForm.freq;
+  base = normalForm.base;
+
+  var result = freq.norm();
+  var offset = (freq.numer * base.numer) % base.denom;
+  if (offset !== 0) {
+    result *= freq.numer * base.denom / Math.min(offset, base.denom - offset);
+  }
+  return result;
 };
 
 /**
@@ -365,6 +365,7 @@ Affino.ball = function (radius) {
 test('Affino', function(){
 
   var vars = [
+      new Affino(new Ratio(1,1), new Ratio(0,1)),
       new Affino(new Ratio(2,3), new Ratio(5,7)),
       new Affino(new Ratio(11,13), new Ratio(17,19)),
       new Affino(new Ratio(23,29), new Ratio(31,37)),
@@ -373,47 +374,16 @@ test('Affino', function(){
 
   for (var i = 0; i < vars.length; ++i) {
     var u = vars[i];
-
-    // Unary
-
-    assertEqual(Affino.div(u,u), Affino.UNIT, 'unit fails');
-    assertEqual(u, u.inv().inv(), 'inverse failed');
-    assertEqual(u.norm(), u.inv().norm(), 'norm() != inv().norm()');
-
-    var unit_u = Affino.mul(Affino.UNIT, u);
-    assertEqual(u, unit_u, 'left-unit fails');
-
-    var u_unit = Affino.mul(u, Affino.UNIT);
-    assertEqual(u, u_unit, 'right-unit fails');
-
-    // Binary
     for (var j = 0; j < vars.length; ++j) {
-      var v = vars[j];
-
-      var uv = Affino.mul(u,v);
-      assertEqual(u, Affino.div(uv,v), 'division fails');
-
-      // Ternary
-      for (var k = 0; k < vars.length; ++k) {
-        var w = vars[k];
-
-        var vw = Affino.mul(v,w);
-        assertEqual(Affino.mul(uv,w), Affino.mul(u,vw),
-            'associativity fails');
-      }
-    }
-
-    // Binary symmetric
-    for (var j = 0; j < i; ++j) {
       var v = vars[j];
 
       assertEqual(Affino.dist(u,v), Affino.dist(v,u),
           'distance is asymmetric');
     }
   }
-});
 
-test('Affino.ball', function(){
+  // test ball
+
   var radius = 12;
   var rationalBall = Ratio.ball(radius);
   var raffineBall = Affino.ball(radius);
@@ -435,6 +405,4 @@ test('Affino.ball', function(){
     }
   }
 });
-
-} // Affino
 
