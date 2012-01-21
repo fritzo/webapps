@@ -51,6 +51,12 @@ var assertEqual = function (actual, expected, message) {
     '\n    actual = ' + actual +
     '\n    expected = ' + expected);
 };
+var assertNear = function (actual, expected, message) {
+  assert(Math.abs(actual - expected) < 1e-8,
+    (message || '') +
+    '\n    actual = ' + actual +
+    '\n    expected = ' + expected);
+};
 
 var log;
 if (window.console && window.console.log) {

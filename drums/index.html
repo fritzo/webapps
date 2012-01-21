@@ -24,43 +24,45 @@ var plotBall = function () {
 
   var width = 500;
   var height = 500;
-  var radius = 5;
+  var radius = 7;
 
-  var ball = RatGrid.ball(radius);
-
-  var drawLine = function (x0, y0, x1, y1) {
+  var drawLine = function (x0, y0, x1, y1, attr) {
     var path = paper.path([
         'M', Math.round(x0 * width), Math.round((1 - y0) * height),
         'L', Math.round(x1 * width), Math.round((1 - y1) * height)
         ].join(' '));
-    var norm = grid.norm();
-    var opacity = Math.pow(1 / norm, 1);
-    path.attr({
-          stroke: 'rgba(0,0,0,' + opacity + ')',
-          'stroke-width': 2,
-          title: '|' + grid + '| = ' + norm
-        });
+    path.attr(attr);
   };
+
+  var ball = RatGrid.ball(radius);
 
   for (var i = 0, I = ball.length; i < I; ++i) {
 
     var grid = ball[i];
+
+    var norm = grid.norm();
+    var opacity = Math.pow(1 / norm, 1);
+    var attr = {
+          stroke: 'rgba(0,0,0,' + opacity + ')',
+          'stroke-width': 2,
+          title: '|' + grid + '| = ' + norm
+        };
+
     var freq = grid.freq;
     var base = grid.base;
 
     var x0 = base.toNumber();
     var y0 = 0;
-    var x1 = x0 + freq.toNumber();
+    var x1 = x0 + freq.inv().toNumber();
     var y1 = 1;
 
-    var N = freq.numer * freq.denom;
+    drawLine(x0, y0, x1, y1, attr);
 
-    drawLine(x0, y0, x1, y1);
-    for (var n = 1; x0 + n/N < 1; ++n) {
-      drawLine(x0 + n/N, y0, x1 + n/N, y1);
-    }
-    for (var n = -1; x1 + n/N > 0; --n) {
-      drawLine(x0 + n/N, y0, x1 + n/N, y1);
+    if (grid.base.numer === 0) {
+      var N = freq.numer;
+      for (var n = -1; x1 + n/N > 0; --n) {
+        drawLine(x0 + n/N, y0, x1 + n/N, y1, attr);
+      }
     }
   }
 };

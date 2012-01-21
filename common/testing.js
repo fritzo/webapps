@@ -40,7 +40,7 @@ test.runAll = function () {
 
   var oldLog = log;
   log = function (message) {
-    $(document.createElement('p')).text(message).appendTo($log);
+    $(document.createElement('pre')).text(message).appendTo($log);
     oldLog(message);
   };
 
