@@ -68,11 +68,6 @@ Rational.prototype = {
   },
 
   /** @returns {number} */
-  normSquared: function () {
-    return this.numer * this.numer + this.denom * this.denom;
-  },
-
-  /** @returns {number} */
   norm: function () {
     return Math.sqrt(this.numer * this.numer + this.denom * this.denom);
   },
@@ -144,15 +139,6 @@ Rational.cmp = function (lhs, rhs) {
  * @param {Rational}
  * @returns {number}
  */
-Rational.distSquared = function (lhs, rhs) {
-  return Rational.div(lhs, rhs).normSquared();
-};
-
-/**
- * @param {Rational}
- * @param {Rational}
- * @returns {number}
- */
 Rational.dist = function (lhs, rhs) {
   return Rational.div(lhs, rhs).norm();
 };
@@ -210,7 +196,7 @@ test('Rational.ball of size 88', function(){
  * @param {Rational}
  * @param {Rational}
  */
-var Raffine = function (r,q) {
+var RatGrid = function (r,q) {
   if (testing) {
     assert(r.numer > 0 && r.denom > 0, 'invalid step: ' + r);
     assert(q.denom > 0, 'invalid base: ' + q);
@@ -221,11 +207,11 @@ var Raffine = function (r,q) {
 
   if (testing) {
     var base = this.base.toNumber();
-    assert(0 <= base && base < 1, 'bad Raffine.base: ' + this.base);
+    assert(0 <= base && base < 1, 'bad RatGrid.base: ' + this.base);
   }
 };
 
-Raffine.prototype = {
+RatGrid.prototype = {
 
   /** @returns {string} */
   toString: function () {
@@ -245,16 +231,16 @@ Raffine.prototype = {
 
 /**
  * @const
- * @type {Raffine}
+ * @type {RatGrid}
  */
-Raffine.UNIT = new Raffine(Rational.ONE, Rational.ZERO);
+RatGrid.UNIT = new RatGrid(Rational.ONE, Rational.ZERO);
 
 /**
- * @param {Raffine}
- * @param {Raffine}
+ * @param {RatGrid}
+ * @param {RatGrid}
  * @returns {boolean}
  */
-Raffine.equal = function (lhs, rhs) {
+RatGrid.equal = function (lhs, rhs) {
   return ( Rational.cmp(lhs.step, rhs.step) === 0 &&
            Rational.cmp(lhs.base, rhs.base) === 0 );
 };
@@ -264,34 +250,43 @@ Raffine.equal = function (lhs, rhs) {
  *     = r * (q + (r' * (q' + t)))
  *     = (r * r') * ((q/r' + q') + t)
  *
- * @param {Raffine}
- * @param {Raffine}
- * @returns {Raffine}
+ * @param {RatGrid}
+ * @param {RatGrid}
+ * @returns {RatGrid}
  */
-Raffine.mul = function (lhs, rhs) {
+RatGrid.mul = function (lhs, rhs) {
   var step = Rational.mul(lhs.step, rhs.step);
   var base = Rational.add(Rational.div(lhs.base, rhs.step), rhs.base);
-  return new Raffine(step, base);
+  return new RatGrid(step, base);
 };
 
 /**
- * @param {Raffine}
- * @param {Raffine}
- * @returns {Raffine}
+ * @param {RatGrid}
+ * @param {RatGrid}
+ * @returns {RatGrid}
  */
-Raffine.div = function (lhs, rhs) {
+RatGrid.div = function (lhs, rhs) {
   var step = Rational.div(lhs.step, rhs.step);
   var rhs_base = rhs.base;
   var neg_base = new Rational(rhs_base.denom - rhs_base.numer, rhs_base.denom);
   var base = Rational.mul(Rational.add(lhs.base, neg_base), rhs.step);
-  return new Raffine(step, base);
+  return new RatGrid(step, base);
+};
+
+/**
+ * @param {RatGrid}
+ * @param {RatGrid}
+ * @returns {number}
+ */
+RatGrid.dist = function (lhs, rhs) {
+  return RatGrid.div(lhs, rhs).norm();
 };
 
 /**
  * @param {number}
- * @returns {Raffine[]}
+ * @returns {RatGrid[]}
  */
-Raffine.ball = function (radius) {
+RatGrid.ball = function (radius) {
 
   var result = [];
 
@@ -299,7 +294,7 @@ Raffine.ball = function (radius) {
   var rates = Rational.ball(radius);
   var I = rates.length;
   for (var i = 0; i < I; ++i) {
-    result.push(new Raffine(rates[i], Rational.ZERO));
+    result.push(new RatGrid(rates[i], Rational.ZERO));
   }
 
   // add shifted grids for every pair of unshifted grid
@@ -317,11 +312,11 @@ Raffine.ball = function (radius) {
         var baseHash = base.toString();
         if (baseHash in baseHashSet) continue;
 
-        var r = new Raffine(rate1, base);
-        if (r.norm() > radius) continue;
+        var g = new RatGrid(rate1, base);
+        if (g.norm() > radius) continue;
 
         baseHashSet[baseHash] = undefined;
-        result.push(r);
+        result.push(g);
       }
     }
   }
@@ -329,31 +324,35 @@ Raffine.ball = function (radius) {
   return result;
 };
 
-test('Raffine.mul, Raffine.div', function(){
-  var x = new Raffine(new Rational(2,3), new Rational(5,7));
-  var y = new Raffine(new Rational(11,13), new Rational(17,19));
-  //var z = new Raffine(new Rational(23,29), new Rational(31,37));
+test('RatGrid', function(){
+  var x = new RatGrid(new Rational(2,3), new Rational(5,7));
+  var y = new RatGrid(new Rational(11,13), new Rational(17,19));
+  var z = new RatGrid(new Rational(23,29), new Rational(31,37));
 
-  var unit_x = Raffine.mul(Raffine.UNIT, x);
+  var unit_x = RatGrid.mul(RatGrid.UNIT, x);
   assertEqual(x, unit_x, 'left-unit fails');
 
-  var x_unit = Raffine.mul(x, Raffine.UNIT);
+  var x_unit = RatGrid.mul(x, RatGrid.UNIT);
   assertEqual(x, x_unit, 'right-unit fails');
 
-  var xy = Raffine.mul(x,y);
-  var xyy = Raffine.div(xy,y);
+  var xy = RatGrid.mul(x,y);
+  var xyy = RatGrid.div(xy,y);
   assertEqual(x, xyy, 'division fails');
+
+  assertEqual(RatGrid.dist(x,y), RatGrid.dist(y,x), 'distance is asymmetric');
+  assertEqual(RatGrid.dist(y,z), RatGrid.dist(z,y), 'distance is asymmetric');
+  assertEqual(RatGrid.dist(z,x), RatGrid.dist(x,x), 'distance is asymmetric');
 });
 
-test('Raffine.ball', function(){
+test('RatGrid.ball', function(){
   var radius = 12;
   var rationalBall = Rational.ball(radius);
-  var raffineBall = Raffine.ball(radius);
+  var raffineBall = RatGrid.ball(radius);
   log('Rational.ball('+radius+').length = '+rationalBall.length);
-  log('Raffine.ball('+radius+').length = '+raffineBall.length);
+  log('RatGrid.ball('+radius+').length = '+raffineBall.length);
 
   assert(rationalBall.length < raffineBall.length,
-      'Raffine.ball is not larger than Rational.ball');
+      'RatGrid.ball is not larger than Rational.ball');
 
   var I = raffineBall.length;
   for (var i1 = 0; i1 < I; ++i1) {
@@ -363,7 +362,7 @@ test('Raffine.ball', function(){
 
     for (var i2 = 0; i2 < i1; ++i2) {
       var r2 = raffineBall[i2];
-      assert(!Raffine.equal(r1, r2), 'repeated entry: ' + r1);
+      assert(!RatGrid.equal(r1, r2), 'repeated entry: ' + r1);
     }
   }
 });
