@@ -1,4 +1,4 @@
-/*
+/**
  * Active unit testing.
  * (see notesting.js for inactive testing)
  *
@@ -19,6 +19,7 @@ var test = function (title, callback) {
 test._all = [];
 test.runAll = function () {
 
+  // TODO remove dependency on jQuery
   $('<style type=text/css>#testLog p{margin: 0px;}</style>').appendTo('head');
   var $log = $(document.createElement('div'))
     .attr('id', 'testLog')
