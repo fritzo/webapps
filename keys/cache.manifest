@@ -1,5 +1,5 @@
 CACHE MANIFEST
-# version 2011-01-20-11-47
+# version 2011-01-21
 
 # use CACHE or NETWORK here
 NETWORK:
@@ -13,6 +13,7 @@ index.html
 ../common/workersafety.js
 ../common/wavencoder.js
 ../common/rational.js
+../common/massvector.js
 modernizr.custom.js
 testworker.js
 synthworker.js

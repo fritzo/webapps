@@ -1,7 +1,11 @@
-/*
- * Symbolic simulation of arnold tongues.
+/**
+ * Rational numbers & grids.
+ * For symbolic simulation of Arnold tongue scenarios.
  *
  * Copyright (c) 2012, Fritz Obermeyer
+ * Dual licensed under the MIT or GPL Version 2 licenses.
+ * http://www.opensource.org/licenses/MIT
+ * http://www.opensource.org/licenses/GPL-2.0
  */
 
 /**
@@ -43,11 +47,11 @@ test('assert(gcd(0,7) === 1)');
  * @param {number}
  * @param {number}
  */
-var Ratio = function (m,n) {
+var Rational = function (m,n) {
   if (testing) {
     assert(0 <= m && m % 1 == 0, 'invalid numer: ' + m);
     assert(0 <= n && n % 1 == 0, 'invalid denom: ' + n);
-    assert(m || n, '0/0 is not a Ratio');
+    assert(m || n, '0/0 is not a Rational');
   }
 
   /**
@@ -67,12 +71,12 @@ var Ratio = function (m,n) {
   this.denom = n / g;
 
   if (testing) {
-    assert(this.numer % 1 === 0, 'bad Ratio.numer: ' + this.numer);
-    assert(this.denom % 1 === 0, 'bad Ratio.denom: ' + this.denom);
+    assert(this.numer % 1 === 0, 'bad Rational.numer: ' + this.numer);
+    assert(this.denom % 1 === 0, 'bad Rational.denom: ' + this.denom);
   }
 };
 
-Ratio.prototype = {
+Rational.prototype = {
 
   /** @returns {string} */
   toString: function () {
@@ -84,9 +88,9 @@ Ratio.prototype = {
     return this.numer / this.denom;
   },
 
-  /** @returns {Ratio} */
+  /** @returns {Rational} */
   inv: function () {
-    return new Ratio(this.denom, this.numer);
+    return new Rational(this.denom, this.numer);
   },
 
   /** @returns {number} */
@@ -97,108 +101,108 @@ Ratio.prototype = {
 
 /** 
  * @const
- * @type {Ratio}
+ * @type {Rational}
  */
-Ratio.ZERO = new Ratio(0,1);
+Rational.ZERO = new Rational(0,1);
 
 /** 
  * @const
- * @type {Ratio}
+ * @type {Rational}
  */
-Ratio.INF = new Ratio(1,0);
+Rational.INF = new Rational(1,0);
 
 /** 
  * @const
- * @type {Ratio}
+ * @type {Rational}
  */
-Ratio.ONE = new Ratio(1,1);
+Rational.ONE = new Rational(1,1);
 
 /**
- * @param {Ratio}
- * @param {Ratio}
- * @returns {Ratio}
+ * @param {Rational}
+ * @param {Rational}
+ * @returns {Rational}
  */
-Ratio.mul = function (lhs, rhs) {
-  return new Ratio(lhs.numer * rhs.numer, lhs.denom * rhs.denom);
+Rational.mul = function (lhs, rhs) {
+  return new Rational(lhs.numer * rhs.numer, lhs.denom * rhs.denom);
 };
 
 /**
- * @param {Ratio}
- * @param {Ratio}
- * @returns {Ratio}
+ * @param {Rational}
+ * @param {Rational}
+ * @returns {Rational}
  */
-Ratio.div = function (lhs, rhs) {
-  return new Ratio(lhs.numer * rhs.denom, lhs.denom * rhs.numer);
+Rational.div = function (lhs, rhs) {
+  return new Rational(lhs.numer * rhs.denom, lhs.denom * rhs.numer);
 };
 
 /**
- * @param {Ratio}
- * @param {Ratio}
- * @returns {Ratio}
+ * @param {Rational}
+ * @param {Rational}
+ * @returns {Rational}
  */
-Ratio.add = function (lhs, rhs) {
-  return new Ratio(
+Rational.add = function (lhs, rhs) {
+  return new Rational(
       lhs.numer * rhs.denom + lhs.denom * rhs.numer,
       lhs.denom * rhs.denom);
 };
 
 /**
- * @param {Ratio}
- * @param {Ratio}
- * @returns {Ratio}
+ * @param {Rational}
+ * @param {Rational}
+ * @returns {Rational}
  */
-Ratio.sub = function (lhs, rhs) {
+Rational.sub = function (lhs, rhs) {
 
   var numer = lhs.numer * rhs.denom - lhs.denom * rhs.numer;
-  if (numer < 0) throw RangeError('Ratio.sub result is negative');
+  if (numer < 0) throw RangeError('Rational.sub result is negative');
 
-  return new Ratio(numer, lhs.denom * rhs.denom);
+  return new Rational(numer, lhs.denom * rhs.denom);
 };
 
 /**
- * @param {Ratio}
- * @param {Ratio}
+ * @param {Rational}
+ * @param {Rational}
  * @returns {number}
  */
-Ratio.cmp = function (lhs, rhs) {
+Rational.cmp = function (lhs, rhs) {
   return lhs.numer * rhs.denom - rhs.numer * lhs.denom;
 };
 
 /**
- * @param {Ratio}
- * @param {Ratio}
+ * @param {Rational}
+ * @param {Rational}
  * @returns {number}
  */
-Ratio.dist = function (lhs, rhs) {
-  return Ratio.div(lhs, rhs).norm();
+Rational.dist = function (lhs, rhs) {
+  return Rational.div(lhs, rhs).norm();
 };
 
 /**
  * @param {number}
- * @returns {Ratio[]}
+ * @returns {Rational[]}
  */
-Ratio.ball = function (radius) {
+Rational.ball = function (radius) {
   var result = [];
   for (var i = 1; i <= radius; ++i) {
     for (var j = 1; j*j + i*i <= radius*radius; ++j) {
       if (gcd(i,j) === 1) {
-        result.push(new Ratio(i,j));
+        result.push(new Rational(i,j));
       }
     }
   }
-  result.sort(Ratio.cmp);
+  result.sort(Rational.cmp);
   return result;
 };
 
-test('Ratio.ball', function(){
-  var actual = Ratio.ball(4).map(function(q){ return q.toNumber(); });
+test('Rational.ball', function(){
+  var actual = Rational.ball(4).map(function(q){ return q.toNumber(); });
   var expected = [1/3, 1/2, 2/3, 1/1, 3/2, 2/1, 3/1];
   assertEqual(actual, expected);
 });
 
-test('Ratio.ball of size 88', function(){
+test('Rational.ball of size 88', function(){
   var target = 191; // needs to be odd; 88 is even
-  var f = function (r) { return Ratio.ball(r).length; }
+  var f = function (r) { return Rational.ball(r).length; }
 
   var r0, r1;
   for (r0 = 3; f(r0) >= target; --r0) {}
@@ -215,7 +219,7 @@ test('Ratio.ball of size 88', function(){
   }
 
   if (f(Math.round(r)) === target) r = Math.round(r);
-  log('Ratio.ball(' + r + ').length = ' + target);
+  log('Rational.ball(' + r + ').length = ' + target);
 });
 
 //------------------------------------------------------------------------------
@@ -223,10 +227,10 @@ test('Ratio.ball of size 88', function(){
 
 /**
  * @constructor
- * @param {Ratio}
- * @param {Ratio}
+ * @param {Rational}
+ * @param {Rational}
  */
-var Affino = function (freq, base) {
+var RatGrid = function (freq, base) {
   if (testing) {
     assert(freq.numer > 0 && freq.denom > 0, 'invalid freq: ' + freq);
     assert(base.denom > 0, 'invalid base: ' + base);
@@ -235,16 +239,16 @@ var Affino = function (freq, base) {
   this.freq = freq;
   this.base = base.numer < base.denom
             ? base
-            : new Ratio(base.numer % base.denom, base.denom);
+            : new Rational(base.numer % base.denom, base.denom);
 
   if (testing) {
     var base = this.base;
     assert(0 <= base.numer && base.numer < base.denom,
-        'bad Affino.base: ' + base);
+        'bad RatGrid.base: ' + base);
   }
 };
 
-Affino.prototype = {
+RatGrid.prototype = {
 
   /** @returns {string} */
   toString: function () {
@@ -253,24 +257,24 @@ Affino.prototype = {
 
   /** @returns {number} */
   norm: function () {
-    return Affino.dist(this, Affino.UNIT);
+    return RatGrid.dist(this, RatGrid.UNIT);
   }
 };
 
 /**
  * @const
- * @type {Affino}
+ * @type {RatGrid}
  */
-Affino.UNIT = new Affino(Ratio.ONE, Ratio.ZERO);
+RatGrid.UNIT = new RatGrid(Rational.ONE, Rational.ZERO);
 
 /**
- * @param {Affino}
- * @param {Affino}
+ * @param {RatGrid}
+ * @param {RatGrid}
  * @returns {boolean}
  */
-Affino.equal = function (lhs, rhs) {
-  return ( Ratio.cmp(lhs.freq, rhs.freq) === 0 &&
-           Ratio.cmp(lhs.base, rhs.base) === 0 );
+RatGrid.equal = function (lhs, rhs) {
+  return ( Rational.cmp(lhs.freq, rhs.freq) === 0 &&
+           Rational.cmp(lhs.base, rhs.base) === 0 );
 };
 
 /**
@@ -286,15 +290,15 @@ Affino.equal = function (lhs, rhs) {
  *               t : freq' (t/freq + base' - base)
  *               t : freq'/freq (t + freq * (base' - base))
  *
- * @param {Affino}
- * @param {Affino}
+ * @param {RatGrid}
+ * @param {RatGrid}
  * @returns {number}
  */
-Affino.dist = function (lhs, rhs) {
+RatGrid.dist = function (lhs, rhs) {
 
-  var cmp = Ratio.cmp(lhs.base, rhs.base);
+  var cmp = Rational.cmp(lhs.base, rhs.base);
   if (cmp === 0) {
-    return Ratio.dist(lhs.freq, rhs.freq);
+    return Rational.dist(lhs.freq, rhs.freq);
   } else if (cmp < 0) {
     var temp = lhs;
     lhs = rhs;
@@ -306,9 +310,9 @@ Affino.dist = function (lhs, rhs) {
   var rf = rhs.freq;
   var rb = rhs.base;
 
-  var freq = Ratio.div(lf, rf);
-  var base = Ratio.mul(rf, new Ratio.sub(lb, rb));
-  var normalForm = new Affino(freq,base);
+  var freq = Rational.div(lf, rf);
+  var base = Rational.mul(rf, new Rational.sub(lb, rb));
+  var normalForm = new RatGrid(freq,base);
   freq = normalForm.freq;
   base = normalForm.base;
 
@@ -322,17 +326,17 @@ Affino.dist = function (lhs, rhs) {
 
 /**
  * @param {number}
- * @returns {Affino[]}
+ * @returns {RatGrid[]}
  */
-Affino.ball = function (radius) {
+RatGrid.ball = function (radius) {
 
   var result = [];
 
   // initialize with unshifted grids
-  var rates = Ratio.ball(radius);
+  var rates = Rational.ball(radius);
   var I = rates.length;
   for (var i = 0; i < I; ++i) {
-    result.push(new Affino(rates[i], Ratio.ZERO));
+    result.push(new RatGrid(rates[i], Rational.ZERO));
   }
 
   // add shifted grids for every pair of unshifted grid
@@ -342,15 +346,15 @@ Affino.ball = function (radius) {
 
     for (var i2 = 0; i2 < I; ++i2) {
       var rate2 = rates[i2];
-      var relRate = Ratio.div(rate2, rate1);
+      var relRate = Rational.div(rate2, rate1);
       var baseDenom = relRate.denom;
 
       for (var baseNumer = 1; baseNumer < baseDenom; ++baseNumer) {
-        var base = new Ratio(baseNumer, baseDenom);
+        var base = new Rational(baseNumer, baseDenom);
         var baseHash = base.toString();
         if (baseHash in baseHashSet) continue;
 
-        var a = new Affino(rate1, base);
+        var a = new RatGrid(rate1, base);
         if (a.norm() > radius) continue;
 
         baseHashSet[baseHash] = undefined;
@@ -362,22 +366,22 @@ Affino.ball = function (radius) {
   return result;
 };
 
-test('Affino', function(){
+test('RatGrid', function(){
 
   var vars = [
-      new Affino(new Ratio(1,1), new Ratio(0,1)),
-      new Affino(new Ratio(2,3), new Ratio(5,7)),
-      new Affino(new Ratio(11,13), new Ratio(17,19)),
-      new Affino(new Ratio(23,29), new Ratio(31,37)),
-      new Affino(new Ratio(41,43), new Ratio(47,53)),
-      new Affino(new Ratio(59,61), new Ratio(67,71))];
+      new RatGrid(new Rational(1,1), new Rational(0,1)),
+      new RatGrid(new Rational(2,3), new Rational(5,7)),
+      new RatGrid(new Rational(11,13), new Rational(17,19)),
+      new RatGrid(new Rational(23,29), new Rational(31,37)),
+      new RatGrid(new Rational(41,43), new Rational(47,53)),
+      new RatGrid(new Rational(59,61), new Rational(67,71))];
 
   for (var i = 0; i < vars.length; ++i) {
     var u = vars[i];
     for (var j = 0; j < vars.length; ++j) {
       var v = vars[j];
 
-      assertEqual(Affino.dist(u,v), Affino.dist(v,u),
+      assertEqual(RatGrid.dist(u,v), RatGrid.dist(v,u),
           'distance is asymmetric');
     }
   }
@@ -385,23 +389,23 @@ test('Affino', function(){
   // test ball
 
   var radius = 12;
-  var rationalBall = Ratio.ball(radius);
-  var raffineBall = Affino.ball(radius);
-  log('Ratio.ball('+radius+').length = '+rationalBall.length);
-  log('Affino.ball('+radius+').length = '+raffineBall.length);
+  var rationalBall = Rational.ball(radius);
+  var ratgridBall = RatGrid.ball(radius);
+  log('Rational.ball('+radius+').length = '+rationalBall.length);
+  log('RatGrid.ball('+radius+').length = '+ratgridBall.length);
 
-  assert(rationalBall.length < raffineBall.length,
-      'Affino.ball is not larger than Ratio.ball');
+  assert(rationalBall.length < ratgridBall.length,
+      'RatGrid.ball is not larger than Rational.ball');
 
-  var I = raffineBall.length;
+  var I = ratgridBall.length;
   for (var i1 = 0; i1 < I; ++i1) {
-    var r1 = raffineBall[i1];
+    var r1 = ratgridBall[i1];
     var norm1 = r1.norm();
     assert(norm1 <= radius, 'norm exceeds radius: |' + r1 + '| = ' + norm1);
 
     for (var i2 = 0; i2 < i1; ++i2) {
-      var r2 = raffineBall[i2];
-      assert(!Affino.equal(r1, r2), 'repeated entry: ' + r1);
+      var r2 = ratgridBall[i2];
+      assert(!RatGrid.equal(r1, r2), 'repeated entry: ' + r1);
     }
   }
 });

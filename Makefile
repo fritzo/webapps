@@ -114,7 +114,8 @@ release/keys: keys.min release FORCE
 #-------------------------------------------------------------------------------
 
 clean: FORCE
-	rm -rf build
+	rm -rf build release
+	rm -f keys.tbz2
 
 cleaner: clean FORCE
 	rm -rf compiler

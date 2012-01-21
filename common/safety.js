@@ -1,4 +1,4 @@
-/*
+/**
  * Tools for safe coding in web workers.
  * (see safety.js for analogs in the main window)
  *
