@@ -207,6 +207,7 @@ test('Ratio.ball of size 88', function(){
 
 //------------------------------------------------------------------------------
 // Affine numbers
+if(0){
 
 /**
  * @constructor
@@ -434,4 +435,6 @@ test('Affino.ball', function(){
     }
   }
 });
+
+} // Affino
 

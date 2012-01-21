@@ -6,23 +6,10 @@ NETWORK:
 
 # Code
 index.html
-onsetworker.min.js
-synthworker.min.js
-keys.min.js
-
-# Images
-favicon.ico
-apple-touch-icon-57x57.png
-apple-touch-icon-72x72.png
-apple-touch-icon-114x114.png
-
-# External
-http://www.google-analytics.com/ga.js
-
-# DEVEL-ONLY
 ../common/jquery.min.js
 ../common/jquery.ba-hashchange.min.js
 ../common/safety.js
+../common/testing.js
 ../common/workersafety.js
 ../common/wavencoder.js
 ../common/rational.js
@@ -32,4 +19,14 @@ synthworker.js
 onsetworker.js
 keys.js
 ui.js
+
+# Images
+favicon.ico
+apple-touch-icon-57x57.png
+apple-touch-icon-72x72.png
+apple-touch-icon-114x114.png
+
+# External
+http://www.google-analytics.com/ga.js
+http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js
 

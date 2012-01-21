@@ -6,7 +6,7 @@ rationalkeyboard: FORCE
 	rm -rf ~/rationalkeyboard/keys
 	cp -rL keys ~/rationalkeyboard/keys
 	rm -rf ~/rationalkeyboard/keys/temp*
-	sed -i 's/NETWORK:/CACHE:/g;/DEVEL-ONLY/,$d' ~/rationalkeyboard/keys/cache.manifest
+	sed -i 's/NETWORK:/CACHE:/g' ~/rationalkeyboard/keys/cache.manifest
 
 #-------------------------------------------------------------------------------
 # build & release tools
@@ -56,6 +56,20 @@ live.min: FORCE
 
 #-------------------------------------------------------------------------------
 # keys
+
+keys-test: build FORCE
+	sed 's/worker\.js\>/worker.min.js/g' < keys/keys.js > build/keys.js
+	$(COMPILE2) \
+	  --js=common/jquery.js \
+	  --js=common/jquery.ba-hashchange.js \
+	  --js=common/jquery.caret.js \
+	  --js=common/modernizr.js \
+	  --js=common/safety.js \
+	  --js=common/testing.js \
+	  --js=common/rational.js \
+	  --js=build/keys.js \
+	  --js=keys/ui.js \
+	  --js_output_file=/dev/null
 
 build/synthworker.min.js: build FORCE
 	sed '/importScripts/d' < keys/synthworker.js > build/synthworker.js

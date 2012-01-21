@@ -56,6 +56,3 @@ var log = function (message) {
   self.postMessage({type:'log', data:message});
 };
 
-var testing = false;
-var test = function (title, callback) {}; // ignore
-
