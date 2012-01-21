@@ -255,6 +255,25 @@ RatGrid.prototype = {
     return this.freq + ' (t + ' + this.base + ')';
   },
 
+  /**
+   * freq (t + base) = t'
+   *        t + base = 1/freq t'
+   *               t = 1/freq t' - base
+   *               t = 1/freq t' + freq.denom - base
+   *               t = 1/freq (t' + freq (freq.denom - base))
+   *
+   * @returns {RatGrid}
+   */
+  inv: function () {
+    var f = this.freq;
+    var b = this.freq;
+    var freq = f.inv();
+    var base = new Rational(
+        f.numer * (f.denom * b.denom - b.numer),
+        f.denom * b.denom);
+    return new RatGrid(freq, base);
+  },
+
   /** @returns {number} */
   norm: function () {
     return RatGrid.dist(this, RatGrid.UNIT);
@@ -378,6 +397,9 @@ test('RatGrid', function(){
 
   for (var i = 0; i < vars.length; ++i) {
     var u = vars[i];
+
+    assertEqual(u.norm(), u.inv().norm(), '.norm() != .inv().norm()');
+
     for (var j = 0; j < vars.length; ++j) {
       var v = vars[j];
 

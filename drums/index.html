@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script type='text/javascript' src='../common/jquery.min.js'></script>
+<script type='text/javascript' src='../common/safety.js'></script>
+<script type='text/javascript' src='../common/testing.js'></script>
+<script type='text/javascript' src='../common/rational.js'></script>
+<script type='text/javascript' src='../common/massvector.js'></script>
+<script type='text/javascript' src='../common/raphael-min.js'></script>
+<style type="text/css">
+
+#canvas_container {
+  position: absolute;
+  width: 500px;
+  border: 1px solid #aaa;
+}
+</style>
+<script type='text/javascript'>
+
+var paper;
+
+var plotBall = function () {
+  paper.clear();
+
+  var width = 500;
+  var height = 500;
+  var radius = 5;
+
+  var ball = RatGrid.ball(radius);
+
+  var drawLine = function (x0, y0, x1, y1) {
+    var path = paper.path([
+        'M', Math.round(x0 * width), Math.round((1 - y0) * height),
+        'L', Math.round(x1 * width), Math.round((1 - y1) * height)
+        ].join(' '));
+    var norm = grid.norm();
+    var opacity = Math.pow(1 / norm, 1);
+    path.attr({
+          stroke: 'rgba(0,0,0,' + opacity + ')',
+          'stroke-width': 2,
+          title: '|' + grid + '| = ' + norm
+        });
+  };
+
+  for (var i = 0, I = ball.length; i < I; ++i) {
+
+    var grid = ball[i];
+    var freq = grid.freq;
+    var base = grid.base;
+
+    var x0 = base.toNumber();
+    var y0 = 0;
+    var x1 = x0 + freq.toNumber();
+    var y1 = 1;
+
+    var N = freq.numer * freq.denom;
+
+    drawLine(x0, y0, x1, y1);
+    for (var n = 1; x0 + n/N < 1; ++n) {
+      drawLine(x0 + n/N, y0, x1 + n/N, y1);
+    }
+    for (var n = -1; x1 + n/N > 0; --n) {
+      drawLine(x0 + n/N, y0, x1 + n/N, y1);
+    }
+  }
+};
+
+$(document).ready(function(){
+
+  test.runAll();
+
+  var canvas = document.getElementById('canvas_container');
+  paper = new Raphael(canvas, 500, 500);
+
+  plotBall();
+});
+
+</script>
+</head>
+<body>
+<div id="canvas_container"></div>
+</body>
+</html>
+
