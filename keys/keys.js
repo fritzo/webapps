@@ -255,14 +255,14 @@ var Harmony = function (radius) {
     Math.pow(config.harmony.priorWidthOctaves * Math.log(2), 2);
   this.delayMs = 1000 / config.harmony.updateHz;
 
-  this.points = Rational.ball(radius);
+  this.points = Ratio.ball(radius);
   this.length = this.points.length;
 
   var energyMatrix = this.energyMatrix = [];
   for (var i = 0; i < this.length; ++i) {
     var row = energyMatrix[i] = [];
     for (var j = 0; j < this.length; ++j) {
-      row[j] = Rational.dist(this.points[i], this.points[j]);
+      row[j] = Ratio.dist(this.points[i], this.points[j]);
     }
   }
 
