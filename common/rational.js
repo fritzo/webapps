@@ -80,6 +80,7 @@ Rational.prototype = {
 
   /** @returns {string} */
   toString: function () {
+    //return this.denom === 1 ? this.numer : this.numer + '/' + this.denom;
     return this.numer + '/' + this.denom;
   },
 

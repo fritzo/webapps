@@ -9,22 +9,46 @@
 <script type='text/javascript' src='../common/raphael-min.js'></script>
 <style type="text/css">
 
-#canvas_container {
-  position: absolute;
-  width: 500px;
+body {
+  text-align: center;
+  font-family: helvetica;
+}
+
+.paperContainer {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
   border: 1px solid #aaa;
 }
+
 </style>
 <script type='text/javascript'>
 
-var paper;
+var cachedPaper = function ($container, width, height) {
 
-var plotBall = function () {
-  paper.clear();
+  var paper = $container.data('paper');
 
-  var width = 500;
-  var height = 500;
-  var radius = 7;
+  if (paper === undefined) {
+    $container.css({width: width, height: height});
+    paper = new Raphael($container[0], width, height);
+    $container.data('paper', paper);
+  } else {
+    paper.clear();
+  }
+
+  if (paper.width !== width || paper.height !== height) {
+    paper.setSize(width, height);
+  }
+
+  return paper;
+};
+
+var plotTrajectories = function (ball, width, height) {
+
+  width = width || 640;
+  height = height || width;
+
+  var paper = cachedPaper($('#trajectoriesPlot'), width, height);
 
   var drawLine = function (x0, y0, x1, y1, attr) {
     var path = paper.path([
@@ -34,10 +58,7 @@ var plotBall = function () {
     path.attr(attr);
   };
 
-  var ball = RatGrid.ball(radius);
-
   for (var i = 0, I = ball.length; i < I; ++i) {
-
     var grid = ball[i];
 
     var norm = grid.norm();
@@ -58,7 +79,7 @@ var plotBall = function () {
 
     drawLine(x0, y0, x1, y1, attr);
 
-    if (grid.base.numer === 0) {
+    if (base.toNumber() < 1 / grid.freq.numer) {
       var N = freq.numer;
       for (var n = -1; x1 + n/N > 0; --n) {
         drawLine(x0 + n/N, y0, x1 + n/N, y1, attr);
@@ -67,20 +88,78 @@ var plotBall = function () {
   }
 };
 
+var plotPhases = function (ball, time, width, height, time) {
+
+  time = time || 0;
+  width = width || 640;
+  height = height || width;
+
+  assert(time >= 0, 'time is before zero: ' + time);
+
+  var paper = cachedPaper($('#phasesPlot'), width, height);
+
+  paper.path(['M',0,height/2, 'L',width,height/2].join(' ')).attr({
+        stroke: 'red'
+      });
+
+  var realToUnit = function (x) {
+    return Math.atan(Math.log(x)) / Math.PI + 0.5;
+  };
+
+  var radiusScale = 0.05;
+
+  for (var i = 0, I = ball.length; i < I; ++i) {
+    var grid = ball[i];
+
+    var norm = grid.norm();
+    var radius = radiusScale / norm;
+
+    var phase = (grid.freq.toNumber() * (time + grid.base.toNumber())) % 1;
+
+    var freq = grid.freq.toNumber();
+    var freq01 = realToUnit(freq);
+
+    var r = radius * Math.min(width, height);
+    var x = freq01 * width;
+    var y = ((phase + 0.5) % 1) * height; // zero phase is at center
+
+    var attr = {
+          'stroke-width': 0,
+          stroke: null,
+          fill: 'rgba(0,0,0,0.5)',
+          title: '|' + grid + '| = ' + norm
+        };
+
+    paper.circle(x, y, r).attr(attr);
+    if (y < r) paper.circle(x, y + height, r).attr(attr);
+    if (height - r < y) paper.circle(x, y - height, r).attr(attr);
+  }
+};
+
 $(document).ready(function(){
 
-  test.runAll();
+  if (window.location.hash && window.location.hash.slice(1) === 'test') {
+    test.runAll();
+  }
 
-  var canvas = document.getElementById('canvas_container');
-  paper = new Raphael(canvas, 500, 500);
+  var radius = 10;
 
-  plotBall();
+  var ball = RatGrid.ball(radius);
+
+  plotTrajectories(ball);
+  plotPhases(ball);
 });
 
 </script>
 </head>
 <body>
-<div id="canvas_container"></div>
+
+<h2>Trajectories relative to 1/1</h2>
+<div class=paperContainer id='trajectoriesPlot'></div>
+
+<h2>Phases</h2>
+<div class=paperContainer id='phasesPlot'></div>
+
 </body>
 </html>
 
