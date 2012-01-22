@@ -35,8 +35,8 @@ var plotTrajectories = function (ball, width, height) {
 
   var drawLine = function (x0, y0, x1, y1, attr) {
     var path = paper.path([
-        'M', Math.round(x0 * width), Math.round((1 - y0) * height),
-        'L', Math.round(x1 * width), Math.round((1 - y1) * height)
+        'M', x0 * width, (1 - y0) * height,
+        'L', x1 * width, (1 - y1) * height
         ].join(' '));
     path.attr(attr);
   };
@@ -55,18 +55,15 @@ var plotTrajectories = function (ball, width, height) {
     var freq = grid.freq;
     var base = grid.base;
 
-    var x0 = base.toNumber();
-    var y0 = 0;
-    var x1 = x0 + freq.inv().toNumber();
-    var y1 = 1;
+    var x0 = 0;
+    var y0 = base.toNumber();
+    var x1 = 1;
+    var y1 = y0 + freq.toNumber();
 
-    drawLine(x0, y0, x1, y1, attr);
-
-    if (base.toNumber() < 1 / grid.freq.numer) {
-      var N = freq.numer;
-      for (var n = -1; x1 + n/N > 0; --n) {
-        drawLine(x0 + n/N, y0, x1 + n/N, y1, attr);
-      }
+    while (y1 > 0) {
+      drawLine(x0, y0, x1, y1, attr);
+      y0 -= 1;
+      y1 -= 1;
     }
   }
 };
@@ -107,8 +104,7 @@ var plotPhases = function (ball, time, width, height, time) {
     var y = phase * height;
 
     var attr = {
-          'stroke-width': 0,
-          stroke: null,
+          stroke: 'none',
           fill: 'rgba(0,0,0,0.333)',
           title: '|' + grid + '| = ' + norm
         };

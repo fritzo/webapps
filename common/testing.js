@@ -22,7 +22,7 @@ test.runAll = function () {
   // TODO remove dependency on jQuery
   $('<style type=text/css>#testLog p{margin: 0px;}</style>').appendTo('head');
   var $log = $(document.createElement('div'))
-    .attr('id', 'testLog')
+    .attr({id:'testLog', title:'test results'})
     .css({
           position: 'absolute',
           width: '80%',
@@ -32,21 +32,25 @@ test.runAll = function () {
           'background-color': 'white',
           border: 'solid 8px white',
           'border-radius': '16px',
-          opacity: '0.9',
+          opacity: '0.8',
           'font-size': '10pt',
           'font-family': 'Courier,Courier New,Nimbus Mono L,fixed,monospace',
           'z-index': '99'
         })
     .appendTo('body');
-  $('<button>')
-    .text('Testing')
-    .click(function(){ $log.slideToggle(100); })
+  var $shadow = $('<div>')
     .css({
-          position: 'absolute',
+          position: 'fixed',
+          width: '100%',
+          height: '100%',
           top: '0%',
           left: '0%',
-          'font-size': '18pt'
+          'background-color': 'black',
+          opacity: '0.5',
+          'z-index': '98'
         })
+    .attr({title:'click to hide test results'})
+    .click(function(){ $log.hide(); $shadow.hide(); })
     .appendTo('body');
 
   var oldLog = log;

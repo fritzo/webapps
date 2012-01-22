@@ -270,8 +270,8 @@ RatGrid.prototype = {
     var base = this.base;
 
     var result = freq.norm();
-    // offset is really base % (1 / freq.numer)
-    var offset = (freq.numer * base.numer) % base.denom;
+    // offset is really base % (1 / freq.denom)
+    var offset = (freq.denom * base.numer) % base.denom;
     if (offset !== 0) {
       result *= base.denom / Math.min(offset, base.denom - offset);
     }
@@ -320,8 +320,8 @@ RatGrid.equal = function (lhs, rhs) {
  * (3) add an integer to either side
  *
  * freq t + base : freq' t + base'
- *          freq t : freq' t + base' - base
- *               t : freq'/freq t + (base' - base) / freq
+ *        freq t : freq' t + base' - base
+ *             t : freq'/freq t + (base' - base) / freq
  *
  * @param {RatGrid}
  * @param {RatGrid}
@@ -371,7 +371,7 @@ RatGrid.ball = function (radius) {
 
     for (var i2 = 0; i2 < I; ++i2) {
       var rate2 = rates[i2];
-      var relRate = Rational.div(rate2, rate1);
+      var relRate = Rational.div(rate1, rate2);
       var baseDenom = relRate.denom;
 
       for (var baseNumer = 1; baseNumer < baseDenom; ++baseNumer) {
