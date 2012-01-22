@@ -32,6 +32,16 @@ var gcd = function (a,b)
     if (b === 0) return a;
   }
 };
+
+/**
+ * @param {number}
+ * @param {number}
+ * @returns {number}
+ */
+var lcm = function (a,b) {
+  return a * b / gcd(a,b);
+};
+
 test('assert(gcd(0,0) === 1)');
 test('assert(gcd(1,1) === 1)');
 test('assert(gcd(1,2) === 1)');
@@ -277,6 +287,11 @@ RatGrid.prototype = {
     }
 
     return result;
+  },
+
+  /** @returns {number} */
+  period: function () {
+    return this.freq.denom;
   }
 };
 
@@ -391,6 +406,19 @@ RatGrid.ball = function (radius) {
   return result;
 };
 
+/**
+ * @param {RatGrid[]}
+ * @returns {number}
+ */
+RatGrid.commonPeriod = function (grids) {
+  if (grids.length === 0) return 0;
+  var result = grids[0].period();
+  for (var i = 1, I = grids.length; i < I; ++i) {
+    result = lcm(result, grids[i].period());
+  }
+  return result;
+};
+
 test('RatGrid(5/2, 0).norm()', function(){
   var grid = new RatGrid(new Rational(5,2), Rational.ZERO);
   assertNear(grid.norm(), Math.sqrt(29),
@@ -445,6 +473,15 @@ test('RatGrid.ball', function(){
       var r2 = ratgridBall[i2];
       assert(!RatGrid.equal(r1, r2), 'repeated entry: ' + r1);
     }
+  }
+
+  var commonPeriod = RatGrid.commonPeriod(ratgridBall);
+  log('common period = ' + commonPeriod);
+  for (var i = 0; i < I; ++i) {
+    var grid = ratgridBall[i];
+    var period = grid.period();
+    assert(commonPeriod % period === 0,
+        'common period fails for grid ' + grid + ' with period ' + period);
   }
 });
 

@@ -68,50 +68,80 @@ var plotTrajectories = function (ball, width, height) {
   }
 };
 
-var plotPhases = function (ball, time, width, height, time) {
+var PhasePlotter = function (ball) {
 
-  time = time || 0;
-  width = width || 640;
-  height = height || width;
+  this.ball = ball;
 
-  assert(time >= 0, 'time is before zero: ' + time);
-
-  var paper = cachedPaper($('#phasesPlot'), width, height);
-
-  paper.path(['M',0,height/2, 'L',width,height/2].join(' ')).attr({
-        stroke: 'red'
-      });
-
-  var realToUnit = function (x) {
-    return Math.atan(Math.log(x)) / Math.PI + 0.5;
-  };
-
-  var radiusScale = 0.05;
+  var norms = this.norms = [];
+  var attrs = this.attrs = [];
 
   for (var i = 0, I = ball.length; i < I; ++i) {
     var grid = ball[i];
 
-    var norm = grid.norm();
-    var radius = radiusScale / norm;
+    var norm = norms[i] = grid.norm();
 
-    var phase = (grid.phaseAtTime(time) + 0.5) % 1; // zero phase is at center
+    var phase = grid.phaseAtTime(0);
+    var angle = 2 * Math.PI * phase;
+    var r = 127 * (1 + Math.cos(angle));
+    var g = 127 * (1 + Math.cos(angle + 4/3 * Math.PI));
+    var b = 127 * (1 + Math.cos(angle - 4/3 * Math.PI));
 
-    var freq = grid.freq.toNumber();
-    var freq01 = realToUnit(freq);
-
-    var r = radius * Math.min(width, height);
-    var x = freq01 * width;
-    var y = phase * height;
-
-    var attr = {
+    attrs[i] = {
           stroke: 'none',
-          fill: 'rgba(0,0,0,0.333)',
+          fill: ['rgba(',r,',',g,',',b,',0.333)'].join(''),
           title: '|' + grid + '| = ' + norm
         };
+  }
+};
 
-    paper.circle(x, y, r).attr(attr);
-    if (y < r) paper.circle(x, y + height, r).attr(attr);
-    if (height - r < y) paper.circle(x, y - height, r).attr(attr);
+PhasePlotter.prototype = {
+
+  radiusScale: 0.05,
+
+  realToUnit: function (x) {
+    return Math.atan(Math.log(x)) / Math.PI + 0.5;
+  },
+
+  plot: function (time, width, height) {
+
+    time = time || 0;
+    width = width || 640;
+    height = height || width;
+
+    assert(time >= 0, 'time is before zero: ' + time);
+
+    var ball = this.ball;
+    var norms = this.norms;
+    var attrs = this.attrs;
+    var radiusScale = this.radiusScale;
+    var realToUnit = this.realToUnit;
+
+    var paper = cachedPaper($('#phasesPlot'), width, height);
+
+    paper.path(['M',0,height/2, 'L',width,height/2].join(' ')).attr({
+          stroke: 'red'
+        });
+
+    for (var i = 0, I = ball.length; i < I; ++i) {
+      var grid = ball[i];
+      var norm = norms[i];
+      var attr = attrs[i];
+
+      var radius = radiusScale / norm;
+
+      var phase = (grid.phaseAtTime(time) + 0.5) % 1; // zero phase is at center
+
+      var freq = grid.freq.toNumber();
+      var freq01 = realToUnit(freq);
+
+      var r = radius * Math.min(width, height);
+      var x = freq01 * width;
+      var y = phase * height;
+
+      paper.circle(x, y, r).attr(attr);
+      if (y < r) paper.circle(x, y + height, r).attr(attr);
+      if (height - r < y) paper.circle(x, y - height, r).attr(attr);
+    }
   }
 };
 
@@ -124,8 +154,44 @@ $(document).ready(function(){
   var radius = 10;
 
   var ball = RatGrid.ball(radius);
+  var period = RatGrid.commonPeriod(ball);
+  log('common period = ' + period);
 
   plotTrajectories(ball);
-  plotPhases(ball);
+
+  //----------------------------------------------------------------------------
+  // phase plotter
+
+  var phasePlotter = new PhasePlotter(ball);
+
+  var updateTask = undefined;
+  var lastTime = undefined;
+  var elapsedTime = 0;
+  var update = function () {
+    var now = Date.now();
+    elapsedTime = (elapsedTime + (now - lastTime)) % (1000 * period);
+    lastTime = now;
+
+    phasePlotter.plot(elapsedTime / 1000);
+    updateTask = setTimeout(update, 0);
+  };
+
+  var startUpdating = function () {
+    lastTime = Date.now();
+    update();
+    log('starting animation');
+  };
+  var stopUpdating = function () {
+    clearTimeout(updateTask);
+    updateTask = undefined;
+    log('stopping animation');
+  };
+  var toggleUpdating = function () {
+    updateTask === undefined ? startUpdating() : stopUpdating();
+  };
+
+  $('#phasesPlot').click(toggleUpdating);
+
+  startUpdating();
 });
 

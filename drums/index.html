@@ -9,6 +9,7 @@
 -->
 <html>
 <head>
+<title>The Rational Drums</title>
 <script type='text/javascript' src='../common/jquery.min.js'></script>
 <script type='text/javascript' src='../common/safety.js'></script>
 <script type='text/javascript' src='../common/testing.js'></script>
@@ -30,15 +31,24 @@ body {
   border: 1px solid #aaa;
 }
 
+.figure {
+  position: relative;
+  display: inline;
+}
+
 </style>
 </head>
 <body>
 
-<h2>Trajectories relative to 1/1</h2>
-<div class=paperContainer id='trajectoriesPlot'></div>
+<div class=figure>
+  <h2>Phases</h2>
+  <div class=paperContainer id='phasesPlot'></div>
+</div>
 
-<h2>Phases</h2>
-<div class=paperContainer id='phasesPlot'></div>
+<div class=figure>
+  <h2>Trajectories relative to 1/1</h2>
+  <div class=paperContainer id='trajectoriesPlot'></div>
+</div>
 
 </body>
 </html>
