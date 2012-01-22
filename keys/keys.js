@@ -1,4 +1,4 @@
-/*
+/**
  * The Rational Keyboard
  * http://fritzo.org/keys
  *
