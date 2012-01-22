@@ -26,6 +26,7 @@ test.runAll = function () {
     .css({
           position: 'absolute',
           width: '80%',
+          top: '0%',
           left: '10%',
           color: 'black',
           'background-color': 'white',
@@ -35,6 +36,16 @@ test.runAll = function () {
           'font-size': '10pt',
           'font-family': 'Courier,Courier New,Nimbus Mono L,fixed,monospace',
           'z-index': '99'
+        })
+    .appendTo('body');
+  $('<button>')
+    .text('Testing')
+    .click(function(){ $log.slideToggle(100); })
+    .css({
+          position: 'absolute',
+          top: '0%',
+          left: '0%',
+          'font-size': '18pt'
         })
     .appendTo('body');
 

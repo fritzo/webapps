@@ -253,26 +253,15 @@ RatGrid.prototype = {
 
   /** @returns {string} */
   toString: function () {
-    return this.freq + ' (t + ' + this.base + ')';
+    return this.freq + ' t + ' + this.base;
   },
 
   /**
-   * freq (t + base) = t'
-   *        t + base = 1/freq t'
-   *               t = 1/freq t' - base
-   *               t = 1/freq t' + freq.denom - base
-   *               t = 1/freq (t' + freq (freq.denom - base))
-   *
-   * @returns {RatGrid}
+   * @param {number}
+   * @returns {number}
    */
-  inv: function () {
-    var f = this.freq;
-    var b = this.base;
-    var freq = f.inv();
-    var base = new Rational(
-        f.numer * (f.denom * b.denom - b.numer),
-        f.denom * b.denom);
-    return new RatGrid(freq, base);
+  phaseAtTime: function (time) {
+    return this.freq.toNumber() * time + this.base.toNumber();
   },
 
   /** @returns {number} */
@@ -320,7 +309,7 @@ RatGrid.equal = function (lhs, rhs) {
  *   0,1--/--/--/--/1,1
  *    /  /  /  /  /  /
  *    | /  /  /  /  /|
- *    |/  /  /  /  / |  |t, 5/2 (t + 1/15)| = 3 sqrt(29)
+ *    |/  /  /  /  / |  |t, 5/2 t + 1/3| = 3 sqrt(29)
  *    /  /  /  /  /  /
  *    | /  /  /  /  /|
  *   0,0--/--/--/--/1,0
@@ -330,10 +319,9 @@ RatGrid.equal = function (lhs, rhs) {
  * (2) scale t on both sides
  * (3) add an integer to either side
  *
- * freq (t + base) : freq' (t + base')
- *          freq t : freq' (t + base' - base)
- *               t : freq' (t/freq + base' - base)
- *               t : freq'/freq (t + freq * (base' - base))
+ * freq t + base : freq' t + base'
+ *          freq t : freq' t + base' - base
+ *               t : freq'/freq t + (base' - base) / freq
  *
  * @param {RatGrid}
  * @param {RatGrid}
@@ -356,7 +344,7 @@ RatGrid.dist = function (lhs, rhs) {
   var rb = rhs.base;
 
   var freq = Rational.div(lf, rf);
-  var base = Rational.mul(rf, new Rational.sub(lb, rb));
+  var base = Rational.div(new Rational.sub(lb, rb), rf);
   var normalForm = new RatGrid(freq,base);
   return normalForm.norm();
 };
@@ -410,12 +398,12 @@ test('RatGrid(5/2, 0).norm()', function(){
 });
 
 test('RatGrid(5/2, 1/15).norm()', function(){
-  var grid = new RatGrid(new Rational(5,2), new Rational(1,15));
+  var grid = new RatGrid(new Rational(5,2), new Rational(1,3));
   assertNear(grid.norm(), Math.sqrt(29) * 3,
       'bad grid.norm\n    grid = ' + grid);
 });
 
-(function(){
+test('RatGrid.dist symmetry', function(){
 
   var vars = [
       new RatGrid(new Rational(1,1), new Rational(0,1)),
@@ -425,26 +413,16 @@ test('RatGrid(5/2, 1/15).norm()', function(){
       new RatGrid(new Rational(41,43), new Rational(47,53)),
       new RatGrid(new Rational(59,61), new Rational(67,71))];
 
-  test('RatGrid.inv.norm', function(){
-    for (var i = 0; i < vars.length; ++i) {
-      var u = vars[i];
+  for (var i = 0; i < vars.length; ++i) {
+    var u = vars[i];
+    for (var j = 0; j < vars.length; ++j) {
+      var v = vars[j];
 
-      assertEqual(u.norm(), u.inv().norm(), '.norm() != .inv().norm()');
+      assertEqual(RatGrid.dist(u,v), RatGrid.dist(v,u),
+          'distance is asymmetric');
     }
-  });
-
-  test('RatGrid.dist symmetry', function(){
-    for (var i = 0; i < vars.length; ++i) {
-      var u = vars[i];
-      for (var j = 0; j < vars.length; ++j) {
-        var v = vars[j];
-
-        assertEqual(RatGrid.dist(u,v), RatGrid.dist(v,u),
-            'distance is asymmetric');
-      }
-    }
-  });
-})();
+  }
+});
 
 test('RatGrid.ball', function(){
 

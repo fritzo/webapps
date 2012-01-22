@@ -97,14 +97,14 @@ var plotPhases = function (ball, time, width, height, time) {
     var norm = grid.norm();
     var radius = radiusScale / norm;
 
-    var phase = (grid.freq.toNumber() * (time + grid.base.toNumber())) % 1;
+    var phase = (grid.phaseAtTime(time) + 0.5) % 1; // zero phase is at center
 
     var freq = grid.freq.toNumber();
     var freq01 = realToUnit(freq);
 
     var r = radius * Math.min(width, height);
     var x = freq01 * width;
-    var y = ((phase + 0.5) % 1) * height; // zero phase is at center
+    var y = phase * height;
 
     var attr = {
           'stroke-width': 0,
