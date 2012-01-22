@@ -15,8 +15,6 @@ var cachedPaper = function ($container, width, height) {
     $container.css({width: width, height: height});
     paper = new Raphael($container[0], width, height);
     $container.data('paper', paper);
-  } else {
-    paper.clear();
   }
 
   if (paper.width !== width || paper.height !== height) {
@@ -68,29 +66,44 @@ var plotTrajectories = function (ball, width, height) {
   }
 };
 
-var PhasePlotter = function (ball) {
+var PhasePlotter = function (ball, width, height) {
 
   this.ball = ball;
+  this.width = width = width || 640;
+  this.height = height = height || width;
 
   var norms = this.norms = [];
-  var attrs = this.attrs = [];
+  var circles = this.circles = [];
+
+  var paper = this.paper = cachedPaper($('#phasesPlot'), width, height);
+
+  paper.path(['M',0,height/2, 'L',width,height/2].join(' ')).attr({
+        stroke: 'red'
+      });
+
+  var radiusScale = this.radiusScale;
 
   for (var i = 0, I = ball.length; i < I; ++i) {
     var grid = ball[i];
 
     var norm = norms[i] = grid.norm();
 
+    var radius = radiusScale / norm;
+    var r = radius * Math.min(width, height);
+
     var phase = grid.phaseAtTime(0);
     var angle = 2 * Math.PI * phase;
-    var r = 127 * (1 + Math.cos(angle));
-    var g = 127 * (1 + Math.cos(angle + 4/3 * Math.PI));
-    var b = 127 * (1 + Math.cos(angle - 4/3 * Math.PI));
+    var R = 127 * (1 + Math.cos(angle));
+    var G = 127 * (1 + Math.cos(angle + 4/3 * Math.PI));
+    var B = 127 * (1 + Math.cos(angle - 4/3 * Math.PI));
 
-    attrs[i] = {
+    circles[i] = paper.circle(0,0,r).attr({
           stroke: 'none',
-          fill: ['rgba(',r,',',g,',',b,',0.333)'].join(''),
+          fill: ['rgba(',R,',',G,',',B,',0.333)'].join(''),
           title: '|' + grid + '| = ' + norm
-        };
+        });
+    //if (y < r) paper.circle(x, y + height, r).attr(attr);
+    //if (height - r < y) paper.circle(x, y - height, r).attr(attr);
   }
 };
 
@@ -102,45 +115,32 @@ PhasePlotter.prototype = {
     return Math.atan(Math.log(x)) / Math.PI + 0.5;
   },
 
-  plot: function (time, width, height) {
+  plot: function (time) {
 
     time = time || 0;
-    width = width || 640;
-    height = height || width;
 
     assert(time >= 0, 'time is before zero: ' + time);
 
     var ball = this.ball;
-    var norms = this.norms;
-    var attrs = this.attrs;
-    var radiusScale = this.radiusScale;
+    var width = this.width;
+    var height = this.height;
     var realToUnit = this.realToUnit;
-
-    var paper = cachedPaper($('#phasesPlot'), width, height);
-
-    paper.path(['M',0,height/2, 'L',width,height/2].join(' ')).attr({
-          stroke: 'red'
-        });
+    var paper = this.paper;
+    var circles = this.circles;
 
     for (var i = 0, I = ball.length; i < I; ++i) {
       var grid = ball[i];
-      var norm = norms[i];
-      var attr = attrs[i];
-
-      var radius = radiusScale / norm;
+      var circle = circles[i];
 
       var phase = (grid.phaseAtTime(time) + 0.5) % 1; // zero phase is at center
 
       var freq = grid.freq.toNumber();
       var freq01 = realToUnit(freq);
 
-      var r = radius * Math.min(width, height);
       var x = freq01 * width;
       var y = phase * height;
 
-      paper.circle(x, y, r).attr(attr);
-      if (y < r) paper.circle(x, y + height, r).attr(attr);
-      if (height - r < y) paper.circle(x, y - height, r).attr(attr);
+      circle.attr({cx: x, cy: y});
     }
   }
 };
@@ -163,6 +163,8 @@ $(document).ready(function(){
   // phase plotter
 
   var phasePlotter = new PhasePlotter(ball);
+
+  window.phasePlotter = phasePlotter; // DEBUG
 
   var updateTask = undefined;
   var lastTime = undefined;
