@@ -18,29 +18,6 @@ var config = {
 };
 
 //------------------------------------------------------------------------------
-// Clock
-
-/**
- * @constructor
- * @param {number}
- */
-var Clock = function () {
-  this.beginTime = Date.now();
-};
-
-Clock.prototype = {
-  togglePause: function () { TODO('implement Clock.togglePause'); },
-
-  continuouslyDo: function (callback, minDelay) {
-    minDelay = minDelay || 0;
-  },
-  discretelyDo: function (callback, grid) {
-    assert(grid instanceof RatGrid, 'bad grid param: ' + grid);
-    TODO();
-  },
-};
-
-//------------------------------------------------------------------------------
 // Plotting
 
 var cachedPaper = function ($container, width, height) {
@@ -193,17 +170,11 @@ PhasePlotter.prototype = {
 
 /** @constructor */
 var Synthesizer = function (ball) {
-
-  this.running = false;
-  this.startTime = undefined;
-  this.audio = undefined;
+  TODO();
 };
 
 Synthesizer.prototype = {
-  start: function (startTime) {
-    this.startTime = startTime || Date.now();
-  },
-  update: function () {
+  synthesize: function (cycle) {
     if (!this.running) return;
     if (this.audio !== undefined) this.audio.play();
 
@@ -227,48 +198,26 @@ $(document).ready(function(){
   var period = RatGrid.commonPeriod(ball);
   log('common period = ' + period);
 
-  plotTrajectories(ball);
-
-  //----------------------------------------------------------------------------
-  // phase plotter
-
-  var phasePlotter = new PhasePlotter(ball);
-
-  window.phasePlotter = phasePlotter; // DEBUG
+  // plotTrajectories(ball);
 
   var tempo = config.tempoHz / 1000;
+  var clock = new Clock();
 
-  var running = false;
-  var updateTask = undefined;
-  var lastTime = undefined;
-  var elapsedTime = 0;
-  var update = function () {
-    if (!running) return;
+  var phasePlotter = new PhasePlotter(ball);
+  phasePlotter.plot(0);
+  clock.continuouslyDo(function(time){
+    phasePlotter.plot(time * tempo);
+  });
 
-    var now = Date.now();
-    elapsedTime = (elapsedTime + (now - lastTime)) % (period / tempo);
-    lastTime = now;
+  /* TODO
+  var synthesizer = new Synthesizer(ball);
+  var audio = synthesizer.synthesize(0);
+  clock.discretelyDo(function(cycle){
+    if (audio !== undefined) audio.play();
+    audio = synthesizer.synthesize(cycle+1);
+  }, 1 / tempo);
+  */
 
-    phasePlotter.plot(elapsedTime * tempo);
-    setTimeout(update, 0);
-  };
-
-  var startUpdating = function () {
-    running = true;
-    lastTime = Date.now();
-    update();
-    log('starting PhasePlotter');
-  };
-  var stopUpdating = function () {
-    running = false;
-    log('stopping PhasePlot');
-  };
-  var toggleUpdating = function () {
-    running ? stopUpdating() : startUpdating();
-  };
-
-  $('#phasesPlot').click(toggleUpdating);
-
-  startUpdating();
+  $('#phasesPlot').click(function(){ clock.toggleRunning(); });
 });
 
