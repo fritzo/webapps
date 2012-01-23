@@ -15,7 +15,9 @@ var Clock = function () {
   this.running = false;
   this.beginTime = undefined;
   this.pauseTime = undefined;
+
   this.tasks = [];
+  this.pauseTasks = [];
 };
 
 Clock.prototype = {
@@ -46,13 +48,18 @@ Clock.prototype = {
         task.scheduled = undefined;
       }
     }
+
+    var elapsedTime = this.pauseTime - this.beginTime;
+    for (var i = 0; i < this.pauseTasks.length; ++i) {
+      this.pauseTasks[i](elapsedTime);
+    }
   },
   toggleRunning: function () {
     this.running ? this.stop() : this.start();
   },
 
   /** 
-   * behavior: callback(time) no more often than minDelay.
+   * behavior: callback(elapsedTime) no more often than minDelay.
    */
   continuouslyDo: function (callback, minDelay) {
     minDelay = minDelay || 0;
@@ -89,6 +96,13 @@ Clock.prototype = {
     };
     task.scheduled = undefined;
     this.tasks.push(task);
-  }
+  },
+
+  /** 
+   * behavior: callback(elapsedTime) each time clock is paused
+   */
+  onPause: function (callback) {
+    this.pauseTasks.push(callback);
+  },
 };
 

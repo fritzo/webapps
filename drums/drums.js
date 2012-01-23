@@ -205,8 +205,13 @@ $(document).ready(function(){
 
   var phasePlotter = new PhasePlotter(ball);
   phasePlotter.plot(0);
+  var frameCount = 1;
   clock.continuouslyDo(function(time){
     phasePlotter.plot(time * tempo);
+    frameCount += 1;
+  });
+  clock.onPause(function(time){
+    log('plotting framerate = ' + (frameCount * 1000 / time) + ' Hz');
   });
 
   /* TODO
