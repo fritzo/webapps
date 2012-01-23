@@ -8,7 +8,7 @@
  */
 
 var config = {
-  radius: 10,
+  radius: 12,
   tempoHz: 1,
 
   innerRadius: 0.9,
@@ -17,9 +17,11 @@ var config = {
   none: undefined
 };
 
+if (window.Raphael) { //--------------------------------------------------------
+log('using raphael.js for polotting');
+
 //------------------------------------------------------------------------------
 // Plotting
-
 var cachedPaper = function ($container, width, height) {
 
   var paper = $container.data('paper');
@@ -165,6 +167,100 @@ PhasePlotter.prototype = {
   }
 };
 
+} else { //---------------------------------------------------------------------
+log('using HTML5 canvas for plotting');
+
+var PhasePlotter = function (ball, width, height) {
+
+  this.ball = ball;
+  this.width = width = width || 640;
+  this.height = height = height || width;
+
+  var canvas = document.getElementById('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  var context = this.context = canvas.getContext('2d');
+
+  var freqs = ball.map(function(grid){
+        return grid.freq.toNumber();
+      });
+  var minFreq = Math.min.apply(Math, freqs);
+  var rPos = this.rPos = freqs.map(function(freq){
+        return config.innerRadius * minFreq / freq;
+      });
+  var radii = this.radii = [];
+
+  var norms = this.norms = [];
+  var colors = this.colors = [];
+
+  var radiusScale = this.radiusScale;
+
+  for (var i = 0, I = ball.length; i < I; ++i) {
+    var grid = ball[i];
+
+    var norm = norms[i] = grid.norm();
+
+    radii[i] = rPos[i] * radiusScale / norm * Math.min(width, height);
+
+    var phase = grid.phaseAtTime(0);
+    var angle = 2 * Math.PI * phase;
+    var R = Math.round(127.5 * (1 + Math.cos(angle)));
+    var G = Math.round(127.5 * (1 + Math.cos(angle + 4/3 * Math.PI)));
+    var B = Math.round(127.5 * (1 + Math.cos(angle - 4/3 * Math.PI)));
+    colors[i] = ['rgba(',R,',',G,',',B,',0.5)'].join('');
+  }
+};
+
+PhasePlotter.prototype = {
+
+  radiusScale: config.circleRadiusScale,
+
+  //realToUnit: function (x) {
+  //  return Math.atan(Math.log(x)) / Math.PI + 0.5;
+  //},
+
+  plot: function (time) {
+
+    time = time || 0;
+
+    assert(time >= 0, 'time is before zero: ' + time);
+
+    var ball = this.ball;
+    var context = this.context;
+    var width = this.width;
+    var height = this.height;
+    var rPos = this.rPos;
+    var radii = this.radii
+    var colors = this.colors;
+
+    context.clearRect(0, 0, width, height);
+
+    context.beginPath();
+    context.moveTo(width/2, height/2);
+    context.lineTo(width/2, height);
+    context.strokeStyle = '#777';
+    context.stroke();
+
+    for (var i = 0, I = ball.length; i < I; ++i) {
+      var grid = ball[i];
+      var radius = radii[i];
+      var phase = grid.phaseAtTime(time) % 1;
+
+      var r = rPos[i];
+      var a = 2 * Math.PI * phase;
+      var x = (r * Math.sin(a) + 1) / 2 * width;
+      var y = (r * Math.cos(a) + 1) / 2 * height;
+
+      context.beginPath();
+      context.arc(x, y, radius, 0, 2 * Math.PI);
+      context.fillStyle = colors[i];
+      context.fill();
+    }
+  }
+};
+
+} // Raphael -------------------------------------------------------------------
+
 //------------------------------------------------------------------------------
 // Audio
 
@@ -224,5 +320,6 @@ $(document).ready(function(){
   */
 
   $('#phasesPlot').click(function(){ clock.toggleRunning(); });
+  $('canvas').click(function(){ clock.toggleRunning(); });
 });
 

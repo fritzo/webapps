@@ -14,8 +14,9 @@
 <!-- MIT,GPL2 -->
 <script type='text/javascript' src='../common/jquery.min.js'></script>
 
-<!-- MIT -->
+<!-- MIT
 <script type='text/javascript' src='../common/raphael-min.js'></script>
+-->
 
 <!-- MIT,GPL2 -->
 <script type='text/javascript' src='../common/logger.js'></script>
@@ -44,6 +45,9 @@ body {
   /* border: 1px solid #777; */
 }
 
+canvas {
+}
+
 .figure {
   position: relative;
   display: inline;
@@ -56,6 +60,7 @@ body {
 <div class=figure>
   <h2>Phases</h2>
   <div class=paperContainer id='phasesPlot'></div>
+  <canvas id='canvas'></canvas>
 </div>
 
 <div class=figure>
