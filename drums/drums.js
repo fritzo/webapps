@@ -8,11 +8,13 @@
  */
 
 var config = {
-  radius: 12,
+  radius: 8,
   tempoHz: 1,
 
   innerRadius: 0.9,
   circleRadiusScale: 0.2,
+
+  sampleRateHz: 22050,
 
   none: undefined
 };
@@ -158,19 +160,65 @@ PhasePlotter.prototype = {
 // Audio
 
 /** @constructor */
-var Synthesizer = function (ball) {
-  TODO();
+var Synthesizer = function (ball, tempoHz) {
+
+  var periodSec = 1 / tempoHz;
+  var sampleRateHz = config.sampleRateHz;
+  var numSamples = Math.round(sampleRateHz * periodSec);
+
+  this.ball = ball;
+  this.tempoHz = tempoHz;
+  this.tempo = tempoHz / sampleRateHz;
+  this.encoder = new WavEncoder(numSamples, {sampleRateHz:sampleRateHz});
+  this.samples = new Array(numSamples);
+
+  // TODO start & initialize synth worker
 };
 
 Synthesizer.prototype = {
-  synthesize: function (cycle) {
-    if (!this.running) return;
-    if (this.audio !== undefined) this.audio.play();
+  envelope: function (phase) {
+    return Math.max(1 - 8 * phase, 0);
+  },
+  synthesize: function (cycle, amps) {
+    assertEqual(amps.length, this.ball.length,
+        'amplitude vector has wrong size');
 
-    TODO('do work here');
+    var ball = this.ball;
+    var encoder = this.encoder;
+    var envelope = this.envelope;
+    var samples = this.samples;
+    var tempo = this.tempo;
 
-    var synth = this;
-    setTimeout(function(){ synth.update(); }, TODO());
+    var T = encoder.numSamples;
+    var I = ball.length;
+
+    // TODO sort & clip ball WRT amp
+
+    for (var t = 0; t < T; ++t) {
+      samples[t] = 0;
+    }
+
+    for (var i = 0; i < I; ++i) {
+      var amp = amps[i];
+      if (!(amp > 0)) continue;
+
+      var grid = ball[i];
+      var phase = grid.phaseAtTime(cycle);
+      var dphase = grid.freq.toNumber() * tempo;
+
+      for (var t = 0; t < T; ++t, phase += dphase) {
+        var env = envelope(phase % 1);
+        if (!(env > 0)) continue;
+        samples[t] += amp * env;
+      }
+    }
+ 
+    var random = Math.random;
+    for (var t = 0; t < T; ++t) {
+      samples[t] *= (2 * random() - 1);
+    }
+
+    return encoder.encode(samples);
   },
 };
 
@@ -196,32 +244,33 @@ $(document).ready(function(){
   var period = RatGrid.commonPeriod(ball);
   log('common period = ' + period);
 
-  var tempo = config.tempoHz / 1000;
+  var tempoKhz = config.tempoHz / 1000;
   var clock = new Clock();
 
   var phasePlotter = new PhasePlotter(ball);
   phasePlotter.plot(0);
   var frameCount = 1;
   clock.continuouslyDo(function(time){
-        phasePlotter.plot(time * tempo);
+        phasePlotter.plot(time * tempoKhz);
         frameCount += 1;
       });
   clock.onPause(function(time){
         log('plotting framerate = ' + (frameCount * 1000 / time) + ' Hz');
       });
   $(window).on('resize.phasePlotter', function () {
-        phasePlotter.plot(clock.now() * tempo);
+        phasePlotter.plot(clock.now() * tempoKhz);
         if (clock.running) frameCount += 1;
       });
 
-  /* TODO
-  var synthesizer = new Synthesizer(ball);
-  var audio = synthesizer.synthesize(0);
+  var amps = new MassVector(ball.map(function(grid){ return 1/grid.norm(); }));
+  amps.normalize();
+
+  var synthesizer = new Synthesizer(ball, config.tempoHz);
+  var audio = new Audio(synthesizer.synthesize(0, amps.likes));
   clock.discretelyDo(function(cycle){
-        if (audio !== undefined) audio.play();
-        audio = synthesizer.synthesize(cycle+1);
-      }, 1 / tempo);
-  */
+        audio.play(); // TODO move to message event lister
+        audio = new Audio(synthesizer.synthesize(cycle+1, amps.likes));
+      }, 1 / tempoKhz);
 
   $('#phasesPlot').click(function(){ clock.toggleRunning(); });
   $('canvas').click(function(){ clock.toggleRunning(); });
