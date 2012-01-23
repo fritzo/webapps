@@ -1,6 +1,5 @@
 /**
- * Tools for safe coding in web workers.
- * (see safety.js for analogs in the main window)
+ * Tools for safe coding.
  *
  * Copyright (c) 2012, Fritz Obermeyer
  * Dual licensed under the MIT or GPL Version 2 licenses.
@@ -57,11 +56,24 @@ var assertNear = function (actual, expected, message) {
     '\n    actual = ' + actual +
     '\n    expected = ' + expected);
 };
+var assertType = function (obj, type, message) {
+  assert(obj instanceof type,
+      (message || '') +
+      'type error for ' + obj +
+      '\n    actual type = ' + (typeof object) +
+      '\n    expected ttype = ' + type);
+};
 
-var log;
-if (window.console && window.console.log) {
-  log = function (message) { console.log(message); };
-} else {
-  log = function (message) {}; // ignore
-}
+var typedFun = function (argTypes, returnType, fun) {
+  var nargs = argTypes.length;
+  return (function () {
+    assertEqual(arguments.length, nargs, 'invalid argmuent count');
+    for (var i = 0; i < nargs; ++i) {
+      assertType(arguments[i], argTypes[i], 'argument ' + i);
+    }
+    var result = fun.apply(this, arguments);
+    assertType(result, returnType, 'result');
+    return result;
+  });
+};
 

@@ -1,5 +1,5 @@
 CACHE MANIFEST
-# version 2011-01-21
+# version 2011-01-23
 
 # use CACHE or NETWORK here
 NETWORK:
@@ -8,9 +8,10 @@ NETWORK:
 index.html
 ../common/jquery.min.js
 ../common/jquery.ba-hashchange.min.js
+../common/logger.js
+../common/workerlogger.js
 ../common/safety.js
 ../common/testing.js
-../common/workersafety.js
 ../common/wavencoder.js
 ../common/rational.js
 ../common/massvector.js

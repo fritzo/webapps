@@ -1,4 +1,4 @@
-/*
+/**
  * The Rational Keyboard
  * http://fritzo.org/keys
  *
@@ -7,7 +7,8 @@
  * http://www.opensource.org/licenses/mit-license.php
  */
 
-importScripts('../common/workersafety.js');
+importScripts('../common/workerlogger.js');
+importScripts('../common/safety.js');
 importScripts('../common/wavencoder.js');
 
 //------------------------------------------------------------------------------

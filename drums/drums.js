@@ -15,7 +15,33 @@ var config = {
   circleRadiusScale: 0.2,
 
   none: undefined
-}
+};
+
+//------------------------------------------------------------------------------
+// Clock
+
+/**
+ * @constructor
+ * @param {number}
+ */
+var Clock = function () {
+  this.beginTime = Date.now();
+};
+
+Clock.prototype = {
+  togglePause: function () { TODO('implement Clock.togglePause'); },
+
+  continuouslyDo: function (callback, minDelay) {
+    minDelay = minDelay || 0;
+  },
+  discretelyDo: function (callback, grid) {
+    assert(grid instanceof RatGrid, 'bad grid param: ' + grid);
+    TODO();
+  },
+};
+
+//------------------------------------------------------------------------------
+// Plotting
 
 var cachedPaper = function ($container, width, height) {
 
@@ -76,6 +102,10 @@ var plotTrajectories = function (ball, width, height) {
   }
 };
 
+//------------------------------------------------------------------------------
+// Phase plotter
+
+/** @constructor */
 var PhasePlotter = function (ball, width, height) {
 
   this.ball = ball;
@@ -94,6 +124,9 @@ var PhasePlotter = function (ball, width, height) {
   var circles = this.circles = [];
 
   var paper = this.paper = cachedPaper($('#phasesPlot'), width, height);
+
+  paper.path(['M',(width-1)/2,height/2, 'L',(width-1)/2,height].join(' '))
+    .attr({stroke:'#777', 'stroke-width':1});
 
   var radiusScale = this.radiusScale;
 
@@ -116,9 +149,6 @@ var PhasePlotter = function (ball, width, height) {
           title: '|' + grid + '| = ' + norm
         });
   }
-
-  paper.path(['M',(width-1)/2,height/2, 'L',(width-1)/2,height].join(' '))
-    .attr({stroke:'#777', 'stroke-width':1});
 };
 
 PhasePlotter.prototype = {
@@ -157,6 +187,35 @@ PhasePlotter.prototype = {
     }
   }
 };
+
+//------------------------------------------------------------------------------
+// Audio
+
+/** @constructor */
+var Synthesizer = function (ball) {
+
+  this.running = false;
+  this.startTime = undefined;
+  this.audio = undefined;
+};
+
+Synthesizer.prototype = {
+  start: function (startTime) {
+    this.startTime = startTime || Date.now();
+  },
+  update: function () {
+    if (!this.running) return;
+    if (this.audio !== undefined) this.audio.play();
+
+    TODO('do work here');
+
+    var synth = this;
+    setTimeout(function(){ synth.update(); }, TODO());
+  },
+};
+
+//------------------------------------------------------------------------------
+// Main
 
 $(document).ready(function(){
 
@@ -198,11 +257,11 @@ $(document).ready(function(){
     running = true;
     lastTime = Date.now();
     update();
-    log('starting animation');
+    log('starting PhasePlotter');
   };
   var stopUpdating = function () {
     running = false;
-    log('stopping animation');
+    log('stopping PhasePlot');
   };
   var toggleUpdating = function () {
     running ? stopUpdating() : startUpdating();

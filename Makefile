@@ -64,6 +64,7 @@ keys-test: build FORCE
 	  --js=common/jquery.ba-hashchange.js \
 	  --js=common/jquery.caret.js \
 	  --js=common/modernizr.js \
+	  --js=common/logger.js \
 	  --js=common/safety.js \
 	  --js=common/testing.js \
 	  --js=common/rational.js \
@@ -74,7 +75,8 @@ keys-test: build FORCE
 build/synthworker.min.js: build FORCE
 	sed '/importScripts/d' < keys/synthworker.js > build/synthworker.js
 	$(COMPILE1) \
-	  --js=common/workersafety.js \
+	  --js=common/workerlogger.js \
+	  --js=common/safety.js \
 	  --js=common/wavencoder.js \
 	  --js=build/synthworker.js \
 	  --js_output_file=build/synthworker.min.js
@@ -82,7 +84,8 @@ build/synthworker.min.js: build FORCE
 build/onsetworker.min.js: build FORCE
 	sed '/importScripts/d' < keys/onsetworker.js > build/onsetworker.js
 	$(COMPILE1) \
-	  --js=common/workersafety.js \
+	  --js=common/workerlogger.js \
+	  --js=common/safety.js \
 	  --js=common/wavencoder.js \
 	  --js=build/onsetworker.js \
 	  --js_output_file=build/onsetworker.min.js
@@ -94,6 +97,7 @@ build/keys.min.js: build FORCE
 	  --js=common/jquery.ba-hashchange.js \
 	  --js=common/jquery.caret.js \
 	  --js=common/modernizr.js \
+	  --js=common/logger.js \
 	  --js=common/safety.js \
 	  --js=common/rational.js \
 	  --js=build/keys.js \
