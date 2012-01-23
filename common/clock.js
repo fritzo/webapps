@@ -58,6 +58,10 @@ Clock.prototype = {
     this.running ? this.stop() : this.start();
   },
 
+  now: function () {
+    return (this.running ? Date.now() : this.pauseTime) - this.beginTime;
+  },
+
   /** 
    * behavior: callback(elapsedTime) no more often than minDelay.
    */
