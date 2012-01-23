@@ -7,6 +7,13 @@
  * http://www.opensource.org/licenses/mit-license.php
  */
 
+var config = {
+  radius: 10,
+  tempoHz: 1,
+
+  none: undefined
+}
+
 var cachedPaper = function ($container, width, height) {
 
   var paper = $container.data('paper');
@@ -45,7 +52,7 @@ var plotTrajectories = function (ball, width, height) {
     var norm = grid.norm();
     var opacity = Math.pow(1 / norm, 1);
     var attr = {
-          stroke: 'rgba(0,0,0,' + opacity + ')',
+          stroke: 'rgba(255,255,255,' + opacity + ')',
           'stroke-width': 2,
           title: '|' + grid + '| = ' + norm
         };
@@ -77,10 +84,6 @@ var PhasePlotter = function (ball, width, height) {
 
   var paper = this.paper = cachedPaper($('#phasesPlot'), width, height);
 
-  paper.path(['M',0,height/2, 'L',width,height/2].join(' ')).attr({
-        stroke: 'red'
-      });
-
   var radiusScale = this.radiusScale;
 
   for (var i = 0, I = ball.length; i < I; ++i) {
@@ -88,8 +91,11 @@ var PhasePlotter = function (ball, width, height) {
 
     var norm = norms[i] = grid.norm();
 
-    var radius = radiusScale / norm;
-    var r = radius * Math.min(width, height);
+    var freq = grid.freq.toNumber();
+    var freq01 = this.realToUnit(freq);
+    var r = Math.pow(1 - freq01, 2);
+
+    var radius = Math.sqrt(r) * radiusScale / norm * Math.min(width, height);
 
     var phase = grid.phaseAtTime(0);
     var angle = 2 * Math.PI * phase;
@@ -97,19 +103,22 @@ var PhasePlotter = function (ball, width, height) {
     var G = 127 * (1 + Math.cos(angle + 4/3 * Math.PI));
     var B = 127 * (1 + Math.cos(angle - 4/3 * Math.PI));
 
-    circles[i] = paper.circle(0,0,r).attr({
+    circles[i] = paper.circle(0,0,radius).attr({
           stroke: 'none',
-          fill: ['rgba(',R,',',G,',',B,',0.333)'].join(''),
+          fill: ['rgba(',R,',',G,',',B,',0.5)'].join(''),
           title: '|' + grid + '| = ' + norm
         });
     //if (y < r) paper.circle(x, y + height, r).attr(attr);
     //if (height - r < y) paper.circle(x, y - height, r).attr(attr);
   }
+
+  paper.path(['M',(width-1)/2,height/2, 'L',(width-1)/2,height].join(' '))
+    .attr({stroke:'#777', 'stroke-width':1});
 };
 
 PhasePlotter.prototype = {
 
-  radiusScale: 0.05,
+  radiusScale: 0.1,
 
   realToUnit: function (x) {
     return Math.atan(Math.log(x)) / Math.PI + 0.5;
@@ -132,13 +141,15 @@ PhasePlotter.prototype = {
       var grid = ball[i];
       var circle = circles[i];
 
-      var phase = (grid.phaseAtTime(time) + 0.5) % 1; // zero phase is at center
+      var phase = grid.phaseAtTime(time) % 1;
 
       var freq = grid.freq.toNumber();
       var freq01 = realToUnit(freq);
 
-      var x = freq01 * width;
-      var y = phase * height;
+      var r = Math.pow(1 - freq01, 2);
+      var a = 2 * Math.PI * phase;
+      var x = (r * Math.sin(a) + 1) / 2 * width;
+      var y = (r * Math.cos(a) + 1) / 2 * height;
 
       circle.attr({cx: x, cy: y});
     }
@@ -151,9 +162,7 @@ $(document).ready(function(){
     test.runAll();
   }
 
-  var radius = 10;
-
-  var ball = RatGrid.ball(radius);
+  var ball = RatGrid.ball(config.radius);
   var period = RatGrid.commonPeriod(ball);
   log('common period = ' + period);
 
@@ -166,30 +175,35 @@ $(document).ready(function(){
 
   window.phasePlotter = phasePlotter; // DEBUG
 
+  var tempo = config.tempoHz / 1000;
+
+  var running = false;
   var updateTask = undefined;
   var lastTime = undefined;
   var elapsedTime = 0;
   var update = function () {
+    if (!running) return;
+
     var now = Date.now();
-    elapsedTime = (elapsedTime + (now - lastTime)) % (1000 * period);
+    elapsedTime = (elapsedTime + (now - lastTime)) % (period / tempo);
     lastTime = now;
 
-    phasePlotter.plot(elapsedTime / 1000);
-    updateTask = setTimeout(update, 0);
+    phasePlotter.plot(elapsedTime * tempo);
+    setTimeout(update, 0);
   };
 
   var startUpdating = function () {
+    running = true;
     lastTime = Date.now();
     update();
     log('starting animation');
   };
   var stopUpdating = function () {
-    clearTimeout(updateTask);
-    updateTask = undefined;
+    running = false;
     log('stopping animation');
   };
   var toggleUpdating = function () {
-    updateTask === undefined ? startUpdating() : stopUpdating();
+    running ? stopUpdating() : startUpdating();
   };
 
   $('#phasesPlot').click(toggleUpdating);

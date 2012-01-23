@@ -403,6 +403,10 @@ RatGrid.ball = function (radius) {
     }
   }
 
+  result.sort(function(lhs,rhs){
+        return lhs.norm() - rhs.norm();
+      });
+
   return result;
 };
 
