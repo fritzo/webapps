@@ -28,6 +28,7 @@ test.runAll = function () {
           width: '80%',
           top: '0%',
           left: '10%',
+          'text-align': 'left',
           color: 'black',
           'background-color': 'white',
           border: 'solid 8px white',

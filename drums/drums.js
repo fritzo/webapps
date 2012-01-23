@@ -11,6 +11,9 @@ var config = {
   radius: 10,
   tempoHz: 1,
 
+  innerRadius: 0.9,
+  circleRadiusScale: 0.2,
+
   none: undefined
 }
 
@@ -79,6 +82,14 @@ var PhasePlotter = function (ball, width, height) {
   this.width = width = width || 640;
   this.height = height = height || width;
 
+  var freqs = ball.map(function(grid){
+        return grid.freq.toNumber();
+      });
+  var minFreq = Math.min.apply(Math, freqs);
+  var rPos = this.rPos = freqs.map(function(freq){
+        return config.innerRadius * minFreq / freq;
+      });
+
   var norms = this.norms = [];
   var circles = this.circles = [];
 
@@ -91,11 +102,7 @@ var PhasePlotter = function (ball, width, height) {
 
     var norm = norms[i] = grid.norm();
 
-    var freq = grid.freq.toNumber();
-    var freq01 = this.realToUnit(freq);
-    var r = Math.pow(1 - freq01, 2);
-
-    var radius = Math.sqrt(r) * radiusScale / norm * Math.min(width, height);
+    var radius = rPos[i] * radiusScale / norm * Math.min(width, height);
 
     var phase = grid.phaseAtTime(0);
     var angle = 2 * Math.PI * phase;
@@ -108,8 +115,6 @@ var PhasePlotter = function (ball, width, height) {
           fill: ['rgba(',R,',',G,',',B,',0.5)'].join(''),
           title: '|' + grid + '| = ' + norm
         });
-    //if (y < r) paper.circle(x, y + height, r).attr(attr);
-    //if (height - r < y) paper.circle(x, y - height, r).attr(attr);
   }
 
   paper.path(['M',(width-1)/2,height/2, 'L',(width-1)/2,height].join(' '))
@@ -118,11 +123,11 @@ var PhasePlotter = function (ball, width, height) {
 
 PhasePlotter.prototype = {
 
-  radiusScale: 0.1,
+  radiusScale: config.circleRadiusScale,
 
-  realToUnit: function (x) {
-    return Math.atan(Math.log(x)) / Math.PI + 0.5;
-  },
+  //realToUnit: function (x) {
+  //  return Math.atan(Math.log(x)) / Math.PI + 0.5;
+  //},
 
   plot: function (time) {
 
@@ -133,7 +138,7 @@ PhasePlotter.prototype = {
     var ball = this.ball;
     var width = this.width;
     var height = this.height;
-    var realToUnit = this.realToUnit;
+    var rPos = this.rPos;
     var paper = this.paper;
     var circles = this.circles;
 
@@ -143,10 +148,7 @@ PhasePlotter.prototype = {
 
       var phase = grid.phaseAtTime(time) % 1;
 
-      var freq = grid.freq.toNumber();
-      var freq01 = realToUnit(freq);
-
-      var r = Math.pow(1 - freq01, 2);
+      var r = rPos[i];
       var a = 2 * Math.PI * phase;
       var x = (r * Math.sin(a) + 1) / 2 * width;
       var y = (r * Math.cos(a) + 1) / 2 * height;
