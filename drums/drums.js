@@ -136,18 +136,20 @@ PhasePlotter.prototype = {
     context.strokeStyle = '#777';
     context.stroke();
 
+    var twoPi = 2 * Math.PI;
+
     for (var i = 0, I = ball.length; i < I; ++i) {
       var grid = ball[i];
       var radius = radii[i] * minth;
       var phase = grid.phaseAtTime(time) % 1;
 
       var r = rPos[i];
-      var a = 2 * Math.PI * phase;
+      var a = twoPi * phase;
       var x = (r * Math.sin(a) + 1) / 2 * minth + x0;
       var y = (r * Math.cos(a) + 1) / 2 * minth + y0;
 
       context.beginPath();
-      context.arc(x, y, radius, 0, 2 * Math.PI);
+      context.arc(x, y, radius, 0, twoPi, false);
       context.fillStyle = colors[i];
       context.fill();
     }
@@ -245,6 +247,9 @@ $(document).ready(function(){
   var tempoKhz = config.tempoHz / 1000;
   var clock = new Clock();
 
+  var amps = new MassVector(ball.map(function(grid){ return 1/grid.norm(); }));
+  amps.normalize();
+
   var phasePlotter = new PhasePlotter(ball);
   phasePlotter.plot(0);
   var frameCount = 1;
@@ -259,9 +264,6 @@ $(document).ready(function(){
         phasePlotter.plot(clock.now() * tempoKhz);
         if (clock.running) frameCount += 1;
       });
-
-  var amps = new MassVector(ball.map(function(grid){ return 1/grid.norm(); }));
-  amps.normalize();
 
   var synthesizer = new Synthesizer(ball, config.tempoHz);
   var audio = undefined;
@@ -286,8 +288,9 @@ $(document).ready(function(){
         }
       }, 1 / tempoKhz);
   var toggleRunning = function () {
-    if (clock.running && playing) playing.pause();
-    if (!clock.running && playing) playing.play();
+    // pause-unpause behavior differ in chrome vs firefox
+    //if (clock.running && playing) playing.pause();
+    //if (!clock.running && playing) playing.play();
     clock.toggleRunning();
   };
   synthesizer.synthesize(0, amps.likes, function (uri) {

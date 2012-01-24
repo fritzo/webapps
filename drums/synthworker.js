@@ -18,7 +18,11 @@ var random = Math.random;
 
 var init = function (data) {
 
-  self.tempo = data['tempoHz'] / WavEncoder.defaults.sampleRateHz;
+  var tempoHz = data['tempoHz'];
+  var middleCHz = 261.625565; // middle C
+
+  self.tempo = tempoHz / WavEncoder.defaults.sampleRateHz;
+  self.omega = 2 * Math.PI * middleCHz / tempoHz;
   self.freqs = data['freqs'];
   self.bases = data['bases'];
 
@@ -47,6 +51,7 @@ var synthesize = function (data) {
   assertEqual(cycle, Math.round(cycle), 'bad cycle number: ' + cycle);
 
   var tempo = self.tempo;
+  var omega = self.omega;
   var freqs = self.freqs;
   var bases = self.bases;
   var F = self.F;
@@ -55,7 +60,7 @@ var synthesize = function (data) {
   var samples = self.samples;
 
   var max = Math.max;
-  var random = Math.random;
+  var sin = Math.sin;
 
   // TODO sort & clip ball WRT amp
 
@@ -74,16 +79,12 @@ var synthesize = function (data) {
     var dphase = freq * tempo;
 
     for (var t = 0; t < T; ++t) {
-      var envelope = max(0, 1 - 20 * phase);
+      var envelope = max(0, 1 - 7 * phase);
       if (envelope > 0) {
-        samples[t] += amp * envelope;
+        samples[t] += amp * envelope * sin(omega * phase);
       }
       phase = (phase + dphase) % 1;
     }
-  }
-
-  for (var t = 0; t < T; ++t) {
-    samples[t] *= (2 * random() - 1);
   }
 
   return self.wavEncoder.encode(samples);
