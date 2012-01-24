@@ -3,13 +3,15 @@
  * http://fritzo.org/drums
  *
  * Copyright (c) 2012, Fritz Obermeyer
- * Licensed under the MIT license:
- * http://www.opensource.org/licenses/mit-license.php
+ * Dual licensed under the MIT or GPL Version 2 licenses.
+ * http://www.opensource.org/licenses/MIT
+ * http://www.opensource.org/licenses/GPL-2.0
  */
 
 var config = {
-  radius: 8,
+  radius: 10,
   tempoHz: 1,
+  framerateHz: 100,
 
   innerRadius: 0.9,
   circleRadiusScale: 0.2,
@@ -256,7 +258,7 @@ $(document).ready(function(){
   clock.continuouslyDo(function(time){
         phasePlotter.plot(time * tempoKhz);
         frameCount += 1;
-      });
+      }, 1000 / config.framerateHz);
   clock.onPause(function(time){
         log('plotting framerate = ' + (frameCount * 1000 / time) + ' Hz');
       });

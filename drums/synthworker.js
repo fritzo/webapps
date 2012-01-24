@@ -3,15 +3,14 @@
  * http://fritzo.org/drums
  *
  * Copyright (c) 2012, Fritz Obermeyer
- * Licensed under the MIT license:
- * http://www.opensource.org/licenses/mit-license.php
+ * Dual licensed under the MIT or GPL Version 2 licenses.
+ * http://www.opensource.org/licenses/MIT
+ * http://www.opensource.org/licenses/GPL-2.0
  */
 
 importScripts('../common/workerlogger.js');
 importScripts('../common/safety.js');
 importScripts('../common/wavencoder.js');
-
-var random = Math.random;
 
 //------------------------------------------------------------------------------
 // Commands
@@ -35,10 +34,6 @@ var init = function (data) {
   self.samples = new Array(self.T);
 
   self.initialized = true;
-};
-
-var envelope = function (phase) {
-  return Math.max(0, 1 - 12 * phase);
 };
 
 var synthesize = function (data) {
