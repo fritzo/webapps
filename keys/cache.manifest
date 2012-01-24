@@ -1,7 +1,7 @@
 CACHE MANIFEST
-# version 2011-01-23
+# version 2011-01-25
 
-# use CACHE or NETWORK here
+# use CACHE or NETWoRK here
 NETWORK:
 
 # Code
@@ -20,7 +20,6 @@ testworker.js
 synthworker.js
 onsetworker.js
 keys.js
-ui.js
 
 # Images
 favicon.ico
@@ -29,6 +28,7 @@ apple-touch-icon-72x72.png
 apple-touch-icon-114x114.png
 
 # External
-http://www.google-analytics.com/ga.js
 http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js
+http://static.addtoany.com/menu/page.js
+http://www.google-analytics.com/ga.js
 
