@@ -32,7 +32,8 @@ Clock.prototype = {
     }
 
     for (var i = 0; i < this.tasks.length; ++i) {
-      this.tasks[i]();
+      var task = this.tasks[i];
+      setTimeout(task, task.nextTime ? task.nextTime - this.pauseTime : 0);
     }
   },
   stop: function () {
@@ -71,7 +72,7 @@ Clock.prototype = {
     var clock = this;
     var task = function () {
       if (clock.running) {
-        callback(Date.now() - clock.beginTime); // typuically { draw frame; }
+        callback(Date.now() - clock.beginTime);
         task.scheduled = setTimeout(task, minDelay);
       } else {
         task.scheduled = undefined;
@@ -91,8 +92,8 @@ Clock.prototype = {
     var task = function () {
       if (clock.running) {
         var cycle = Math.round((Date.now() - clock.beginTime) / period);
-        callback(cycle); // typically { play sound; synthesize next sound; }
-        var nextTime = clock.beginTime + period * (cycle + 1);
+        callback(cycle);
+        var nextTime = task.nextTime = clock.beginTime + period * (cycle + 1);
         task.scheduled = setTimeout(task, nextTime - Date.now());
       } else {
         task.scheduled = undefined;

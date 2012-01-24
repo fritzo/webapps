@@ -11,76 +11,82 @@ importScripts('../common/workerlogger.js');
 importScripts('../common/safety.js');
 importScripts('../common/wavencoder.js');
 
+var random = Math.random;
+
 //------------------------------------------------------------------------------
 // Commands
 
 var init = function (data) {
-  self.gain = data.gain;
-  self.freqs = data.freqs;
-  self.centerFreq = self.freqs[(self.freqs.length - 1) / 2];
-  self.numVoices = data.numVoices;
-  self.F = self.freqs.length;
-  self.T = data.numSamples;
 
-  self.wavEncoder = new WavEncoder(data.numSamples);
+  self.tempo = data['tempoHz'] / WavEncoder.defaults.sampleRateHz;
+  self.freqs = data['freqs'];
+  self.bases = data['bases'];
+
+  assert(tempo > 0, 'bad tempo : ' + tempo);
+  assertEqual(freqs.length, bases.length, 'freqs size is not same as bases');
+
+  self.T = Math.round(1 / tempo);
+  self.F = self.freqs.length;
+  self.wavEncoder = new WavEncoder(self.T);
   self.samples = new Array(self.T);
-  self.amps = new Array(self.F);
-  self.best = new Array(self.F);
-  self.bestAmps = new Array(self.numVoices);
-  self.bestFreqs = new Array(self.numVoices);
 
   self.initialized = true;
 };
 
-var synthesize = function (mass) {
-  var profileStartTime = Date.now();
+var envelope = function (phase) {
+  return Math.max(0, 1 - 12 * phase);
+};
 
+var synthesize = function (data) {
   assert(self.initialized, 'worker has not been initialized');
-  assert(mass.length === self.freqs.length,
-      'mass,freqs have different length');
 
+  var amps = data['amps'];
+  assertEqual(amps.length, self.F, 'amps has wrong length');
+
+  var cycle = data['cycle'];
+  assertEqual(cycle, Math.round(cycle), 'bad cycle number: ' + cycle);
+
+  var tempo = self.tempo;
   var freqs = self.freqs;
+  var bases = self.bases;
   var F = self.F;
   var T = self.T;
-
-  var amps = self.amps;
-  var best = self.best;
-  var normalizeEnvelope = 4 / ((T+1) * (T+1));
-  var gain = self.gain * normalizeEnvelope * self.centerFreq;
-  for (var f = 0; f < F; ++f) {
-    amps[f] = gain * Math.sqrt(mass[f]);
-    best[f] = f;
-  }
-  best.sort(function(i,j){ return amps[j] - amps[i]; });
-
-  var G = self.numVoices;
-  var bestAmps = self.bestAmps;
-  var bestFreqs = self.bestFreqs;
-  for (var g = 0; g < G; ++g) {
-    var f = best[g];
-    bestAmps[g] = amps[f] / freqs[f];
-    bestFreqs[g] = freqs[f];
-  }
-
+  var wavEncoder = self.wavEncoder;
   var samples = self.samples;
+
+  var max = Math.max;
+  var random = Math.random;
+
+  // TODO sort & clip ball WRT amp
+
   for (var t = 0; t < T; ++t) {
-    var chord = 0;
-    for (var g = 0; g < G; ++g) {
-      chord += bestAmps[g] * Math.sin(bestFreqs[g] * t);
-    }
-    chord *= (t + 1) * (T - t); // envelope
-    chord *= 0.5 / Math.sqrt(1 + chord * chord); // clip to [-0.5,0.5]
-    samples[t] = chord;
+    samples[t] = 0;
   }
 
-  var uri = self.wavEncoder.encode(samples);
+  for (var f = 0; f < F; ++f) {
+    var amp = Math.sqrt(amps[f]);
+    if (!(amp > 0)) continue;
 
-  var profileElapsed = Date.now() - profileStartTime;
-  self.postMessage({
-        'type': 'wave',
-        'data': uri,
-        'profileElapsed': profileElapsed
-      });
+    var freq = freqs[f];
+    var base = bases[f];
+
+    var phase = (freq * cycle + base) % 1;
+    var dphase = freq * tempo;
+
+    for (var t = 0; t < T; ++t) {
+      var envelope = max(0, 1 - 20 * phase);
+      if (envelope > 0) {
+        samples[t] += amp * envelope;
+      }
+      phase = (phase + dphase) % 1;
+    }
+  }
+
+  for (var t = 0; t < T; ++t) {
+    samples[t] *= (2 * random() - 1);
+  }
+
+  return self.wavEncoder.encode(samples);
 };
 
 //------------------------------------------------------------------------------
@@ -96,7 +102,14 @@ self.addEventListener('message', function (e) {
         break;
 
       case 'synthesize':
-        synthesize(data['data']);
+        var profileStartTime = Date.now();
+        var uri = synthesize(data['data']);
+        var profileElapsed = Date.now() - profileStartTime;
+        self.postMessage({
+              'type': 'wave',
+              'data': uri,
+              'profileElapsed': profileElapsed
+            });
         break;
 
       default:
