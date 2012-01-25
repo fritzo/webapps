@@ -12,9 +12,9 @@ rationalkeyboard: FORCE
 	done
 	sed -i 's/\.\.\/common\///g' $R/*.html $R/*.js $R/cache.manifest
 	sed -i 's/http:\/\/fritzo\.org\/keys/http:\/\/fritzo\.org\/keys\n * http:\/\/github.com\/fritzo\/rationalkeyboard/g' $R/*.js
-	sed -i 's/http:\/\/fritzo\.org\/keys/http:\/\/fritzo\.org\/keys\n  http:\/\/github.com\/fritzo\/rationalkeyboard/g' $R/*.html
+	sed -i 's/ http:\/\/fritzo\.org\/keys/ http:\/\/fritzo\.org\/keys\n  http:\/\/github.com\/fritzo\/rationalkeyboard/g' $R/*.html
 	rm -rf $R/temp*
-	sed -i 's/NETWORK:/CACHE:/g' $R/cache.manifest
+	sed -i 's/NETWORK: #DEBUG/CACHE:/g' $R/cache.manifest
 
 #-------------------------------------------------------------------------------
 # build & release tools
