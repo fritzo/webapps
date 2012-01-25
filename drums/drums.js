@@ -133,8 +133,10 @@ PhasePlotter.prototype = {
     var bases = this.bases;
     var xPos = this.xPos;
     var yPos = this.yPos;
-    var radii = this.radii
-    var opacityRate = 1 - config.plot.minOpacity;
+    var radii = this.radii;
+
+    var opacityShift = config.plot.minOpacity;
+    var opacityScale = 1 - opacityShift;
 
     context.clearRect(0, 0, width, height);
     context.fillStyle = 'rgba(255,255,255,0.333)';
@@ -148,7 +150,7 @@ PhasePlotter.prototype = {
       var freq = freqs[i];
       var phase = (freq * time + bases[i]) % 1;
 
-      var opacity = 1 - opacityRate * phase / freq;
+      var opacity = exp(-phase / freq) * opacityScale + opacityShift;
       var color = 'rgba(255,255,255,' + opacity + ')';
       context.fillStyle = color;
 
