@@ -9,12 +9,18 @@
  */
 
 var config = {
-  radius: 10,
+  radius: 12,
   tempoHz: 1,
-  framerateHz: 100,
 
-  innerRadius: 0.9,
-  circleRadiusScale: 0.2,
+  plot: {
+    framerateHz: 100,
+    innerRadius: 0.9,
+    circleRadiusScale: 0.2
+  },
+
+  synth: {
+    gain: 1.0
+  },
 
   none: undefined
 };
@@ -71,47 +77,47 @@ var plotTrajectories = function (ball) {
   }
 };
 
+// TODO swap position,color indicating current,initial phase
 var PhasePlotter = function (ball) {
 
   this.ball = ball;
 
-  var freqs = ball.map(function(grid){
-        return grid.freq.toNumber();
-      });
+  var freqs = this.freqs = ball.map(function(g){ return g.freq.toNumber(); });
+  var bases = this.bases = ball.map(function(g){ return g.base.toNumber(); });
+
   var minFreq = Math.min.apply(Math, freqs);
-  var rPos = this.rPos = freqs.map(function(freq){
-        return config.innerRadius * minFreq / freq;
-      });
-  var radii = this.radii = [];
-
-  var norms = this.norms = [];
-  var colors = this.colors = [];
-
+  var innerRadius = config.plot.innerRadius;
   var radiusScale = this.radiusScale;
+
+  var radii = this.radii = [];
+  var xPos = this.xPos = [];
+  var yPos = this.yPos = [];
+
+  var twoPi = 2 * Math.PI;
+  var realToUnit = this.realToUnit;
 
   for (var i = 0, I = ball.length; i < I; ++i) {
     var grid = ball[i];
+    var freq = freqs[i];
+    var base = bases[i];
 
-    var norm = norms[i] = grid.norm();
+    var norm = grid.norm();
 
-    radii[i] = rPos[i] * radiusScale / norm;
-
-    var phase = grid.phaseAtTime(0);
-    var angle = 2 * Math.PI * phase;
-    var R = Math.round(127.5 * (1 + Math.cos(angle)));
-    var G = Math.round(127.5 * (1 + Math.cos(angle + 4/3 * Math.PI)));
-    var B = Math.round(127.5 * (1 + Math.cos(angle - 4/3 * Math.PI)));
-    colors[i] = ['rgba(',R,',',G,',',B,',0.5)'].join('');
+    var rPos = 1 - realToUnit(freq);
+    //var rPos = config.plot.innerRadius * Math.sqrt(minFreq / freq);
+    xPos[i] = (rPos * Math.sin(twoPi * base) + 1) / 2;
+    yPos[i] = (rPos * Math.cos(twoPi * base) + 1) / 2;
+    radii[i] = rPos * radiusScale / norm;
   }
 };
 
 PhasePlotter.prototype = {
 
-  radiusScale: config.circleRadiusScale,
+  radiusScale: config.plot.circleRadiusScale,
 
-  //realToUnit: function (x) {
-  //  return Math.atan(Math.log(x)) / Math.PI + 0.5;
-  //},
+  realToUnit: function (x) {
+    return Math.atan(Math.log(x)) / Math.PI + 0.5;
+  },
 
   plot: function (time) {
 
@@ -126,34 +132,49 @@ PhasePlotter.prototype = {
     var y0 = (height - minth) / 2;
 
     var ball = this.ball;
-    var rPos = this.rPos;
+    var freqs = this.freqs;
+    var bases = this.bases;
+    var xPos = this.xPos;
+    var yPos = this.yPos;
     var radii = this.radii
     var colors = this.colors;
 
     context.clearRect(0, 0, width, height);
+    context.fillStyle = 'rgba(255,255,255,0.333)';
+    context.strokeStyle = 'rgba(255,255,255,0.333)';
 
-    context.beginPath();
-    context.moveTo(width/2, height/2);
-    context.lineTo(width/2, height);
-    context.strokeStyle = '#777';
-    context.stroke();
-
+    var cos = Math.cos;
+    var exp = Math.exp;
+    var pow = Math.pow;
+    var sqrt = Math.sqrt;
+    var round = Math.round;
     var twoPi = 2 * Math.PI;
+    var twoThirdsPi = 2/3 * Math.PI;
 
-    for (var i = 0, I = ball.length; i < I; ++i) {
-      var grid = ball[i];
-      var radius = radii[i] * minth;
-      var phase = grid.phaseAtTime(time) % 1;
+    for (var i = 0, I = freqs.length; i < I; ++i) {
 
-      var r = rPos[i];
-      var a = twoPi * phase;
-      var x = (r * Math.sin(a) + 1) / 2 * minth + x0;
-      var y = (r * Math.cos(a) + 1) / 2 * minth + y0;
+      var freq = freqs[i];
+      var phase = (freq * time + bases[i]) % 1;
+
+      //var angle = twoPi * phase;
+      //var r = round(127.5 * (1 + cos(angle)));
+      //var g = round(127.5 * (1 + cos(angle - twoThirdsPi)));
+      //var b = round(127.5 * (1 + cos(angle + twoThirdsPi)));
+      //var color = ['rgba(',r,',',g,',',b,',0.8)'].join('');
+      //context.fillStyle = color;
+
+      var opacity = 1 - phase / freq;
+      var color = ['rgba(255,255,255,',opacity,')'].join('');
+      context.fillStyle = color;
+
+      var x = xPos[i] * minth + x0;
+      var y = yPos[i] * minth + y0;
+      var radius = radii[i] * minth * exp(-phase);
 
       context.beginPath();
       context.arc(x, y, radius, 0, twoPi, false);
-      context.fillStyle = colors[i];
       context.fill();
+      context.stroke();
     }
   }
 };
@@ -200,7 +221,8 @@ var Synthesizer = function (ball, tempoHz) {
     'data': {
         'tempoHz': tempoHz,
         'freqs': ball.map(function(grid){ return grid.freq.toNumber(); }),
-        'bases': ball.map(function(grid){ return grid.base.toNumber(); })
+        'bases': ball.map(function(grid){ return grid.base.toNumber(); }),
+        'gain': config.synth.gain
       }
     });
 };
@@ -258,7 +280,7 @@ $(document).ready(function(){
   clock.continuouslyDo(function(time){
         phasePlotter.plot(time * tempoKhz);
         frameCount += 1;
-      }, 1000 / config.framerateHz);
+      }, 1000 / config.plot.framerateHz);
   clock.onPause(function(time){
         log('plotting framerate = ' + (frameCount * 1000 / time) + ' Hz');
       });

@@ -20,6 +20,7 @@ var init = function (data) {
   var tempoHz = data['tempoHz'];
   var middleCHz = 261.625565; // middle C
 
+  self.gain = data['gain'];
   self.tempo = tempoHz / WavEncoder.defaults.sampleRateHz;
   self.omega = 2 * Math.PI * middleCHz / tempoHz;
   self.freqs = data['freqs'];
@@ -64,7 +65,7 @@ var synthesize = function (data) {
   }
 
   for (var f = 0; f < F; ++f) {
-    var amp = Math.sqrt(amps[f]);
+    var amp = Math.sqrt(amps[f]) * self.gain;
     if (!(amp > 0)) continue;
 
     var freq = freqs[f];
