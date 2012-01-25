@@ -101,11 +101,11 @@ self.addEventListener('message', function (e) {
       case 'synthesize':
         var profileStartTime = Date.now();
         var uri = synthesize(data['data']);
-        var profileElapsed = Date.now() - profileStartTime;
+        var profileElapsedMs = Date.now() - profileStartTime;
         self.postMessage({
               'type': 'wave',
               'data': uri,
-              'profileElapsed': profileElapsed
+              'profileElapsedMs': profileElapsedMs
             });
         break;
 

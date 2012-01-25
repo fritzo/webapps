@@ -9,7 +9,7 @@
  */
 
 var config = {
-  radius: 12,
+  radius: 10,
   tempoHz: 1,
 
   plot: {
@@ -78,9 +78,10 @@ var plotTrajectories = function (ball) {
 };
 
 // TODO swap position,color indicating current,initial phase
-var PhasePlotter = function (ball) {
+var PhasePlotter = function (ball, tempoHz) {
 
   this.ball = ball;
+  this.tempoHz = tempoHz;
 
   var freqs = this.freqs = ball.map(function(g){ return g.freq.toNumber(); });
   var bases = this.bases = ball.map(function(g){ return g.base.toNumber(); });
@@ -163,6 +164,28 @@ PhasePlotter.prototype = {
       context.fill();
       //context.stroke();
     }
+  },
+
+  start: function (clock, tempoKhz) {
+
+    var tempoKhz = this.tempoHz / 1000;
+    var phasePlotter = this;
+    var frameCount = 1;
+
+    phasePlotter.plot(0);
+
+    clock.continuouslyDo(function(timeMs){
+          phasePlotter.plot(timeMs * tempoKhz);
+          frameCount += 1;
+        }, 1000 / config.plot.framerateHz);
+    clock.onPause(function(timeMs){
+          var framerate = frameCount * 1000 / timeMs;
+          log('plotting framerate = ' + framerate.toFixed(1) + ' Hz');
+        });
+    $(window).on('resize.phasePlotter', function () {
+          phasePlotter.plot(clock.now() * tempoKhz);
+          if (clock.running) frameCount += 1;
+        });
   }
 };
 
@@ -170,15 +193,18 @@ PhasePlotter.prototype = {
 // Audio
 
 /** @constructor */
-var Synthesizer = function (ball, tempoHz) {
+var Synthesizer = function (ball, tempoHz, amps) {
+
+  assertEqual(amps.length, ball.length, 'amplitude vector has wrong size');
 
   this.ball = ball;
   this.tempoHz = tempoHz;
+  this.amps = amps;
 
-  this.callback = undefined;
+  this.audio = undefined;
 
   this.profileCount = 0;
-  this.profileElapsed = 0;
+  this.profileElapsedMs = 0;
 
   var synth = this;
   this.synthworker = new Worker('synthworker.js');
@@ -186,12 +212,9 @@ var Synthesizer = function (ball, tempoHz) {
         var data = e['data'];
         switch (data['type']) {
           case 'wave':
-            assert(synth.callback, 'Synthesizer has no callback');
-            synth.callback(data['data']);
-            synth.callback = undefined;
-
+            synth.audio = new Audio(data['data']);
             synth.profileCount += 1;
-            synth.profileElapsed += data['profileElapsed'];
+            synth.profileElapsedMs += data['profileElapsedMs'];
             break;
 
           case 'log':
@@ -215,20 +238,40 @@ var Synthesizer = function (ball, tempoHz) {
 };
 
 Synthesizer.prototype = {
-  synthesize: function (cycle, amps, callback) {
-    assertEqual(amps.length, this.ball.length,
-        'amplitude vector has wrong size');
-
+  synthesize: function (cycle) {
     this.synthworker.postMessage({
           'cmd': 'synthesize',
           'data': {
-            'amps': amps,
+            'amps': this.amps,
             'cycle': cycle
           }
         });
+  },
 
-    assert(this.callback === undefined, 'Synthesizer has multiple callbacks');
-    this.callback = callback;
+  start: function (clock) {
+
+    var periodMs = 1000 / this.tempoHz;
+
+    var synth = this;
+    clock.onPause(function(time){
+          var meanTime = synth.profileElapsedMs
+                       / synth.profileCount
+                       / 1000;
+          var speed = synth.tempoHz / meanTime;
+          log( 'mean synth time = ' + meanTime.toFixed(3)
+             + ' sec = ' + speed.toFixed(2) + 'x realtime');
+        });
+    clock.discretelyDo(function(cycle){
+          if (synth.audio) {
+            synth.audio.play();          // play current cycle
+            synth.audio = undefined;
+            synth.synthesize(cycle + 1); // start synthesizing next cycle
+          } else {
+            log('WARNING dropped audio cycle ' + cycle);
+          }
+        }, periodMs);
+
+    this.synthesize(0, this.amps);
   }
 };
 
@@ -253,68 +296,22 @@ $(document).ready(function(){
 
   var ball = RatGrid.ball(config.radius);
   var period = RatGrid.commonPeriod(ball);
-  log('common period = ' + period);
+  log('using ' + ball.length + ' beat positions with common period ' + period);
 
-  var tempoKhz = config.tempoHz / 1000;
   var clock = new Clock();
 
   var amps = new MassVector(ball.map(function(grid){ return 1/grid.norm(); }));
   amps.normalize();
+  // TODO evolve these in time
 
-  var phasePlotter = new PhasePlotter(ball);
-  phasePlotter.plot(0);
-  var frameCount = 1;
-  clock.continuouslyDo(function(time){
-        phasePlotter.plot(time * tempoKhz);
-        frameCount += 1;
-      }, 1000 / config.plot.framerateHz);
-  clock.onPause(function(time){
-        var framerate = frameCount * 1000 / time;
-        log('plotting framerate = ' + framerate.toFixed(1) + ' Hz');
-      });
-  $(window).on('resize.phasePlotter', function () {
-        phasePlotter.plot(clock.now() * tempoKhz);
-        if (clock.running) frameCount += 1;
-      });
+  var phasePlotter = new PhasePlotter(ball, config.tempoHz);
+  var synthesizer = new Synthesizer(ball, config.tempoHz, amps.likes);
 
-  var synthesizer = new Synthesizer(ball, config.tempoHz);
-  var audio = undefined;
-  var playing = undefined;
-  var synthReady = true;
-  var enqueue = function (uri) {
-        audio = new Audio(uri);
-        synthReady = true;
-      };
-  clock.onPause(function(time){
-        var meanTime = synthesizer.profileElapsed
-                     / synthesizer.profileCount
-                     / 1000;
-        var speed = config.tempoHz / meanTime;
-        log( 'mean synth time = ' + meanTime.toFixed(3)
-           + ' sec = ' + speed.toFixed(2) + 'x realtime');
-      });
-  clock.discretelyDo(function(cycle){
-        audio.play();
-        playing = audio;
-        if (synthReady) {
-          synthReady = false;
-          synthesizer.synthesize(cycle+1, amps.likes, enqueue);
-        }
-      }, 1 / tempoKhz);
-  var toggleRunning = function () {
-    // pause-unpause behavior differ in chrome vs firefox
-    //if (clock.running && playing) playing.pause();
-    //if (!clock.running && playing) playing.play();
-    clock.toggleRunning();
-  };
-  synthesizer.synthesize(0, amps.likes, function (uri) {
-        enqueue(uri);
+  phasePlotter.start(clock);
+  synthesizer.start(clock);
 
-        $('#phasesPlot').click(toggleRunning);
-        $('canvas').click(toggleRunning);
-
-        var initElapsed = (Date.now() - initStartTime) / 1000;
-        log('initialized in ' + initElapsed + ' sec');
-      });
+  var toggleRunning = function () { clock.toggleRunning(); };
+  $('#phasesPlot').click(toggleRunning);
+  $('canvas').click(toggleRunning);
 });
 

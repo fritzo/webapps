@@ -1,5 +1,7 @@
 /**
- * A pausable clock to schedule continuous & discrete callbacks
+ * A pausable clock to schedule continuous & discrete callbacks.
+ *
+ * All time units are in milliseconds.
  *
  * Copyright (c) 2012, Fritz Obermeyer
  * Dual licensed under the MIT or GPL Version 2 licenses.
