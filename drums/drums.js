@@ -19,6 +19,7 @@ var config = {
   },
 
   synth: {
+    cyclesPerBeat: 4,
     gain: 1.0
   },
 
@@ -200,9 +201,9 @@ var Synthesizer = function (ball, tempoHz, amps) {
   this.ball = ball;
   this.tempoHz = tempoHz;
   this.amps = amps;
+  this.cyclesPerBeat = config.synth.cyclesPerBeat;
 
   this.audio = undefined;
-
   this.profileCount = 0;
   this.profileElapsedMs = 0;
 
@@ -230,6 +231,7 @@ var Synthesizer = function (ball, tempoHz, amps) {
     'cmd': 'init',
     'data': {
         'tempoHz': tempoHz,
+        'cyclesPerBeat': this.cyclesPerBeat,
         'freqs': ball.map(function(grid){ return grid.freq.toNumber(); }),
         'bases': ball.map(function(grid){ return grid.base.toNumber(); }),
         'gain': config.synth.gain
@@ -250,14 +252,15 @@ Synthesizer.prototype = {
 
   start: function (clock) {
 
-    var periodMs = 1000 / this.tempoHz;
+    var synthRateHz = this.tempoHz * this.cyclesPerBeat;
+    var periodMs = 1000 / synthRateHz;
 
     var synth = this;
     clock.onPause(function(time){
           var meanTime = synth.profileElapsedMs
                        / synth.profileCount
                        / 1000;
-          var speed = synth.tempoHz / meanTime;
+          var speed = 1 / synthRateHz / meanTime;
           log( 'mean synth time = ' + meanTime.toFixed(3)
              + ' sec = ' + speed.toFixed(2) + 'x realtime');
         });

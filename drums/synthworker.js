@@ -19,17 +19,17 @@ var init = function (data) {
 
   var tempoHz = data['tempoHz'];
   var middleCHz = 261.625565; // middle C
-
-  self.gain = data['gain'];
+  self.cyclesPerBeat = data['cyclesPerBeat'];
   self.tempo = tempoHz / WavEncoder.defaults.sampleRateHz;
   self.omega = 2 * Math.PI * middleCHz / tempoHz;
   self.freqs = data['freqs'];
   self.bases = data['bases'];
+  self.gain = data['gain'];
 
-  assert(tempo > 0, 'bad tempo : ' + tempo);
+  assert(self.tempo > 0, 'bad tempo : ' + self.tempo);
   assertEqual(freqs.length, bases.length, 'freqs size is not same as bases');
 
-  self.T = Math.round(1 / tempo);
+  self.T = Math.round(1 / self.tempo / self.cyclesPerBeat);
   self.F = self.freqs.length;
   self.wavEncoder = new WavEncoder(self.T);
   self.samples = new Array(self.T);
@@ -45,6 +45,7 @@ var synthesize = function (data) {
 
   var cycle = data['cycle'];
   assertEqual(cycle, Math.round(cycle), 'bad cycle number: ' + cycle);
+  var beat = cycle / self.cyclesPerBeat;
 
   var tempo = self.tempo;
   var omega = self.omega;
@@ -71,7 +72,7 @@ var synthesize = function (data) {
     var freq = freqs[f];
     var base = bases[f];
 
-    var phase = (freq * cycle + base) % 1;
+    var phase = (freq * beat + base) % 1;
     var dphase = freq * tempo;
 
     for (var t = 0; t < T; ++t) {
