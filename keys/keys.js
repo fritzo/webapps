@@ -381,7 +381,12 @@ Synthesizer.prototype = {
           var data = e['data'];
           switch (data['type']) {
             case 'wave':
+              // Version 1. new audio object each onset
               onsets[data['index']] = data['data'];
+
+              // Version 2. cached audio objects
+              // This locks up chrome after a while
+              //onsets[data['index']] = new Audio(data['data']);
               break;
 
             case 'log':
@@ -403,11 +408,15 @@ Synthesizer.prototype = {
         }
       });
   },
-  playOnset: function (index) {
-    var uri = this.onsets[index];
-    if (uri !== undefined) {
-      (new Audio(uri)).play();
+  playOnset: function (index, volume) {
+    var audio = this.onsets[index];
+    if (audio instanceof Audio) {
+      audio.currentTime = 0;
+    } else { // audio is data uri of wav file
+      audio = new Audio(audio);
     }
+    audio.volume = volume;
+    audio.play();
   }
 };
 
@@ -481,22 +490,33 @@ Keyboard.prototype = {
 
     } else {
 
+      var move = function (e) {
+        keyboard.swipeX1 = e.pageX / innerWidth;
+        keyboard.swipeY1 = e.pageY / innerHeight;
+      };
+
       $canvas.on('mousedown.keyboard', function (e) {
             keyboard._swiped = false;
-            keyboard.swipeX0 = keyboard.swipeX1 = e.pageX / window.innerWidth;
-            keyboard.swipeY0 = keyboard.swipeY1 = e.pageY / window.innerHeight;
-            $canvas.on('mousemove.keyboard', function (e) {
-                  keyboard.swipeX1 = e.pageX / window.innerWidth;
-                  keyboard.swipeY1 = e.pageY / window.innerHeight;
-                });
+            keyboard.swipeX0 = keyboard.swipeX1 = e.pageX / innerWidth;
+            keyboard.swipeY0 = keyboard.swipeY1 = e.pageY / innerHeight;
+            $canvas.off('mousemove.keyboard').on('mousemove.keyboard', move);
+            e.preventDefault(); // avoid selecting buttons
+          });
+      $canvas.on('mouseover.keyboard', function (e) {
+            if (e.which) {
+              keyboard._swiped = false;
+              keyboard.swipeX0 = keyboard.swipeX1 = e.pageX / innerWidth;
+              keyboard.swipeY0 = keyboard.swipeY1 = e.pageY / innerHeight;
+              $canvas.off('mousemove.keyboard').on('mousemove.keyboard', move);
+            }
             e.preventDefault(); // avoid selecting buttons
           });
       $canvas.on('mouseup.keyboard', function (e) {
             $canvas.off('mousemove.keyboard');
             if (!keyboard._swiped) {
               keyboard.click(
-                  e.pageX / window.innerWidth,
-                  e.pageY / window.innerHeight);
+                  e.pageX / innerWidth,
+                  e.pageY / innerHeight);
             }
             keyboard._swiped = true;
             e.preventDefault(); // avoid selecting buttons
@@ -556,13 +576,16 @@ Keyboard.prototype = {
   onclick: function (index) {
     this.harmony.updateAddMass(index, config.synth.clickGain);
     if (this.synthesizer !== undefined) {
-      this.synthesizer.playOnset(index);
+      this.synthesizer.playOnset(index, 1);
     }
   },
   onswipe: function (indices) {
     this._swiped = true;
+    var gain = config.synth.swipeGain;
     for (var i = 0, I = indices.length; i < I; ++i) {
-      this.harmony.updateAddMass(indices[i], config.synth.swipeGain);
+      var index = indices[i];
+      this.synthesizer.playOnset(index, gain); // works poorly in firefox
+      this.harmony.updateAddMass(index, gain);
     }
   },
 
