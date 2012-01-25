@@ -14,8 +14,8 @@ var config = {
 
   plot: {
     framerateHz: 100,
-    innerRadius: 0.9,
-    circleRadiusScale: 0.2
+    circleRadiusScale: 0.2,
+    minOpacity: 1/4
   },
 
   synth: {
@@ -86,7 +86,6 @@ var PhasePlotter = function (ball) {
   var bases = this.bases = ball.map(function(g){ return g.base.toNumber(); });
 
   var minFreq = Math.min.apply(Math, freqs);
-  var innerRadius = config.plot.innerRadius;
   var radiusScale = this.radiusScale;
 
   var radii = this.radii = [];
@@ -104,7 +103,6 @@ var PhasePlotter = function (ball) {
     var norm = grid.norm();
 
     var rPos = 1 - realToUnit(freq);
-    //var rPos = config.plot.innerRadius * Math.sqrt(minFreq / freq);
     xPos[i] = (rPos * Math.sin(twoPi * base) + 1) / 2;
     yPos[i] = (rPos * Math.cos(twoPi * base) + 1) / 2;
     radii[i] = rPos * radiusScale / norm;
@@ -131,40 +129,27 @@ PhasePlotter.prototype = {
     var x0 = (width - minth) / 2;
     var y0 = (height - minth) / 2;
 
-    var ball = this.ball;
     var freqs = this.freqs;
     var bases = this.bases;
     var xPos = this.xPos;
     var yPos = this.yPos;
     var radii = this.radii
-    var colors = this.colors;
+    var opacityRate = 1 - config.plot.minOpacity;
 
     context.clearRect(0, 0, width, height);
     context.fillStyle = 'rgba(255,255,255,0.333)';
-    context.strokeStyle = 'rgba(255,255,255,0.333)';
+    //context.strokeStyle = 'rgba(255,255,255,0.333)';
 
-    var cos = Math.cos;
     var exp = Math.exp;
-    var pow = Math.pow;
-    var sqrt = Math.sqrt;
-    var round = Math.round;
     var twoPi = 2 * Math.PI;
-    var twoThirdsPi = 2/3 * Math.PI;
 
     for (var i = 0, I = freqs.length; i < I; ++i) {
 
       var freq = freqs[i];
       var phase = (freq * time + bases[i]) % 1;
 
-      //var angle = twoPi * phase;
-      //var r = round(127.5 * (1 + cos(angle)));
-      //var g = round(127.5 * (1 + cos(angle - twoThirdsPi)));
-      //var b = round(127.5 * (1 + cos(angle + twoThirdsPi)));
-      //var color = ['rgba(',r,',',g,',',b,',0.8)'].join('');
-      //context.fillStyle = color;
-
-      var opacity = 1 - phase / freq;
-      var color = ['rgba(255,255,255,',opacity,')'].join('');
+      var opacity = 1 - opacityRate * phase / freq;
+      var color = 'rgba(255,255,255,' + opacity + ')';
       context.fillStyle = color;
 
       var x = xPos[i] * minth + x0;
@@ -174,7 +159,7 @@ PhasePlotter.prototype = {
       context.beginPath();
       context.arc(x, y, radius, 0, twoPi, false);
       context.fill();
-      context.stroke();
+      //context.stroke();
     }
   }
 };
@@ -282,7 +267,8 @@ $(document).ready(function(){
         frameCount += 1;
       }, 1000 / config.plot.framerateHz);
   clock.onPause(function(time){
-        log('plotting framerate = ' + (frameCount * 1000 / time) + ' Hz');
+        var framerate = frameCount * 1000 / time;
+        log('plotting framerate = ' + framerate.toFixed(1) + ' Hz');
       });
   $(window).on('resize.phasePlotter', function () {
         phasePlotter.plot(clock.now() * tempoKhz);
@@ -301,7 +287,9 @@ $(document).ready(function(){
         var meanTime = synthesizer.profileElapsed
                      / synthesizer.profileCount
                      / 1000;
-        log('mean synth time = ' + meanTime + ' sec');
+        var speed = config.tempoHz / meanTime;
+        log( 'mean synth time = ' + meanTime.toFixed(3)
+           + ' sec = ' + speed.toFixed(2) + 'x realtime');
       });
   clock.discretelyDo(function(cycle){
         audio.play();
