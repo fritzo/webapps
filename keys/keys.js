@@ -30,6 +30,7 @@ var config = {
     sampleRateHz: 22050,
     centerFreqHz: 261.625565, // middle C
     windowSec: 0.2,
+    windowPadding: 0.1, // for better performance in firefox
     onsetGain: 1.0,
     sustainGain: 0.3,
     clickGain: 1.0,
@@ -233,11 +234,13 @@ test('Harmony.updateDiffusion', function(){
 /** @constructor */
 var Synthesizer = function (harmony) {
   var windowMs = 1000 * config.synth.windowSec;
+  var windowSamples = config.synth.windowSec * config.synth.sampleRateHz;
 
   this.harmony = harmony;
   this.delayMs = windowMs / 2;
-  this.windowSamples = Math.floor(
-      config.synth.windowSec * config.synth.sampleRateHz);
+  this.synthSamples = Math.round(
+      windowSamples * (1 - config.synth.windowPadding));
+  this.onsetSamples = Math.round(2 * windowSamples);
   this.sustainGain = config.synth.sustainGain;
   this.onsetGain = config.synth.onsetGain;
   this.numVoices = Math.min(harmony.length, config.synth.numVoices);
@@ -289,7 +292,7 @@ Synthesizer.prototype = {
           'gain': this.sustainGain,
           'freqs': this.freqs,
           'numVoices': this.numVoices,
-          'numSamples': this.windowSamples
+          'numSamples': this.synthSamples
         }
       });
 
@@ -320,12 +323,34 @@ Synthesizer.prototype = {
         });
   },
   play: function (uri) {
+
+    // XXX FIXME TODO there seems to be a bug in chrome here.
+    //   about 5sec after app starts, audio gets choppy.
+    //   goes away when pause-resume (sometimes comes back)
+    //   does not go away when switching screens
+
+    // see
+    // http://www.w3.org/TR/html5/the-iframe-element.html#the-audio-element
+    // http://www.w3.org/TR/html5/the-iframe-element.html#media-elements
+
+    // Version 1. garbage collected
+    //   This sounds better in chrome, but starts clipping after 10s.
     var audio = new Audio(uri);
 
-    // XXX TODO there seems to be a bug here.
-    //   about 20sec after app starts, audio gets choppy.
-    //   goes away when pause-resume
-    //   does not go away when switching screens
+    // Version 2. double buffer
+    //   This clips continuously in chrome.
+    //   This crashes firefox after 15s.
+    //if (this.doubleBuffer === undefined) {
+    //  this.doubleBuffer = [new Audio(), new Audio()];
+    //  this.doubleBuffer[0].preload = true;
+    //  this.doubleBuffer[1].preload = true;
+    //}
+    //this.doubleBuffer.reverse();
+    //var audio = this.doubleBuffer[0];
+    //audio.pause();
+    //audio.src = uri;
+    //audio.load();
+
     var now = Date.now();
     var delay = Math.min(this.delayMs, this.targetTime - now);
     this.targetTime = Math.max(now, this.targetTime + this.delayMs);
@@ -373,7 +398,7 @@ Synthesizer.prototype = {
       'data': {
           'gain': this.onsetGain,
           'freqs': this.freqs,
-          'numSamples': 2 * this.windowSamples,
+          'numSamples': this.onsetSamples,
           'tasks': tasks
         }
       });
