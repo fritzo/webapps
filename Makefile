@@ -2,16 +2,19 @@
 #-------------------------------------------------------------------------------
 # export to public git repository
 
+R=~/rationalkeyboard/keys
 rationalkeyboard: FORCE
-	rm -rf ~/rationalkeyboard/keys
+	rm -rf $R
 	cp -rL keys ~/rationalkeyboard/keys
 	for js in $$(cat keys/index.html keys/synthworker.js | \
 			grep -o 'common\/.*\.js');\
-		do cp $$js ~/rationalkeyboard/keys/; \
+		do cp $$js $R/; \
 	done
-	sed -i 's/\.\.\/common\//.\//g' ~/rationalkeyboard/keys/*.html ~/rationalkeyboard/keys/*.js ~/rationalkeyboard/keys/cache.manifest
-	rm -rf ~/rationalkeyboard/keys/temp*
-	sed -i 's/NETWORK:/CACHE:/g' ~/rationalkeyboard/keys/cache.manifest
+	sed -i 's/\.\.\/common\///g' $R/*.html $R/*.js $R/cache.manifest
+	sed -i 's/http:\/\/fritzo\.org\/keys/http:\/\/fritzo\.org\/keys\n * http:\/\/github.com\/fritzo\/rationalkeyboard/g' $R/*.js
+	sed -i 's/http:\/\/fritzo\.org\/keys/http:\/\/fritzo\.org\/keys\n  http:\/\/github.com\/fritzo\/rationalkeyboard/g' $R/*.html
+	rm -rf $R/temp*
+	sed -i 's/NETWORK:/CACHE:/g' $R/cache.manifest
 
 #-------------------------------------------------------------------------------
 # build & release tools
