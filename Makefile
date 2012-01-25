@@ -5,6 +5,11 @@
 rationalkeyboard: FORCE
 	rm -rf ~/rationalkeyboard/keys
 	cp -rL keys ~/rationalkeyboard/keys
+	for js in $$(cat keys/index.html keys/synthworker.js | \
+			grep -o 'common\/.*\.js');\
+		do cp $$js ~/rationalkeyboard/keys/; \
+	done
+	sed -i 's/\.\.\/common\//.\//g' ~/rationalkeyboard/keys/*.html ~/rationalkeyboard/keys/*.js ~/rationalkeyboard/keys/cache.manifest
 	rm -rf ~/rationalkeyboard/keys/temp*
 	sed -i 's/NETWORK:/CACHE:/g' ~/rationalkeyboard/keys/cache.manifest
 
