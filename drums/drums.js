@@ -9,13 +9,12 @@
  */
 
 var config = {
-  radius: 10,
+  radius: 12,
   tempoHz: 1,
 
   plot: {
     framerateHz: 100,
-    circleRadiusScale: 0.2,
-    minOpacity: 1/4
+    circleRadiusScale: 0.2
   },
 
   synth: {
@@ -78,11 +77,26 @@ var plotTrajectories = function (ball) {
   }
 };
 
-// TODO swap position,color indicating current,initial phase
-var PhasePlotter = function (ball, tempoHz) {
+// TODO switch from polar to cylindrical coordinates cut at the downbeat,
+// visualizing the downbeat on either side:
+//  
+//   0    11 1 2 1 3 2 34    1
+//   -    -- - - - - - --    -
+//   1    54 3 5 2 5 3 45    1
+//
+//   o         . o .         o  \   <- higher tempo
+//   )     o O o o o O o     (   |  rhythm on top
+//   > . .Oo O O O O O oO. . <   |
+//   o....oO.O.o.O.o.O.Oo....o   |  <- lower tempo
+//                               |
+//   | |||| ||| | | |||| || ||   |  harmony on bottom
+//   put a keyboard underneath  /
+//
+var PhasePlotter = function (ball, tempoHz, amps) {
 
   this.ball = ball;
   this.tempoHz = tempoHz;
+  this.amps = amps;
 
   var freqs = this.freqs = ball.map(function(g){ return g.freq.toNumber(); });
   var bases = this.bases = ball.map(function(g){ return g.base.toNumber(); });
@@ -131,18 +145,16 @@ PhasePlotter.prototype = {
     var x0 = (width - minth) / 2;
     var y0 = (height - minth) / 2;
 
+    var amps = this.amps;
+    var ampScale = 1 / Math.max.apply(Math, amps);
     var freqs = this.freqs;
     var bases = this.bases;
     var xPos = this.xPos;
     var yPos = this.yPos;
     var radii = this.radii;
 
-    var opacityShift = config.plot.minOpacity;
-    var opacityScale = 1 - opacityShift;
-
     context.clearRect(0, 0, width, height);
-    context.fillStyle = 'rgba(255,255,255,0.333)';
-    //context.strokeStyle = 'rgba(255,255,255,0.333)';
+    context.strokeStyle = 'rgba(255,255,255,0.333)';
 
     var exp = Math.exp;
     var twoPi = 2 * Math.PI;
@@ -152,9 +164,8 @@ PhasePlotter.prototype = {
       var freq = freqs[i];
       var phase = (freq * time + bases[i]) % 1;
 
-      var opacity = exp(-phase / freq) * opacityScale + opacityShift;
-      var color = 'rgba(255,255,255,' + opacity + ')';
-      context.fillStyle = color;
+      var opacity = ampScale * amps[i] * exp(-phase / freq);
+      context.fillStyle = 'rgba(255,255,255,' + opacity + ')';
 
       var x = xPos[i] * minth + x0;
       var y = yPos[i] * minth + y0;
@@ -163,7 +174,7 @@ PhasePlotter.prototype = {
       context.beginPath();
       context.arc(x, y, radius, 0, twoPi, false);
       context.fill();
-      //context.stroke();
+      context.stroke();
     }
   },
 
@@ -307,7 +318,7 @@ $(document).ready(function(){
   amps.normalize();
   // TODO evolve these in time
 
-  var phasePlotter = new PhasePlotter(ball, config.tempoHz);
+  var phasePlotter = new PhasePlotter(ball, config.tempoHz, amps.likes);
   var synthesizer = new Synthesizer(ball, config.tempoHz, amps.likes);
 
   phasePlotter.start(clock);
