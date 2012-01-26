@@ -18,8 +18,9 @@ var Clock = function () {
   this.beginTime = undefined;
   this.pauseTime = undefined;
 
-  this.tasks = [];
-  this.pauseTasks = [];
+  this.startTasks = [];
+  this.runningTasks = [];
+  this.stopTasks = [];
 };
 
 Clock.prototype = {
@@ -27,14 +28,15 @@ Clock.prototype = {
     if (this.running) return;
     this.running = true;
 
-    if (this.pauseTime) {
-      this.beginTime += Date.now() - this.pauseTime;
-    } else {
-      this.beginTime = Date.now();
+    var elapsedTime = this.pauseTime ? this.beginTime - this.pauseTime : 0;
+    this.beginTime = Date.now() + elapsedTime;
+
+    for (var i = 0; i < this.startTasks.length; ++i) {
+      this.startTasks[i](elapsedTime);
     }
 
-    for (var i = 0; i < this.tasks.length; ++i) {
-      var task = this.tasks[i];
+    for (var i = 0; i < this.runningTasks.length; ++i) {
+      var task = this.runningTasks[i];
       setTimeout(task, task.nextTime ? task.nextTime - this.pauseTime : 0);
     }
   },
@@ -43,18 +45,18 @@ Clock.prototype = {
     this.running = false;
 
     this.pauseTime = Date.now();
+    var elapsedTime = this.pauseTime - this.beginTime;
 
-    for (var i = 0; i < this.tasks.length; ++i) {
-      var task = this.tasks[i];
+    for (var i = 0; i < this.runningTasks.length; ++i) {
+      var task = this.runningTasks[i];
       if (task.scheduled) {
         clearTimeout(task.scheduled);
         task.scheduled = undefined;
       }
     }
 
-    var elapsedTime = this.pauseTime - this.beginTime;
-    for (var i = 0; i < this.pauseTasks.length; ++i) {
-      this.pauseTasks[i](elapsedTime);
+    for (var i = 0; i < this.stopTasks.length; ++i) {
+      this.stopTasks[i](elapsedTime);
     }
   },
   toggleRunning: function () {
@@ -81,7 +83,7 @@ Clock.prototype = {
       }
     };
     task.scheduled = undefined;
-    this.tasks.push(task);
+    this.runningTasks.push(task);
   },
 
   /** 
@@ -102,14 +104,15 @@ Clock.prototype = {
       }
     };
     task.scheduled = undefined;
-    this.tasks.push(task);
+    this.runningTasks.push(task);
   },
 
-  /** 
-   * behavior: callback(elapsedTime) each time clock is paused
-   */
-  onPause: function (callback) {
-    this.pauseTasks.push(callback);
-  },
+  /** behavior: callback(elapsedTime) each time clock is started */
+  onStart: function (callback) { this.startTasks.push(callback); },
+
+  /** behavior: callback(elapsedTime) each time clock is stopped */
+  onStop: function (callback) { this.stopTasks.push(callback); },
+
+  none: undefined
 };
 

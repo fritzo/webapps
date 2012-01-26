@@ -34,6 +34,9 @@ var init = function (data) {
   self.wavEncoder = new WavEncoder(self.T);
   self.samples = new Array(self.T);
 
+  self.profileCount = 0;
+  self.profileElapsedMs = 0;
+
   self.initialized = true;
 };
 
@@ -102,12 +105,14 @@ self.addEventListener('message', function (e) {
       case 'synthesize':
         var profileStartTime = Date.now();
         var uri = synthesize(data['data']);
-        var profileElapsedMs = Date.now() - profileStartTime;
-        self.postMessage({
-              'type': 'wave',
-              'data': uri,
-              'profileElapsedMs': profileElapsedMs
-            });
+        self.profileCount += 1;
+        self.profileElapsedMs += Date.now() - profileStartTime;
+        self.postMessage({'type':'wave', 'data':uri});
+        break;
+
+      case 'profile':
+        var meanTime = self.profileElapsedMs / self.profileCount / 1000;
+        log('mean synthesis time = ' + meanTime.toFixed(3));
         break;
 
       default:

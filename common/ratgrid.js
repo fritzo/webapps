@@ -181,6 +181,10 @@ RatGrid.ball = function (radius) {
   result.sort(function(lhs,rhs){
         return lhs.norm() - rhs.norm();
       });
+  assert(result[0].freq.numer === 1
+      && result[0].freq.denom === 1
+      && result[0].base.numer === 0,
+      'ball is out of order; expected 1/1 at head, actual: ' + result[0]);
 
   return result;
 };

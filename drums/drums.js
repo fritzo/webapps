@@ -9,8 +9,13 @@
  */
 
 var config = {
-  radius: 12,
-  tempoHz: 1,
+
+  rhythm: {
+    radius: 12,
+    tempoHz: 1, // TODO allow real-time tempo control
+    temperature: 1,
+    driftRate: 1/4
+  },
 
   plot: {
     framerateHz: 100,
@@ -23,6 +28,116 @@ var config = {
   },
 
   none: undefined
+};
+
+//------------------------------------------------------------------------------
+// Rhythm
+
+/** @constructor */
+var Rhythm = function () {
+
+  this.temperature = config.rhythm.temperature;
+  this.driftRate = config.rhythm.driftRate;
+
+  var grids = this.grids = RatGrid.ball(config.rhythm.radius);
+  var period = RatGrid.commonPeriod(grids);
+  log('using ' + grids.length + ' grids with common period ' + period);
+
+  this.tempoHz = config.rhythm.tempoHz;
+
+  // Version 1. distributed WRT 1/norm
+  //this.amps = new MassVector(grids.map(function(grid){
+  //      return 1/grid.norm();
+  //    }));
+  //this.amps.normalize();
+
+  // Version 2. degenerate
+  assert(grids[0].freq.numer === 1
+      && grids[0].freq.denom === 1
+      && grids[0].base.numer === 0,
+      'downbeat was not in expected position');
+  this.amps = MassVector.degenerate(0, grids.length);
+
+  // TODO control this somehow
+  this.damps = MassVector.zero(this.amps.likes.length);
+};
+
+Rhythm.prototype = {
+
+  getGrids: function () { return this.grids; },
+  getTempoHz: function () { return this.tempoHz; },
+  getAmps: function () { return this.amps.likes; },
+
+  addAmp: function (index, damp) { this.damps.likes[index] += damp; },
+
+  start: function (clock) {
+
+    var running = false;
+    var lastTime = undefined;
+
+    var rhythm = this;
+    var amps = this.amps.likes;
+    var damps = this.damps.likes;
+
+    var rhythmworker = new Worker('rhythmworker.js');
+    var update = function () {
+      if (running) {
+        var time = Date.now();
+        var dt = time - lastTime;
+        lastTime = Date.now();
+        rhythmworker.postMessage({
+              'cmd': 'update',
+              'data': {
+                'dt': dt,
+                'damps': rhythm.damps.likes
+              }
+            });
+        for (var i = 0, I = damps.length; i < I; ++i) {
+          damps[i] = 0;
+        }
+      }
+    };
+    rhythmworker.addEventListener('message', function (e) {
+          var data = e['data'];
+          switch (data['type']) {
+            case 'update':
+              newAmps = data['data'];
+              for (var i = 0, I = amps.length; i < I; ++i) {
+                amps[i] = newAmps[i];
+              }
+              if (running) setTimeout(update(), 1);
+              break;
+
+            case 'log':
+              log('Rhythm Worker: ' + data['data']);
+              break;
+
+            case 'error':
+              throw new WorkerException('Rhythm ' + data['data']);
+          }
+        }, false);
+    rhythmworker.postMessage({
+      'cmd': 'init',
+      'data': {
+          'temperature': this.temperature,
+          'driftRate': this.driftRate,
+          'amps': this.amps.likes,
+          'gridArgs': this.grids.map(function(g){
+                return [g.freq.numer, g.freq.denom, g.base.numer, g.base.denom];
+              })
+        }
+      });
+
+    clock.onStart(function(){
+          running = true;
+          lastTime = Date.now();
+          update();
+        });
+    clock.onStop(function(){
+          running = false;
+          rhythmworker.postMessage({'cmd':'profile'});
+        });
+  }
 };
 
 //------------------------------------------------------------------------------
@@ -42,7 +157,9 @@ var initPlotting = function () {
   context = canvas.getContext('2d');
 };
 
-var plotTrajectories = function (ball) {
+var plotTrajectories = function (grids) {
+
+  initPlotting();
 
   var width = canvas.width;
   var height = canvas.height;
@@ -55,8 +172,8 @@ var plotTrajectories = function (ball) {
     context.stroke();
   };
 
-  for (var i = 0, I = ball.length; i < I; ++i) {
-    var grid = ball[i];
+  for (var i = 0, I = grids.length; i < I; ++i) {
+    var grid = grids[i];
 
     var norm = grid.norm();
     var opacity = Math.pow(1 / norm, 1);
@@ -89,17 +206,21 @@ var plotTrajectories = function (ball) {
 //   > . .Oo O O O O O oO. . <   |
 //   o....oO.O.o.O.o.O.Oo....o   |  <- lower tempo
 //                               |
-//   | |||| ||| | | |||| || ||   |  harmony on bottom
+//   | |||| ||| | | |||| || ||   |  rhythm on bottom
 //   put a keyboard underneath  /
 //
-var PhasePlotter = function (ball, tempoHz, amps) {
 
-  this.ball = ball;
+/** @constructor */
+var PhasePlotter = function (grids, tempoHz, amps) {
+
+  initPlotting();
+
+  this.grids = grids;
   this.tempoHz = tempoHz;
   this.amps = amps;
 
-  var freqs = this.freqs = ball.map(function(g){ return g.freq.toNumber(); });
-  var bases = this.bases = ball.map(function(g){ return g.base.toNumber(); });
+  var freqs = this.freqs = grids.map(function(g){ return g.freq.toNumber(); });
+  var bases = this.bases = grids.map(function(g){ return g.base.toNumber(); });
 
   var minFreq = Math.min.apply(Math, freqs);
   var radiusScale = this.radiusScale;
@@ -111,8 +232,8 @@ var PhasePlotter = function (ball, tempoHz, amps) {
   var twoPi = 2 * Math.PI;
   var realToUnit = this.realToUnit;
 
-  for (var i = 0, I = ball.length; i < I; ++i) {
-    var grid = ball[i];
+  for (var i = 0, I = grids.length; i < I; ++i) {
+    var grid = grids[i];
     var freq = freqs[i];
     var base = bases[i];
 
@@ -190,7 +311,7 @@ PhasePlotter.prototype = {
           phasePlotter.plot(timeMs * tempoKhz);
           frameCount += 1;
         }, 1000 / config.plot.framerateHz);
-    clock.onPause(function(timeMs){
+    clock.onStop(function(timeMs){
           var framerate = frameCount * 1000 / timeMs;
           log('plotting framerate = ' + framerate.toFixed(1) + ' Hz');
         });
@@ -205,14 +326,15 @@ PhasePlotter.prototype = {
 // Audio
 
 /** @constructor */
-var Synthesizer = function (ball, tempoHz, amps) {
+var Synthesizer = function (grids, tempoHz, amps) {
 
-  assertEqual(amps.length, ball.length, 'amplitude vector has wrong size');
+  assertEqual(amps.length, grids.length, 'amplitude vector has wrong size');
 
-  this.ball = ball;
+  this.grids = grids;
   this.tempoHz = tempoHz;
   this.amps = amps;
   this.cyclesPerBeat = config.synth.cyclesPerBeat;
+  this.gain = config.synth.gain;
 
   this.audio = undefined;
   this.profileCount = 0;
@@ -234,18 +356,17 @@ var Synthesizer = function (ball, tempoHz, amps) {
             break;
 
           case 'error':
-            log('Synth Worker Error: ' + data['data']);
-            break;
+            throw new WorkerException('Synth ' + data['data']);
         }
       }, false);
   this.synthworker.postMessage({
     'cmd': 'init',
     'data': {
-        'tempoHz': tempoHz,
+        'tempoHz': this.tempoHz,
         'cyclesPerBeat': this.cyclesPerBeat,
-        'freqs': ball.map(function(grid){ return grid.freq.toNumber(); }),
-        'bases': ball.map(function(grid){ return grid.base.toNumber(); }),
-        'gain': config.synth.gain
+        'freqs': grids.map(function(grid){ return grid.freq.toNumber(); }),
+        'bases': grids.map(function(grid){ return grid.base.toNumber(); }),
+        'gain': this.gain
       }
     });
 };
@@ -267,13 +388,8 @@ Synthesizer.prototype = {
     var periodMs = 1000 / synthRateHz;
 
     var synth = this;
-    clock.onPause(function(time){
-          var meanTime = synth.profileElapsedMs
-                       / synth.profileCount
-                       / 1000;
-          var speed = 1 / synthRateHz / meanTime;
-          log( 'mean synth time = ' + meanTime.toFixed(3)
-             + ' sec = ' + speed.toFixed(2) + 'x realtime');
+    clock.onStop(function(time){
+          synth.synthworker.postMessage({'cmd':'profile'})
         });
     clock.discretelyDo(function(cycle){
           if (synth.audio) {
@@ -298,29 +414,22 @@ $(document).ready(function(){
   if (window.location.hash && window.location.hash.slice(1) === 'test') {
     test.runAll();
 
-    initPlotting();
-
-    var ball = RatGrid.ball(config.radius);
-    plotTrajectories(ball);
+    var grids = RatGrid.ball(config.rhythm.radius);
+    plotTrajectories(grids);
 
     return;
   }
 
-  initPlotting();
+  var rhythm = new Rhythm();
+  var grids = rhythm.getGrids();
+  var tempoHz = rhythm.getTempoHz();
+  var amps = rhythm.getAmps();
 
-  var ball = RatGrid.ball(config.radius);
-  var period = RatGrid.commonPeriod(ball);
-  log('using ' + ball.length + ' beat positions with common period ' + period);
+  var phasePlotter = new PhasePlotter(grids, tempoHz, amps);
+  var synthesizer = new Synthesizer(grids, tempoHz, amps);
 
   var clock = new Clock();
-
-  var amps = new MassVector(ball.map(function(grid){ return 1/grid.norm(); }));
-  amps.normalize();
-  // TODO evolve these in time
-
-  var phasePlotter = new PhasePlotter(ball, config.tempoHz, amps.likes);
-  var synthesizer = new Synthesizer(ball, config.tempoHz, amps.likes);
-
+  rhythm.start(clock);
   phasePlotter.start(clock);
   synthesizer.start(clock);
 
