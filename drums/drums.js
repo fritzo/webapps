@@ -15,6 +15,7 @@ var config = {
     tempoHz: 1, // TODO allow real-time tempo control
     temperature: 2.5,
     driftRate: 1/4,
+    sharpness: 4,
     updateRateHz: 50
   },
 
@@ -39,6 +40,7 @@ var Rhythm = function () {
 
   this.temperature = config.rhythm.temperature;
   this.driftRate = config.rhythm.driftRate;
+  this.sharpness = config.rhythm.sharpness;
 
   var grids = this.grids = RatGrid.ball(config.rhythm.radius);
   var period = RatGrid.commonPeriod(grids);
@@ -70,7 +72,22 @@ Rhythm.prototype = {
   getTempoHz: function () { return this.tempoHz; },
   getAmps: function () { return this.amps.likes; },
 
-  addAmp: function (index, damp) { this.damps.likes[index] += damp; },
+  addAmp: function (timeMs) {
+
+    var time = timeMs / (1000 * this.tempoHz);
+    var grids = this.grids;
+    var damps = this.damps;
+    var likes = damps.likes;
+    var sharpness = this.sharpness;
+
+    log('DEBUG phase = ' + (grids[0].phaseAtTime(time) % 1));
+
+    for (var i = 0, I = likes.length; i < I; ++i) {
+      var phase = grids[i].phaseAtTime(time);
+      likes[i] = Math.pow(1 + Math.cos(2 * Math.PI * phase), sharpness);
+    }
+    damps.normalize();
+  },
 
   start: function (clock) {
 
@@ -439,5 +456,22 @@ $(document).ready(function(){
   var toggleRunning = function () { clock.toggleRunning(); };
   $('#phasesPlot').click(toggleRunning);
   $('canvas').click(toggleRunning);
+
+  $(window).on('keydown', function (e) {
+        switch (e.which) {
+          case 27: // escape
+            toggleRunning();
+            e.preventDefault();
+            break;
+
+          case 32: // spacebar
+            if (clock.running) {
+              var timeMs = Date.now() - clock.beginTime;
+              rhythm.addAmp(timeMs);
+            }
+            e.preventDefault();
+            break;
+        }
+      });
 });
 
