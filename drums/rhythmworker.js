@@ -21,7 +21,7 @@ importScripts('../common/massvector.js');
 var init = function (data) {
   var profileStart = Date.now();
 
-  self.temperature = data['temperature'];
+  self.acuity = data['acuity'];
   self.driftRate = data['driftRate'];
 
   self.grids = data['gridArgs'].map(function(a){
@@ -51,7 +51,7 @@ var init = function (data) {
 var getEnergy = function (mass) {
   var energyMatrix = self.energyMatrix;
   var freqEnergy = energyMatrix[0];
-  var energyScale = 1 / mass.total() / self.temperature;
+  var energyScale = 1 / mass.total() / self.acuity;
   var energy = [];
   for (var i = 0, I = mass.likes.length; i < I; ++i) {
     energy[i] = energyScale * mass.dot(energyMatrix[i]);
@@ -69,7 +69,7 @@ var update = function (data) {
   assertEqual(damps.length, self.amps.likes.length,
       'damps vector has wrong size:');
 
-  var temperature = self.temperature;
+  var acuity = self.acuity;
   var driftRate = self.driftRate;
   var grids = self.grids;
   var amps = self.amps;
@@ -80,7 +80,7 @@ var update = function (data) {
   }
 
   var energy = getEnergy(self.amps);
-  var prior = MassVector.boltzmann(energy, self.temperature);
+  var prior = MassVector.boltzmann(energy, self.acuity);
   var drift = 1 - Math.exp(-dt / driftRate);
   amps.shiftTowards(prior, drift);
 

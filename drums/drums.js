@@ -13,7 +13,7 @@ var config = {
   rhythm: {
     radius: 12,
     tempoHz: 1, // TODO allow real-time tempo control
-    temperature: 2.5,
+    acuity: 2.5,
     driftRate: 1/4,
     sharpness: 4,
     updateRateHz: 50
@@ -38,7 +38,7 @@ var config = {
 /** @constructor */
 var Rhythm = function () {
 
-  this.temperature = config.rhythm.temperature;
+  this.acuity = config.rhythm.acuity;
   this.driftRate = config.rhythm.driftRate;
   this.sharpness = config.rhythm.sharpness;
 
@@ -139,7 +139,7 @@ Rhythm.prototype = {
     rhythmworker.postMessage({
       'cmd': 'init',
       'data': {
-          'temperature': this.temperature,
+          'acuity': this.acuity,
           'driftRate': this.driftRate,
           'amps': this.amps.likes,
           'gridArgs': this.grids.map(function(g){

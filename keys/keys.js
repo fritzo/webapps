@@ -18,8 +18,7 @@ var config = {
     //maxRadius: 21, // 207 keys
     maxRadius: Math.sqrt(24*24 + 1*1 + 1e-4), // 279 keys
     priorSec: 8.0,
-    priorRadius: 3,
-    priorWidthOctaves: 4.0,
+    acuity: 3,
     sustainSec: 1.0,
     attackSec: 0.1,
     backgroundGain: 0.3,
@@ -91,9 +90,7 @@ var Harmony = function (radius) {
   this.sustainRateKhz = 1e-3 / config.harmony.sustainSec;
   this.attackKhz = 1e-3 / config.harmony.attackSec;
   this.backgroundGain = config.harmony.backgroundGain;
-  this.priorRadius = config.harmony.priorRadius;
-  this.logFreqVariance =
-    Math.pow(config.harmony.priorWidthOctaves * Math.log(2), 2);
+  this.acuity = config.harmony.acuity;
   this.delayMs = 1000 / config.harmony.updateHz;
 
   this.points = Rational.ball(radius);
@@ -105,12 +102,6 @@ var Harmony = function (radius) {
     for (var j = 0; j < this.length; ++j) {
       row[j] = Rational.dist(this.points[i], this.points[j]);
     }
-  }
-
-  var freqEnergy = this.freqEnergy = [];
-  for (var i = 0; i < this.length; ++i) {
-    var logFreq = Math.log(this.points[i].toNumber());
-    freqEnergy[i] = 0.5 * logFreq * logFreq / this.logFreqVariance;
   }
 
   assert(this.length % 2, 'harmony does not have an odd number of points');
@@ -186,11 +177,10 @@ Harmony.prototype = {
 
   getEnergy: function (mass) {
     var energyMatrix = this.energyMatrix;
-    var freqEnergy = this.freqEnergy;
-    var radiusScale = 1 / mass.total() / this.priorRadius;
+    var radiusScale = 1 / mass.total() / this.acuity;
     var energy = [];
     for (var i = 0, I = this.length; i < I; ++i) {
-      energy[i] = radiusScale * mass.dot(energyMatrix[i]) + freqEnergy[i];
+      energy[i] = radiusScale * mass.dot(energyMatrix[i]);
     }
     return energy;
   }
