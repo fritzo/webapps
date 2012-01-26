@@ -19,6 +19,7 @@ importScripts('../common/massvector.js');
 // Commands
 
 var init = function (data) {
+  var profileStart = Date.now();
 
   self.temperature = data['temperature'];
   self.driftRate = data['driftRate'];
@@ -31,16 +32,31 @@ var init = function (data) {
   assertEqual(self.amps.likes.length, self.grids.length,
       'amps vector has wrong size:');
 
-  // TODO initialize energy matrix
-
-  // DEBUG self.prior should be recomputed each update, as below
-  var initEnergy = self.grids.map(function(g){ return g.norm(); });
-  self.prior = MassVector.boltzmann(initEnergy, self.temperature);
+  var I = self.grids.length
+  var energyMatrix = self.energyMatrix = new Array(I);
+  for (var i = 0; i < I; ++i) {
+    var row = energyMatrix[i] = new Array(I);
+    for (var j = 0; j < I; ++j) {
+      row[j] = RatGrid.dist(self.grids[i], self.grids[j]);
+    }
+  }
 
   self.profileCount = 0;
   self.profileElapsedMs = 0;
 
   self.initialized = true;
+  log('initialized in ' + ((Date.now() - profileStart) / 1000) + ' sec');
+};
+
+var getEnergy = function (mass) {
+  var energyMatrix = self.energyMatrix;
+  var freqEnergy = energyMatrix[0];
+  var energyScale = 1 / mass.total() / self.temperature;
+  var energy = [];
+  for (var i = 0, I = mass.likes.length; i < I; ++i) {
+    energy[i] = energyScale * mass.dot(energyMatrix[i]);
+  }
+  return energy;
 };
 
 var update = function (data) {
@@ -63,8 +79,8 @@ var update = function (data) {
     likes[i] += damps[i];
   }
 
-  // TODO compute boltzmann distrubution WRT energy matrix
-  var prior = self.prior; // DEBUG, should be WRT energy matrix
+  var energy = getEnergy(self.amps);
+  var prior = MassVector.boltzmann(energy, self.temperature);
   var drift = 1 - Math.exp(-dt / driftRate);
   amps.shiftTowards(prior, drift);
 

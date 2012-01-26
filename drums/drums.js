@@ -13,8 +13,9 @@ var config = {
   rhythm: {
     radius: 12,
     tempoHz: 1, // TODO allow real-time tempo control
-    temperature: 1,
-    driftRate: 1/4
+    temperature: 2.5,
+    driftRate: 1/4,
+    updateRateHz: 50
   },
 
   plot: {
@@ -44,6 +45,7 @@ var Rhythm = function () {
   log('using ' + grids.length + ' grids with common period ' + period);
 
   this.tempoHz = config.rhythm.tempoHz;
+  this.minDelay = 1000 / config.rhythm.updateRateHz;
 
   // Version 1. distributed WRT 1/norm
   //this.amps = new MassVector(grids.map(function(grid){
@@ -78,12 +80,13 @@ Rhythm.prototype = {
     var rhythm = this;
     var amps = this.amps.likes;
     var damps = this.damps.likes;
+    var minDelay = this.minDelay;
 
     var rhythmworker = new Worker('rhythmworker.js');
     var update = function () {
       if (running) {
         var time = Date.now();
-        var dt = time - lastTime;
+        var dt = (time - lastTime) / 1000;
         lastTime = Date.now();
         rhythmworker.postMessage({
               'cmd': 'update',
@@ -105,7 +108,7 @@ Rhythm.prototype = {
               for (var i = 0, I = amps.length; i < I; ++i) {
                 amps[i] = newAmps[i];
               }
-              if (running) setTimeout(update(), 1);
+              if (running) setTimeout(update(), minDelay);
               break;
 
             case 'log':
