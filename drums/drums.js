@@ -49,20 +49,12 @@ var Rhythm = function () {
   this.tempoHz = config.rhythm.tempoHz;
   this.minDelay = 1000 / config.rhythm.updateRateHz;
 
-  // Version 1. distributed WRT 1/norm
-  //this.amps = new MassVector(grids.map(function(grid){
-  //      return 1/grid.norm();
-  //    }));
-  //this.amps.normalize();
-
-  // Version 2. degenerate
   assert(grids[0].freq.numer === 1
       && grids[0].freq.denom === 1
       && grids[0].base.numer === 0,
       'downbeat was not in expected position');
   this.amps = MassVector.degenerate(0, grids.length);
 
-  // TODO control this somehow
   this.damps = MassVector.zero(this.amps.likes.length);
 };
 
