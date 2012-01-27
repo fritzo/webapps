@@ -5,7 +5,8 @@
 R=~/rationalkeyboard/keys
 rationalkeyboard: FORCE
 	rm -rf $R
-	cp -rL keys ~/rationalkeyboard/keys
+	cp -rL keys $R
+	mv $R/release.manifest $R/cache.manifest
 	for js in $$(cat keys/index.html keys/synthworker.js | \
 			grep -o 'common\/.*\.js');\
 		do cp $$js $R/; \

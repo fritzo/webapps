@@ -22,7 +22,8 @@ var config = {
     sustainSec: 1.0,
     attackSec: 0.1,
     backgroundGain: 0.3,
-    updateHz: 60
+    updateHz: 60,
+    randomizeRate: 0,
   },
 
   synth: {
@@ -92,6 +93,7 @@ var Harmony = function (radius) {
   this.backgroundGain = config.harmony.backgroundGain;
   this.acuity = config.harmony.acuity;
   this.delayMs = 1000 / config.harmony.updateHz;
+  this.randomizeRate = config.harmony.randomizeRate;
 
   this.points = Rational.ball(radius);
   this.length = this.points.length;
@@ -158,6 +160,14 @@ Harmony.prototype = {
     var dlikes = this.dmass.likes;
     for (var i = 0, I = likes.length; i < I; ++i) {
       likes[i] += attackRate * (dlikes[i] *= attackDecay);
+    }
+
+    if (this.randomizeRate) {
+      var sigma = this.randomizeRate * Math.sqrt(dt / 1000) * Math.sqrt(12);
+      var total = this.mass.total();
+      for (var i = 0, I = likes.length; i < I; ++i) {
+        likes[i] *= Math.exp(sigma * (Math.random() - 0.5));
+      }
     }
 
     if (this.running) {
@@ -1508,6 +1518,11 @@ $(document).ready(function(){
     }
     else if (window.location.hash.substr(1,6) === 'style=') {
       style = window.location.hash.substr(7);
+    }
+    else if (window.location.hash.substr(1,7) === 'random=') {
+      var randomizeRate = parseFloat(window.location.hash.substr(8))
+      log('setting randomize rate = ' + randomizeRate);
+      config.harmony.randomizeRate = randomizeRate;
     }
   }
 
