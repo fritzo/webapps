@@ -64,6 +64,34 @@ RatGrid.prototype = {
     return result;
   },
 
+  /**
+   * see notes/ideas/music (2012:01:26-27) (N1.Q1.N1) for derivation
+   *
+   * @param {number}
+   * @returns {number}
+   */
+  interference: function (sharpness) {
+    var freq = this.freq;
+    var base = this.base;
+
+    var s = sharpness;
+    var n = freq.denom;
+    var m = freq.numer;
+    var b = base.toNumber();
+
+    var exp = Math.exp;
+
+    return ( s
+           * ( (1 - exp(-s / n)) * exp(-s * b)
+             + (1 - exp(-s / m)) * exp(s * b * m / n)
+             )
+           / ( (m + n)
+             * (1 - exp(-s))
+             * (1 - exp(-s / (m * n)))
+             )
+           );
+  },
+
   /** @returns {number} */
   period: function () {
     return this.freq.denom;
@@ -87,6 +115,39 @@ RatGrid.equal = function (lhs, rhs) {
 };
 
 /**
+ * valid rules:
+ * (1) shift t on both sides
+ * (2) scale t on both sides
+ * (3) add an integer to either side
+ *
+ * freq t + base : freq' t + base'
+ *        freq t : freq' t + base' - base
+ *             t : freq'/freq t + (base' - base) / freq
+ *
+ * @param {RatGrid}
+ * @param {RatGrid}
+ * @returns {RatGrid}
+ */
+RatGrid.relative = function (lhs, rhs) {
+
+  if (Rational.cmp(lhs.base, rhs.base) < 0) {
+    var temp = lhs;
+    lhs = rhs;
+    rhs = temp;
+  }
+
+  var lf = lhs.freq;
+  var lb = lhs.base;
+  var rf = rhs.freq;
+  var rb = rhs.base;
+
+  var freq = Rational.div(lf, rf);
+  var base = Rational.div(new Rational.sub(lb, rb), rf);
+  return new RatGrid(freq,base);
+};
+
+/**
+ * Examples:
  *
  *   0,1-/--/--/--/-1,1
  *    | /  /  /  /  /|
@@ -104,39 +165,22 @@ RatGrid.equal = function (lhs, rhs) {
  *    | /  /  /  /  /|
  *   0,0--/--/--/--/1,0
  *
- * valid rules:
- * (1) shift t on both sides
- * (2) scale t on both sides
- * (3) add an integer to either side
- *
- * freq t + base : freq' t + base'
- *        freq t : freq' t + base' - base
- *             t : freq'/freq t + (base' - base) / freq
- *
  * @param {RatGrid}
  * @param {RatGrid}
  * @returns {number}
  */
 RatGrid.dist = function (lhs, rhs) {
+  return RatGrid.relative(lhs, rhs).norm();
+};
 
-  var cmp = Rational.cmp(lhs.base, rhs.base);
-  if (cmp === 0) {
-    return Rational.dist(lhs.freq, rhs.freq);
-  } else if (cmp < 0) {
-    var temp = lhs;
-    lhs = rhs;
-    rhs = temp;
-  }
-
-  var lf = lhs.freq;
-  var lb = lhs.base;
-  var rf = rhs.freq;
-  var rb = rhs.base;
-
-  var freq = Rational.div(lf, rf);
-  var base = Rational.div(new Rational.sub(lb, rb), rf);
-  var normalForm = new RatGrid(freq,base);
-  return normalForm.norm();
+/**
+ * @param {RatGrid}
+ * @param {RatGrid}
+ * @param {number}
+ * @returns {number}
+ */
+RatGrid.interference = function (lhs, rhs, sharpness) {
+  return RatGrid.relative(lhs, rhs).interference(sharpness);
 };
 
 /**
