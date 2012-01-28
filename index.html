@@ -20,6 +20,15 @@ a {
   font-weight: bold;
 }
 
+h1 span {
+  color: white;
+  background-color: #777;
+  border: solid 2px #bbb;
+  border-radius: 4px;
+  padding-left: 1ex;
+  padding-right: 1ex;
+}
+
 a,
 a:visited {
   color: gray;
@@ -28,24 +37,43 @@ a:visited {
 </style>
 <body>
 
+<h1><span>Projects</span></h1>
+
 <p>
   <a href='common/'>Common Code</a>
-  (<a href='common/#test'>unit test</a>)
+  (<a href='common/#test'>test</a>)
 </p>
 <p>
   <a href='live/'>Livecoder</a>
 </p>
 <p>
   <a href='keys/'>The Rational Keyboard</a>
-  (<a href='keys/#test'>unit test</a>)
+  (<a href='keys/#test'>test</a>)
 </p>
 <p>
   <a href='drums/'>The Rational Drums</a>
-  (<a href='drums/#test'>unit test</a>)
+  (<a href='drums/#test'>test</a>)
 </p>
 <p>
   <a href='splitband/'>Splitband</a>
-  (<a href='splitband/#test'>unit test</a>)
+  (<a href='splitband/#test'>test</a>)
+</p>
+
+<h1><span>Resources</span></h1>
+
+<p>
+  audio bugs: 
+  <a href='https://bugzilla.mozilla.org/buglist.cgi?query_format=specific&order=relevance+desc&bug_status=__open__&product=&content=audio&comments=0'>mozilla</a> |
+  <a href='https://bugs.webkit.org/buglist.cgi?quicksearch=audio'>webkit</a> |
+  <a href='http://code.google.com/p/chromium/issues/list?q=audio'>chromium</a>
+</p>
+<p>
+  mozilla doc:
+  <a href='http://www.w3.org/TR/html5/the-iframe-element.html#the-audio-element'>audio element</a> |
+  <a href='http://www.w3.org/TR/html5/the-iframe-element.html#media-elements'>media element</a>
+</p>
+<p>
+  <a href='https://quality.mozilla.org/page/3/?s=audio'>mozilla audio articles</a>
 </p>
 
 </body>

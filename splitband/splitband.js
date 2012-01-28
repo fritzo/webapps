@@ -10,13 +10,31 @@
 
 var config = {
 
-  rhythm: {
-    radius: 12,
+  player: {
+
+    // We split the frequency spectrum into high (pitch) + low (tempo)
+    //
+    //    |<---- tempo --->| |<------------ Pitch ------------>|
+    //   8sec      1     8Hz 11Hz           261Hz           6.28kHz
+    //                       C/24             C              24 C
+
+    pitchRadius: Math.sqrt(24*24 + 1*1 + 1e-4), // barely including 1/24
+    tempoRadius: Math.sqrt(8*8 + 1*1 + 1e-4),   // barely including 1/8 t + 0/1
+
+    centerFreqHz: 261.625565, // middle C
     tempoHz: 1, // TODO allow real-time tempo control
-    acuity: 2.5,
-    driftRate: 1/4,
-    sharpness: 4,
-    updateRateHz: 50
+
+    pitchAcuity: 3,
+    tempoAcuity: 2.5,
+
+    attackSec: 0.1,
+    sustainSec: 1.0,
+    grooveSec: 30.0,
+
+    sharpness: 4, // DEPRICATED
+    updateRateHz: 100,
+
+    none: undefined
   },
 
   plot: {
@@ -33,21 +51,28 @@ var config = {
 };
 
 //------------------------------------------------------------------------------
-// Rhythm
+// Player
 
 /** @constructor */
-var Rhythm = function () {
+var Player = function () {
 
-  this.acuity = config.rhythm.acuity;
-  this.driftRate = config.rhythm.driftRate;
-  this.sharpness = config.rhythm.sharpness;
+  assert(config.player.attackSec > 1 / config.player.updateRateHz,
+      'player attackSec is too slow for updateRateHz:'+
+      '\n   attackSec = ' + config.player.attackSec +
+      '\n   updateRateHz = ' + config.player.updateRateHz);
 
-  var grids = this.grids = RatGrid.ball(config.rhythm.radius);
+  this.acuity = config.player.acuity;
+  this.attackSec = config.player.attackSec;
+  this.sustainSec = config.player.sustainSec;
+  this.grooveSec = config.player.grooveSec;
+  this.sharpness = config.player.sharpness;
+
+  var grids = this.grids = RatGrid.ball(config.player.tempoRadius);
   var period = RatGrid.commonPeriod(grids);
   log('using ' + grids.length + ' grids with common period ' + period);
 
-  this.tempoHz = config.rhythm.tempoHz;
-  this.minDelay = 1000 / config.rhythm.updateRateHz;
+  this.tempoHz = config.player.tempoHz;
+  this.minDelay = 1000 / config.player.updateRateHz;
 
   assert(grids[0].freq.numer === 1
       && grids[0].freq.denom === 1
@@ -58,18 +83,23 @@ var Rhythm = function () {
   this.damps = MassVector.zero(this.amps.likes.length);
 };
 
-Rhythm.prototype = {
+Player.prototype = {
 
   getGrids: function () { return this.grids; },
   getTempoHz: function () { return this.tempoHz; },
   getAmps: function () { return this.amps.likes; },
 
+  // TODO attach this to a keyboard
   addAmp: function (timeMs) {
 
     var time = timeMs / (1000 * this.tempoHz);
     var grids = this.grids;
     var damps = this.damps;
     var likes = damps.likes;
+
+    // TODO switch to using attackSec instead of sharpness.
+    //   This requires a bayesian prior that integrates over cos^p(theta)
+    //   or whatever beat function is used.
     var sharpness = this.sharpness;
 
     log('DEBUG phase = ' + (grids[0].phaseAtTime(time) % 1));
@@ -86,22 +116,22 @@ Rhythm.prototype = {
     var running = false;
     var lastTime = undefined;
 
-    var rhythm = this;
+    var player = this;
     var amps = this.amps.likes;
     var damps = this.damps.likes;
     var minDelay = this.minDelay;
 
-    var rhythmworker = new Worker('rhythmworker.js');
+    var playerworker = new Worker('playerworker.js');
     var update = function () {
       if (running) {
         var time = Date.now();
-        var dt = (time - lastTime) / 1000;
+        var timestepSec = (time - lastTime) / 1000;
         lastTime = Date.now();
-        rhythmworker.postMessage({
+        playerworker.postMessage({
               'cmd': 'update',
               'data': {
-                'dt': dt,
-                'damps': rhythm.damps.likes
+                'timestepSec': timestepSec,
+                'damps': player.damps.likes
               }
             });
         for (var i = 0, I = damps.length; i < I; ++i) {
@@ -109,7 +139,7 @@ Rhythm.prototype = {
         }
       }
     };
-    rhythmworker.addEventListener('message', function (e) {
+    playerworker.addEventListener('message', function (e) {
           var data = e['data'];
           switch (data['type']) {
             case 'update':
@@ -121,18 +151,19 @@ Rhythm.prototype = {
               break;
 
             case 'log':
-              log('Rhythm Worker: ' + data['data']);
+              log('Player Worker: ' + data['data']);
               break;
 
             case 'error':
-              throw new WorkerException('Rhythm ' + data['data']);
+              throw new WorkerException('Player ' + data['data']);
           }
         }, false);
-    rhythmworker.postMessage({
+    playerworker.postMessage({
       'cmd': 'init',
       'data': {
-          'acuity': this.acuity,
-          'driftRate': this.driftRate,
+          'pitchAcuity': this.pitchAcuity,
+          'tempoAcuity': this.tempoAcuity,
+          'grooveSec': this.grooveSec,
           'amps': this.amps.likes,
           'gridArgs': this.grids.map(function(g){
                 return [g.freq.numer, g.freq.denom, g.base.numer, g.base.denom];
@@ -147,7 +178,7 @@ Rhythm.prototype = {
         });
     clock.onStop(function(){
           running = false;
-          rhythmworker.postMessage({'cmd':'profile'});
+          playerworker.postMessage({'cmd':'profile'});
         });
   }
 };
@@ -160,70 +191,24 @@ var context;
 var initPlotting = function () {
   if (canvas !== undefined) return;
 
-  canvas = document.getElementById('canvas');
+  canvas = $('<canvas>').css({
+        'position':'fixed',
+        'width': '100%',
+        'height': '100%',
+        'left': '0%',
+        'top': '0%'
+      }).appendTo(body)[0];
+
+  context = canvas.getContext('2d');
+
   $(window).resize(function(){
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
       }).resize();
-
-  context = canvas.getContext('2d');
 };
-
-var plotTrajectories = function (grids) {
-
-  initPlotting();
-
-  var width = canvas.width;
-  var height = canvas.height;
-
-  var drawLine = function (x0, y0, x1, y1, opacity) {
-    context.beginPath();
-    context.moveTo(x0 * width, (1 - y0) * height);
-    context.lineTo(x1 * width, (1 - y1) * height);
-    context.strokeStyle = 'rgba(255,255,255,' + opacity + ')';
-    context.stroke();
-  };
-
-  for (var i = 0, I = grids.length; i < I; ++i) {
-    var grid = grids[i];
-
-    var norm = grid.norm();
-    var opacity = Math.pow(1 / norm, 1);
-
-    var freq = grid.freq;
-    var base = grid.base;
-
-    var x0 = 0;
-    var y0 = base.toNumber();
-    var x1 = 1;
-    var y1 = y0 + freq.toNumber();
-
-    while (y1 > 0) {
-      drawLine(x0, y0, x1, y1, opacity);
-      y0 -= 1;
-      y1 -= 1;
-    }
-  }
-};
-
-// TODO switch from polar to cylindrical coordinates cut at the downbeat,
-// visualizing the downbeat on either side:
-//  
-//   0    11 1 2 1 3 2 34    1
-//   -    -- - - - - - --    -
-//   1    54 3 5 2 5 3 45    1
-//
-//   o         . o .         o  \   <- higher tempo
-//   )     o O o o o O o     (   |  rhythm on top
-//   > . .Oo O O O O O oO. . <   |
-//   o....oO.O.o.O.o.O.Oo....o   |  <- lower tempo
-//                               |
-//   | |||| ||| | | |||| || ||   |  rhythm on bottom
-//   put a keyboard underneath  /
-//
 
 /** @constructor */
-var PhasePlotter = function (grids, tempoHz, amps) {
+var Plotter = function (grids, tempoHz, amps) {
 
   initPlotting();
 
@@ -258,7 +243,7 @@ var PhasePlotter = function (grids, tempoHz, amps) {
   }
 };
 
-PhasePlotter.prototype = {
+Plotter.prototype = {
 
   radiusScale: config.plot.circleRadiusScale,
 
@@ -314,21 +299,21 @@ PhasePlotter.prototype = {
   start: function (clock, tempoKhz) {
 
     var tempoKhz = this.tempoHz / 1000;
-    var phasePlotter = this;
+    var plotter = this;
     var frameCount = 1;
 
-    phasePlotter.plot(0);
+    plotter.plot(0);
 
     clock.continuouslyDo(function(timeMs){
-          phasePlotter.plot(timeMs * tempoKhz);
+          plotter.plot(timeMs * tempoKhz);
           frameCount += 1;
         }, 1000 / config.plot.framerateHz);
     clock.onStop(function(timeMs){
           var framerate = frameCount * 1000 / timeMs;
           log('plotting framerate = ' + framerate.toFixed(1) + ' Hz');
         });
-    $(window).on('resize.phasePlotter', function () {
-          phasePlotter.plot(clock.now() * tempoKhz);
+    $(window).on('resize.plotter', function () {
+          plotter.plot(clock.now() * tempoKhz);
           if (clock.running) frameCount += 1;
         });
   }
@@ -421,28 +406,23 @@ Synthesizer.prototype = {
 // Main
 
 $(document).ready(function(){
-  var initStartTime = Date.now();
 
   if (window.location.hash && window.location.hash.slice(1) === 'test') {
     test.runAll();
-
-    var grids = RatGrid.ball(config.rhythm.radius);
-    plotTrajectories(grids);
-
     return;
   }
 
-  var rhythm = new Rhythm();
-  var grids = rhythm.getGrids();
-  var tempoHz = rhythm.getTempoHz();
-  var amps = rhythm.getAmps();
+  var player = new Player();
+  var grids = player.getGrids();
+  var tempoHz = player.getTempoHz();
+  var amps = player.getAmps();
 
-  var phasePlotter = new PhasePlotter(grids, tempoHz, amps);
+  var plotter = new Plotter(grids, tempoHz, amps);
   var synthesizer = new Synthesizer(grids, tempoHz, amps);
 
   var clock = new Clock();
-  rhythm.start(clock);
-  phasePlotter.start(clock);
+  player.start(clock);
+  plotter.start(clock);
   synthesizer.start(clock);
 
   var toggleRunning = function () { clock.toggleRunning(); };
@@ -459,11 +439,14 @@ $(document).ready(function(){
           case 32: // spacebar
             if (clock.running) {
               var timeMs = Date.now() - clock.beginTime;
-              rhythm.addAmp(timeMs);
+              player.addAmp(timeMs);
             }
             e.preventDefault();
             break;
         }
       });
+
+  // TODO synthesizer.ready(toggleRunning());
+  //   or put up a titlepage banner or something
 });
 
