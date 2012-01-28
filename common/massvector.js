@@ -10,7 +10,15 @@
 
 /** @constructor */
 var MassVector = function (init) {
-  this.likes = init === undefined ? [] : new Array(init);
+  if (init instanceof Array) {
+    this.likes = init.slice();
+  } else if (init instanceof Number) {
+    this.likes = new Array(init);
+  } else {
+    assert(init === undefined,
+        'bad MassVector initializer type: ' + (typeof init));
+    this.likes = [];
+  }
 };
 
 MassVector.prototype = {
@@ -43,7 +51,8 @@ MassVector.prototype = {
 
   dot: function (values) {
     var likes = this.likes;
-    //assert(values.length === likes.length, 'mismatched length in MassVector.dot');
+    //assertEqual(values.length, likes.length,
+    //    'mismatched length in MassVector.dot');
     var result = 0;
     for (var i = 0, I = likes.length; i < I; ++i) {
       result += likes[i] * values[i];
