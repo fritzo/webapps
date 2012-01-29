@@ -17,39 +17,23 @@ var test = function (title, callback) {
   test._all.push(callback);
 };
 test._all = [];
-test.runAll = function () {
-  testing = true;
+test.runAll = function (onExit) {
 
   var $log = $('<div>')
     .attr({id:'testLog', title:'test results'})
     .css({
           'position': 'absolute',
-          'width': '80%',
+          'width': '100%',
           'top': '0%',
-          'left': '10%',
+          'left': '0%',
           'text-align': 'left',
           'color': 'black',
           'background-color': 'white',
           'border': 'solid 8px white',
-          'border-radius': '16px',
           'font-size': '10pt',
           'font-family': 'Courier,Courier New,Nimbus Mono L,fixed,monospace',
           'z-index': '99'
         })
-    .appendTo(document.body);
-  var $shadow = $('<div>')
-    .css({
-          'position': 'fixed',
-          'width': '100%',
-          'height': '100%',
-          'top': '0%',
-          'left': '0%',
-          'background-color': 'black',
-          'opacity': '0.5',
-          'z-index': '98'
-        })
-    .attr({title:'click to hide test results'})
-    .click(function(){ $log.hide(); $shadow.hide(); })
     .appendTo(document.body);
 
   var oldLog = log;
@@ -58,7 +42,37 @@ test.runAll = function () {
     oldLog(message);
   };
 
+  if (onExit !== undefined) {
+
+    $log.css({
+          'width': '80%',
+          'left': '10%',
+          'border-radius': '16px',
+          });
+
+    var $shadow = $('<div>')
+      .css({
+            'position': 'fixed',
+            'width': '100%',
+            'height': '100%',
+            'top': '0%',
+            'left': '0%',
+            'background-color': 'black',
+            'opacity': '0.5',
+            'z-index': '98'
+          })
+      .attr({title:'click to exit test results'})
+      .click(function(){
+            $log.remove();
+            $shadow.remove();
+            testing = false;
+            onExit();
+          })
+      .appendTo(document.body);
+  }
+
   log('[ Running ' + test._all.length + ' unit tests ]');
+  testing = true;
 
   var failCount = 0;
   for (var i = 0; i < test._all.length; ++i) {
@@ -85,8 +99,5 @@ test.runAll = function () {
           'border-color': '#aaffaa'
         });
   }
-
-  // The variable 'testing' remains 'true' for deferred tests
-  // and normal program execition.
 };
 

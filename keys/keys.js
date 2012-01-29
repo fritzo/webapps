@@ -451,8 +451,11 @@ test('web worker echo', function(){
 
 /** @constructor */
 var Keyboard = function (harmony, synthesizer) {
+
+  var mockSynthesizer = {playOnset : function(){}};
+
   this.harmony = harmony;
-  this.synthesizer = synthesizer;
+  this.synthesizer = synthesizer || mockSynthesizer;
   this.delayMs = 1000 / config.keyboard.updateHz;
 
   this.canvas = $('#canvas')[0];
@@ -575,9 +578,7 @@ Keyboard.prototype = {
 
   onclick: function (index) {
     this.harmony.updateAddMass(index, config.synth.clickGain);
-    if (this.synthesizer !== undefined) {
-      this.synthesizer.playOnset(index, 1);
-    }
+    this.synthesizer.playOnset(index, 1);
   },
   onswipe: function (indices) {
     this._swiped = true;
@@ -1497,26 +1498,14 @@ test('main', function(){
   harmony.stop();
 });
 
-$(document).ready(function(){
-
-  if (!verifyBrowser()) return;
+var main = function () {
 
   var canvas = $('#canvas')[0];
   var $style = $('#style');
   var style = config.keyboard.defaultStyle;
-  $(window).resize(function(){
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-      }).resize();
 
   if (window.location.hash) {
-    if (window.location.hash.substr(1) === 'test') {
-      document.title = 'The Rational Keyboard - Unit Test';
-      $('#toolbar').hide();
-      test.runAll();
-      return;
-    }
-    else if (window.location.hash.substr(1,6) === 'style=') {
+    if (window.location.hash.substr(1,6) === 'style=') {
       style = window.location.hash.substr(7);
     }
     else if (window.location.hash.substr(1,7) === 'random=') {
@@ -1588,5 +1577,31 @@ $(document).ready(function(){
       });
 
   setTimeout(startRunning, 1000);
+};
+
+$(function(){
+
+  if (!verifyBrowser()) return;
+
+  var canvas = $('#canvas')[0];
+  $(window).resize(function(){
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }).resize();
+
+  if (window.location.hash && window.location.hash.substr(1) === 'test') {
+
+    document.title = 'The Rational Keyboard - Unit Test';
+    test.runAll(function(){
+          document.title = 'The Rational Keyboard';
+          window.location.hash = '';
+          main();
+        });
+
+  } else {
+
+    main();
+
+  }
 });
 

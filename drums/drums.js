@@ -383,11 +383,7 @@ Synthesizer.prototype = {
 //------------------------------------------------------------------------------
 // Main
 
-$(document).ready(function(){
-
-  if (window.location.hash && window.location.hash.slice(1) === 'test') {
-    test.runAll();
-  }
+var main = function () {
 
   var rhythm = new Rhythm();
   var grids = rhythm.getGrids();
@@ -422,5 +418,23 @@ $(document).ready(function(){
             break;
         }
       });
+};
+
+$(function(){
+
+  if (window.location.hash && window.location.hash.slice(1) === 'test') {
+
+    document.title = 'The Rational Drums - Unit Test';
+    test.runAll(function () {
+          window.location.hash = '';
+          document.title = 'The Rational Drums';
+          main();
+        });
+
+  } else {
+
+    main();
+
+  }
 });
 
