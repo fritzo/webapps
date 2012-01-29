@@ -160,50 +160,13 @@ var context;
 var initPlotting = function () {
   if (canvas !== undefined) return;
 
-  canvas = document.getElementById('canvas');
+  canvas = $('#canvas')[0];
   $(window).resize(function(){
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
       }).resize();
 
   context = canvas.getContext('2d');
-};
-
-var plotTrajectories = function (grids) {
-
-  initPlotting();
-
-  var width = canvas.width;
-  var height = canvas.height;
-
-  var drawLine = function (x0, y0, x1, y1, opacity) {
-    context.beginPath();
-    context.moveTo(x0 * width, (1 - y0) * height);
-    context.lineTo(x1 * width, (1 - y1) * height);
-    context.strokeStyle = 'rgba(255,255,255,' + opacity + ')';
-    context.stroke();
-  };
-
-  for (var i = 0, I = grids.length; i < I; ++i) {
-    var grid = grids[i];
-
-    var norm = grid.norm();
-    var opacity = Math.pow(1 / norm, 1);
-
-    var freq = grid.freq;
-    var base = grid.base;
-
-    var x0 = 0;
-    var y0 = base.toNumber();
-    var x1 = 1;
-    var y1 = y0 + freq.toNumber();
-
-    while (y1 > 0) {
-      drawLine(x0, y0, x1, y1, opacity);
-      y0 -= 1;
-      y1 -= 1;
-    }
-  }
 };
 
 // TODO switch from polar to cylindrical coordinates cut at the downbeat,
@@ -421,15 +384,9 @@ Synthesizer.prototype = {
 // Main
 
 $(document).ready(function(){
-  var initStartTime = Date.now();
 
   if (window.location.hash && window.location.hash.slice(1) === 'test') {
     test.runAll();
-
-    var grids = RatGrid.ball(config.rhythm.radius);
-    plotTrajectories(grids);
-
-    return;
   }
 
   var rhythm = new Rhythm();

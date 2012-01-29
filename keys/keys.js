@@ -455,7 +455,7 @@ var Keyboard = function (harmony, synthesizer) {
   this.synthesizer = synthesizer;
   this.delayMs = 1000 / config.keyboard.updateHz;
 
-  this.canvas = document.getElementById('canvas');
+  this.canvas = $('#canvas')[0];
   this.context = this.canvas.getContext('2d');
 
   this.running = false;
@@ -1501,7 +1501,7 @@ $(document).ready(function(){
 
   if (!verifyBrowser()) return;
 
-  var canvas = document.getElementById('canvas');
+  var canvas = $('#canvas')[0];
   var $style = $('#style');
   var style = config.keyboard.defaultStyle;
   $(window).resize(function(){

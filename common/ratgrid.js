@@ -174,6 +174,8 @@ RatGrid.dist = function (lhs, rhs) {
 };
 
 /**
+ * TODO generalize to different sharpness in lhs, rhs
+ *
  * @param {RatGrid}
  * @param {RatGrid}
  * @param {number}
@@ -279,7 +281,7 @@ test('RatGrid.dist symmetry', function(){
   }
 });
 
-test('RatGrid.ball', function(){
+test('RatGrid.ball', function () {
 
   var radius = 4;
   var rationalBall = Rational.ball(radius);
@@ -310,5 +312,54 @@ test('RatGrid.ball', function(){
     assert(commonPeriod % period === 0,
         'common period fails for grid ' + grid + ' with period ' + period);
   }
+});
+
+test('RatGrid trajectory plot', function ($log) {
+
+  var grids = RatGrid.ball(10);
+
+  var canvas = $('<canvas>')[0];
+  var context = canvas.getContext('2d');
+
+  var width = canvas.width = 512;
+  var height = canvas.height = 512;
+
+  context.fillStyle = 'white';
+  context.fillRect(0,0,width,height);
+
+  var drawLine = function (x0, y0, x1, y1, opacity) {
+    context.beginPath();
+    context.moveTo(x0 * width, (1 - y0) * height);
+    context.lineTo(x1 * width, (1 - y1) * height);
+    context.strokeStyle = 'rgba(0,0,0,' + opacity + ')';
+    context.stroke();
+  };
+
+  for (var i = 0, I = grids.length; i < I; ++i) {
+    var grid = grids[i];
+
+    var norm = grid.norm();
+    var opacity = Math.pow(1 / norm, 1);
+
+    var freq = grid.freq;
+    var base = grid.base;
+
+    var x0 = 0;
+    var y0 = base.toNumber();
+    var x1 = 1;
+    var y1 = y0 + freq.toNumber();
+
+    while (y1 > 0) {
+      drawLine(x0, y0, x1, y1, opacity);
+      y0 -= 1;
+      y1 -= 1;
+    }
+  }
+
+  $('<p>')
+      .css('text-align', 'center')
+      .append($('<h2>').text('Trajectories should have Z2 x Z2 symmetry:'))
+      .append(canvas)
+      .appendTo($log);
 });
 

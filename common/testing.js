@@ -18,56 +18,53 @@ var test = function (title, callback) {
 };
 test._all = [];
 test.runAll = function () {
+  testing = true;
 
-  // TODO remove dependency on jQuery
-  $('<style type=text/css>#testLog p{margin: 0px;}</style>').appendTo('head');
-  var $log = $(document.createElement('div'))
+  var $log = $('<div>')
     .attr({id:'testLog', title:'test results'})
     .css({
-          position: 'absolute',
-          width: '80%',
-          top: '0%',
-          left: '10%',
+          'position': 'absolute',
+          'width': '80%',
+          'top': '0%',
+          'left': '10%',
           'text-align': 'left',
-          color: 'black',
+          'color': 'black',
           'background-color': 'white',
-          border: 'solid 8px white',
+          'border': 'solid 8px white',
           'border-radius': '16px',
-          opacity: '0.8',
           'font-size': '10pt',
           'font-family': 'Courier,Courier New,Nimbus Mono L,fixed,monospace',
           'z-index': '99'
         })
-    .appendTo('body');
+    .appendTo(document.body);
   var $shadow = $('<div>')
     .css({
-          position: 'fixed',
-          width: '100%',
-          height: '100%',
-          top: '0%',
-          left: '0%',
+          'position': 'fixed',
+          'width': '100%',
+          'height': '100%',
+          'top': '0%',
+          'left': '0%',
           'background-color': 'black',
-          opacity: '0.5',
+          'opacity': '0.5',
           'z-index': '98'
         })
     .attr({title:'click to hide test results'})
     .click(function(){ $log.hide(); $shadow.hide(); })
-    .appendTo('body');
+    .appendTo(document.body);
 
   var oldLog = log;
   log = function (message) {
-    $(document.createElement('pre')).text(message).appendTo($log);
+    $('<pre>').text(message).appendTo($log);
     oldLog(message);
   };
 
   log('[ Running ' + test._all.length + ' unit tests ]');
-  testing = true;
 
   var failCount = 0;
   for (var i = 0; i < test._all.length; ++i) {
     var callback = test._all[i];
     try {
-      callback();
+      callback($log);
     }
     catch (err) {
       log('FAILED ' + callback.title + '\n  ' + err);
@@ -88,5 +85,8 @@ test.runAll = function () {
           'border-color': '#aaffaa'
         });
   }
+
+  // The variable 'testing' remains 'true' for deferred tests
+  // and normal program execition.
 };
 
