@@ -13,54 +13,86 @@ importScripts('../common/safety.js');
 importScripts('../common/wavencoder.js');
 
 //------------------------------------------------------------------------------
-// Commands
+// Data
+
+var tempoHz;
+var pitchHz;
+var sharpness;
+
+var freqs;
+var gridFreqs;
+var gridBases;
+var gain;
+var cyclesPerBeat;
+var tempo;
+var omega;
+
+var T;
+var F;
+var G;
+var FG;
+
+var wavEncoder;
+var samples;
+
+var profileCount = 0;
+var profileElapsedMs = 0;
+var initialized = false;
+  
+//------------------------------------------------------------------------------
+// Methods
 
 var init = function (data) {
+  var profileStart = Date.now();
 
-  var tempoHz = data['tempoHz'];
-  var middleCHz = 261.625565; // middle C
-  self.cyclesPerBeat = data['cyclesPerBeat'];
-  self.tempo = tempoHz / WavEncoder.defaults.sampleRateHz;
-  self.omega = 2 * Math.PI * middleCHz / tempoHz;
-  self.freqs = data['freqs'];
-  self.bases = data['bases'];
-  self.gain = data['gain'];
+  tempoHz = data['tempoHz'];
+  pitchHz = data['pitchHz'];
+  sharpness = data['sharpness'];
+  cyclesPerBeat = data['cyclesPerBeat'];
+  gain = data['gain'];
 
-  assert(self.tempo > 0, 'bad tempo : ' + self.tempo);
-  assertEqual(freqs.length, bases.length, 'freqs size is not same as bases');
+  assert(tempoHz > 0, 'bad tempoHz : ' + tempoHz);
+  assert(pitchHz > 0, 'bad pitchHz : ' + pitchHz);
+  assert(cyclesPerBeat > 0, 'bad cyclesPerBeat: ' + cyclesPerBeat);
+  assert(gain > 0, 'bad gain: ' + gain);
 
-  self.T = Math.round(1 / self.tempo / self.cyclesPerBeat);
-  self.F = self.freqs.length;
-  self.wavEncoder = new WavEncoder(self.T);
-  self.samples = new Array(self.T);
+  tempo = tempoHz / WavEncoder.defaults.sampleRateHz;
+  omega = 2 * Math.PI * pitchHz / WavEncoder.defaults.sampleRateHz;
 
-  self.profileCount = 0;
-  self.profileElapsedMs = 0;
+  freqs = data['freqs'];
+  gridFreqs = data['gridFreqs'];
+  gridBases = data['gridBases'];
 
-  self.initialized = true;
+  assertEqual(gridFreqs.length, gridBases.length,
+      'gridFreqs size is not same as gridBases');
+
+  T = Math.round(1 / (tempo * cyclesPerBeat));
+  F = freqs.length;
+  G = gridFreqs.length;
+  FG = F * G;
+
+  wavEncoder = new WavEncoder(T);
+  samples = new Array(T);
+
+  initialized = true;
+  log('initialized in ' + ((Date.now() - profileStart) / 1000) + ' sec');
 };
 
 var synthesize = function (data) {
-  assert(self.initialized, 'worker has not been initialized');
+  assert(initialized, 'worker has not been initialized');
 
   var amps = data['amps'];
-  assertEqual(amps.length, self.F, 'amps has wrong length');
+  assertEqual(amps.length, FG, 'amps has wrong length');
 
   var cycle = data['cycle'];
   assertEqual(cycle, Math.round(cycle), 'bad cycle number: ' + cycle);
-  var beat = cycle / self.cyclesPerBeat;
+  var beat = cycle / cyclesPerBeat;
 
-  var tempo = self.tempo;
-  var omega = self.omega;
-  var freqs = self.freqs;
-  var bases = self.bases;
-  var F = self.F;
-  var T = self.T;
-  var wavEncoder = self.wavEncoder;
-  var samples = self.samples;
-
+  var sustain = Math.exp(-sharpness);
+  var sqrt = Math.sqrt;
   var max = Math.max;
   var sin = Math.sin;
+  var pow = Math.pow;
 
   // TODO sort & clip ball WRT amp
 
@@ -68,32 +100,37 @@ var synthesize = function (data) {
     samples[t] = 0;
   }
 
-  for (var f = 0; f < F; ++f) {
-    var amp = Math.sqrt(amps[f]) * self.gain;
-    if (!(amp > 0)) continue;
+  for (var g = 0; g < G; ++g) {
+    var gridFreq = gridFreqs[f];
+    var gridBase = gridBases[f];
+    var phase = (gridFreq * beat + gridBase) % 1;
+    var dphase = gridFreq * tempo;
 
-    var freq = freqs[f];
-    var base = bases[f];
+    for (var f = 0; f < F; ++f) {
+      var fg = G * f + g;
 
-    var phase = (freq * beat + base) % 1;
-    var dphase = freq * tempo;
+      var amp = sqrt(amps[fg]) * gain;
+      if (!(amp > 0)) continue; // TODO set a threshold
 
-    for (var t = 0; t < T; ++t) {
-      var envelope = max(0, 1 - 7 * phase);
-      if (envelope > 0) {
-        samples[t] += amp * envelope * sin(omega * phase);
+      var freq = omega * freqs[f];
+
+      for (var t = 0; t < T; ++t) {
+        var envelope = pow(sustain, phase);
+        if (envelope > 0) {
+          samples[t] += amp * envelope * sin(omega * t);
+        }
+        phase = (phase + dphase) % 1;
       }
-      phase = (phase + dphase) % 1;
     }
   }
 
-  return self.wavEncoder.encode(samples);
+  return wavEncoder.encode(samples);
 };
 
 //------------------------------------------------------------------------------
-// Main message handler
+// Message handler
 
-self.addEventListener('message', function (e) {
+addEventListener('message', function (e) {
   try {
     var data = e['data'];
     switch (data['cmd']) {
@@ -105,13 +142,13 @@ self.addEventListener('message', function (e) {
       case 'synthesize':
         var profileStartTime = Date.now();
         var uri = synthesize(data['data']);
-        self.profileCount += 1;
-        self.profileElapsedMs += Date.now() - profileStartTime;
-        self.postMessage({'type':'wave', 'data':uri});
+        profileCount += 1;
+        profileElapsedMs += Date.now() - profileStartTime;
+        postMessage({'type':'wave', 'data':uri});
         break;
 
       case 'profile':
-        var meanTime = self.profileElapsedMs / self.profileCount / 1000;
+        var meanTime = profileElapsedMs / (profileCount * 1000);
         log('mean synthesis time = ' + meanTime.toFixed(3));
         break;
 
@@ -120,7 +157,7 @@ self.addEventListener('message', function (e) {
     }
   }
   catch (err) {
-    self.postMessage({'type':'error', 'data':err.toString()});
+    postMessage({'type':'error', 'data':err.toString()});
   }
 }, false);
 

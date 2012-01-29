@@ -20,6 +20,7 @@ importScripts('../common/massvector.js');
 
 var pitchAcuity;
 var tempoAcuity;
+var sharpness;
 var attackSec;
 var sustainSec;
 var grooveSec;
@@ -66,7 +67,7 @@ var init = function (data) {
   FG = F * G;
 
   amps = new MassVector(data['amps']);
-  assertEqual(amps.likes.length, FG, 'amps vector has wrong size:');
+  assertLength(amps.likes, FG, 'amps');
 
   freqEnergyMatrix = new Array(F);
   for (var f1 = 0; f1 < F; ++f1) {
@@ -135,7 +136,7 @@ var getEnergy = function (mass) {
 
   // TODO cache data structures to reduce gc load
 
-  assertEqual(mass.length, FG, 'mass vector has wrong size:');
+  assertLength(mass, FG, 'mass');
 
   var total = 0;
   for (var fg = 0; fg < FG; ++fg) {
@@ -198,13 +199,13 @@ var update = function (data) {
   var likes = amps.likes;
 
   var damps = data['damps'];
-  assertEqual(damps.length, FG, 'damps vector has wrong size:');
+  assertLength(damps, FG, 'damps');
 
   for (var fg = 0; fg < FG; ++fg) {
     likes[fg] += damps[fg];
   }
 
-  var energy = getEnergy(amps);
+  var energy = getEnergy(amps.likes);
   var prior = MassVector.boltzmann(energy);
   var drift = 1 - Math.exp(-timestepSec / grooveSec);
   amps.shiftTowards(prior, drift);

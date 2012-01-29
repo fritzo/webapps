@@ -21,17 +21,18 @@ var config = {
     pitchRadius: Math.sqrt(24*24 + 1*1 + 1e-4), // barely including 1/24
     tempoRadius: Math.sqrt(8*8 + 1*1 + 1e-4),   // barely including 1/8 t + 0/1
 
-    centerFreqHz: 261.625565, // middle C
+    pitchHz: 261.625565, // middle C
     tempoHz: 1, // TODO allow real-time tempo control
 
     pitchAcuity: 3,
     tempoAcuity: 2.5,
+    sharpness: 3,
+    // TODO add pitch-tempo prior to exclude fast low notes
 
     attackSec: 0.1,
     sustainSec: 1.0,
     grooveSec: 30.0,
 
-    sharpness: 4, // DEPRICATED
     updateRateHz: 100,
 
     none: undefined
@@ -61,31 +62,38 @@ var Player = function () {
       '\n   attackSec = ' + config.player.attackSec +
       '\n   updateRateHz = ' + config.player.updateRateHz);
 
-  this.acuity = config.player.acuity;
+  this.pitchAcuity = config.player.pitchAcuity;
+  this.tempoAcuity = config.player.tempoAcuity;
+  this.sharpness = config.player.sharpness;
   this.attackSec = config.player.attackSec;
   this.sustainSec = config.player.sustainSec;
   this.grooveSec = config.player.grooveSec;
-  this.sharpness = config.player.sharpness;
 
+  var freqs = this.freqs = Rational.ball(config.player.pitchRadius);
   var grids = this.grids = RatGrid.ball(config.player.tempoRadius);
-  var period = RatGrid.commonPeriod(grids);
-  log('using ' + grids.length + ' grids with common period ' + period);
+  log('using ' + freqs.length + ' freqs x ' + grids.length + ' grids');
 
+  this.pitchHz = config.player.pitchHz;
   this.tempoHz = config.player.tempoHz;
   this.minDelay = 1000 / config.player.updateRateHz;
 
+  var fCenter = (freqs.length - 1) / 2;
+  var gDownBeat = 0;
   assert(grids[0].freq.numer === 1
       && grids[0].freq.denom === 1
       && grids[0].base.numer === 0,
       'downbeat was not in expected position');
-  this.amps = MassVector.degenerate(0, grids.length);
+  var fgInitial = grids.length * fCenter + gDownBeat;
+  this.amps = MassVector.degenerate(fgInitial, freqs.length * grids.length);
 
   this.damps = MassVector.zero(this.amps.likes.length);
 };
 
 Player.prototype = {
 
+  getFreqs: function () { return this.freqs; },
   getGrids: function () { return this.grids; },
+  getPitchHz: function () { return this.pitchHz; },
   getTempoHz: function () { return this.tempoHz; },
   getAmps: function () { return this.amps.likes; },
 
@@ -165,6 +173,7 @@ Player.prototype = {
           'tempoAcuity': this.tempoAcuity,
           'grooveSec': this.grooveSec,
           'amps': this.amps.likes,
+          'freqArgs': this.freqs.map(function(f){ return [f.numer, f.denom]; }),
           'gridArgs': this.grids.map(function(g){
                 return [g.freq.numer, g.freq.denom, g.base.numer, g.base.denom];
               })
@@ -197,7 +206,7 @@ var initPlotting = function () {
         'height': '100%',
         'left': '0%',
         'top': '0%'
-      }).appendTo(body)[0];
+      }).appendTo(document.body)[0];
 
   context = canvas.getContext('2d');
 
@@ -323,11 +332,13 @@ Plotter.prototype = {
 // Audio
 
 /** @constructor */
-var Synthesizer = function (grids, tempoHz, amps) {
+var Synthesizer = function (freqs, grids, pitchHz, tempoHz, amps) {
 
-  assertEqual(amps.length, grids.length, 'amplitude vector has wrong size');
+  assertLength(amps, freqs.length * grids.length, 'amps');
 
+  this.freqs = freqs;
   this.grids = grids;
+  this.pitchHz = pitchHz;
   this.tempoHz = tempoHz;
   this.amps = amps;
   this.cyclesPerBeat = config.synth.cyclesPerBeat;
@@ -359,10 +370,12 @@ var Synthesizer = function (grids, tempoHz, amps) {
   this.synthworker.postMessage({
     'cmd': 'init',
     'data': {
+        'pitchHz': this.pitchHz,
         'tempoHz': this.tempoHz,
+        'freqs': freqs.map(function(f){ return f.toNumber(); }),
+        'gridFreqs': grids.map(function(g){ return g.freq.toNumber(); }),
+        'gridBases': grids.map(function(g){ return g.base.toNumber(); }),
         'cyclesPerBeat': this.cyclesPerBeat,
-        'freqs': grids.map(function(grid){ return grid.freq.toNumber(); }),
-        'bases': grids.map(function(grid){ return grid.base.toNumber(); }),
         'gain': this.gain
       }
     });
@@ -405,20 +418,17 @@ Synthesizer.prototype = {
 //------------------------------------------------------------------------------
 // Main
 
-$(document).ready(function(){
-
-  if (window.location.hash && window.location.hash.slice(1) === 'test') {
-    test.runAll();
-    return;
-  }
+var main = function () {
 
   var player = new Player();
-  var grids = player.getGrids();
+  var pitchHz = player.getPitchHz();
   var tempoHz = player.getTempoHz();
+  var freqs = player.getFreqs();
+  var grids = player.getGrids();
   var amps = player.getAmps();
 
   var plotter = new Plotter(grids, tempoHz, amps);
-  var synthesizer = new Synthesizer(grids, tempoHz, amps);
+  var synthesizer = new Synthesizer(freqs, grids, pitchHz, tempoHz, amps);
 
   var clock = new Clock();
   player.start(clock);
@@ -448,5 +458,23 @@ $(document).ready(function(){
 
   // TODO synthesizer.ready(toggleRunning());
   //   or put up a titlepage banner or something
+};
+
+$(function(){
+
+  if (window.location.hash && window.location.hash.slice(1) === 'test') {
+
+    document.title = 'Splitband - Unit Test';
+    test.runAll(function(){
+          window.location.hash = '';
+          document.title = 'Splitband';
+          main();
+        });
+
+  } else {
+
+    main ();
+
+  }
 });
 
