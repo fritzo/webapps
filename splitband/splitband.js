@@ -30,7 +30,7 @@ var config = {
 
     attackSec: 0.1,
     sustainSec: 1.0,
-    grooveSec: 30.0,
+    grooveSec: 10.0,
 
     updateRateHz: 100,
 
@@ -45,6 +45,7 @@ var config = {
 
   synth: {
     cyclesPerBeat: 4,
+    numVoices: 64,
     gain: 1.0
   },
 
@@ -188,33 +189,23 @@ Player.prototype = {
 };
 
 //------------------------------------------------------------------------------
-// Plotting
-
-var canvas;
-var context;
-var initPlotting = function () {
-  if (canvas !== undefined) return;
-
-  canvas = $('<canvas>').css({
-        'position':'fixed',
-        'width': '100%',
-        'height': '100%',
-        'left': '0%',
-        'top': '0%'
-      }).appendTo(document.body)[0];
-
-  context = canvas.getContext('2d');
-
-  $(window).resize(function(){
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-      }).resize();
-};
+// Phase Plotting
 
 /** @constructor */
 var PhasePlotter = function (grids, tempoHz, sharpness, fullAmps) {
 
-  initPlotting();
+  var canvas = this.canvas = $('<canvas>').css({
+        'position': 'fixed',
+        'width': '100%',
+        'height': '50%',
+        'left': '0%',
+        'top': '0%'
+      }).appendTo(document.body)[0];
+  $(window).resize(function(){
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight / 2;
+      }).resize();
+  this.context = canvas.getContext('2d');
 
   this.grids = grids;
   this.tempoHz = tempoHz;
@@ -272,9 +263,9 @@ PhasePlotter.prototype = {
 
     assert(time >= 0, 'time is before zero: ' + time);
 
-    var sharpness = this.sharpness;
-    var width = canvas.width;
-    var height = canvas.height;
+    var context = this.context;
+    var width = this.canvas.width;
+    var height = this.canvas.height;
     var minth = Math.min(width, height);
     var x0 = width / 2;
     var y0 = height / 2;
@@ -302,11 +293,6 @@ PhasePlotter.prototype = {
       var phase = (freq * time + bases[i]) % 1;
       var pulsate = 1 / (1 + 4 * phase * (1 - phase)); // in [1/2,1]
 
-      // Version 1. opacity
-      //var opacity = ampScale * gridAmps[i] * exp(-sharpness * phase);
-      //context.fillStyle = 'rgba(255,255,255,' + opacity + ')';
-
-      // Version 2. brightness
       var rgb = round(255 * ampScale * gridAmps[i]);
       context.fillStyle = 'rgb('+rgb+','+rgb+','+rgb+')';
 
@@ -346,11 +332,16 @@ PhasePlotter.prototype = {
   }
 };
 
+//----------------------------------------------------------------------------
+// Keyboard
+
+// TODO
+
 //------------------------------------------------------------------------------
-// Audio
+// Synthesis
 
 /** @constructor */
-var Synthesizer = function (freqs, grids, pitchHz, tempoHz, amps) {
+var Synthesizer = function (freqs, grids, pitchHz, tempoHz, sharpness, amps) {
 
   assertLength(amps, freqs.length * grids.length, 'amps');
 
@@ -358,8 +349,10 @@ var Synthesizer = function (freqs, grids, pitchHz, tempoHz, amps) {
   this.grids = grids;
   this.pitchHz = pitchHz;
   this.tempoHz = tempoHz;
+  this.sharpness = sharpness;
   this.amps = amps;
   this.cyclesPerBeat = config.synth.cyclesPerBeat;
+  this.numVoices = config.synth.numVoices;
   this.gain = config.synth.gain;
 
   this.audio = undefined;
@@ -390,10 +383,12 @@ var Synthesizer = function (freqs, grids, pitchHz, tempoHz, amps) {
     'data': {
         'pitchHz': this.pitchHz,
         'tempoHz': this.tempoHz,
+        'sharpness': this.sharpness,
         'freqs': freqs.map(function(f){ return f.toNumber(); }),
         'gridFreqs': grids.map(function(g){ return g.freq.toNumber(); }),
         'gridBases': grids.map(function(g){ return g.base.toNumber(); }),
         'cyclesPerBeat': this.cyclesPerBeat,
+        'numVoices': this.numVoices,
         'gain': this.gain
       }
     });
@@ -447,7 +442,13 @@ var main = function () {
   var amps = player.amps.likes;
 
   var phasePlotter = new PhasePlotter(grids, tempoHz, sharpness, amps);
-  var synthesizer = new Synthesizer(freqs, grids, pitchHz, tempoHz, amps);
+  var synthesizer = new Synthesizer(
+      freqs,
+      grids,
+      pitchHz,
+      tempoHz,
+      sharpness,
+      amps);
 
   var clock = new Clock();
   player.start(clock);

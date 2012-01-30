@@ -24,6 +24,7 @@ var gridFreqs;
 var gridBases;
 var gain;
 var cyclesPerBeat;
+var numVoices;
 var tempo;
 var omega;
 
@@ -32,6 +33,7 @@ var F;
 var G;
 var FG;
 
+var bestIndices;
 var wavEncoder;
 var samples;
 
@@ -49,17 +51,19 @@ var init = function (data) {
   pitchHz = data['pitchHz'];
   sharpness = data['sharpness'];
   cyclesPerBeat = data['cyclesPerBeat'];
+  numVoices = data['numVoices'];
   gain = data['gain'];
 
   assert(tempoHz > 0, 'bad tempoHz : ' + tempoHz);
   assert(pitchHz > 0, 'bad pitchHz : ' + pitchHz);
   assert(cyclesPerBeat > 0, 'bad cyclesPerBeat: ' + cyclesPerBeat);
+  assert(0 < numVoices, 'bad numVoices: ' + numVoices);
   assert(gain > 0, 'bad gain: ' + gain);
 
   tempo = tempoHz / WavEncoder.defaults.sampleRateHz;
   omega = 2 * Math.PI * pitchHz / WavEncoder.defaults.sampleRateHz;
 
-  freqs = data['freqs'];
+  freqs = data['freqs'].map(function(f){ return omega * f; });
   gridFreqs = data['gridFreqs'];
   gridBases = data['gridBases'];
 
@@ -71,6 +75,9 @@ var init = function (data) {
   G = gridFreqs.length;
   FG = F * G;
 
+  assert(numVoices < FG, 'too many voices: ' + numVoices);
+
+  bestIndices = new Array(FG);
   wavEncoder = new WavEncoder(T);
   samples = new Array(T);
 
@@ -88,41 +95,50 @@ var synthesize = function (data) {
   assertEqual(cycle, Math.round(cycle), 'bad cycle number: ' + cycle);
   var beat = cycle / cyclesPerBeat;
 
+  var scaledGain = gain * freqs[0];
   var sustain = Math.exp(-sharpness);
   var sqrt = Math.sqrt;
   var max = Math.max;
   var sin = Math.sin;
   var pow = Math.pow;
 
-  // TODO sort & clip ball WRT amp
+  for (var fg = 0; fg < FG; ++fg) {
+    bestIndices[fg] = fg;
+  }
+  bestIndices.sort(function(lhs,rhs){ return amps[rhs] - amps[lhs]; });
+  assert(amps[bestIndices[0]] > amps[bestIndices[bestIndices.length-1]],
+      'bestIndices is out of order');
+  var ampThresh = Math.max(
+      amps[bestIndices[numVoices]],
+      amps[bestIndices[0]] / 10000);
 
   for (var t = 0; t < T; ++t) {
     samples[t] = 0;
   }
 
+  var components = 0;
   for (var g = 0; g < G; ++g) {
-    var gridFreq = gridFreqs[f];
-    var gridBase = gridBases[f];
+    var gridFreq = gridFreqs[g];
+    var gridBase = gridBases[g];
     var phase = (gridFreq * beat + gridBase) % 1;
     var dphase = gridFreq * tempo;
 
     for (var f = 0; f < F; ++f) {
-      var fg = G * f + g;
 
-      var amp = sqrt(amps[fg]) * gain;
-      if (!(amp > 0)) continue; // TODO set a threshold
+      var amp = amps[G * f + g];
+      if (amp < ampThresh) continue;
+      ++components;
 
-      var freq = omega * freqs[f];
+      var freq = freqs[f];
+      var scaledAmp = sqrt(amp) * scaledGain / freq;
 
       for (var t = 0; t < T; ++t) {
-        var envelope = pow(sustain, phase);
-        if (envelope > 0) {
-          samples[t] += amp * envelope * sin(omega * t);
-        }
+        samples[t] += scaledAmp * pow(sustain, phase) * sin(freq * t);
         phase = (phase + dphase) % 1;
       }
     }
   }
+  log('DEBUG synthesized ' + components + ' components');
 
   return wavEncoder.encode(samples);
 };
