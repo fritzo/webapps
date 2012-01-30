@@ -1,5 +1,6 @@
 temp*
 compiler
+linter
 build
 release
 *.tbz2

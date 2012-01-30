@@ -2,7 +2,7 @@
 #-------------------------------------------------------------------------------
 # export to public git repository
 
-R=~/rationalkeyboard/keys
+R = ~/rationalkeyboard/keys
 rationalkeyboard: FORCE
 	rm -rf $R
 	cp -rL keys $R
@@ -26,7 +26,10 @@ build:
 release:
 	mkdir release
 
-compiler:
+tools: compiler linter
+
+compiler: FORCE
+	rm -rf compiler
 	mkdir compiler
 	( test -e /tmp/closure-compiler.zip || \
 	  wget http://closure-compiler.googlecode.com/files/compiler-latest.zip \
@@ -34,15 +37,33 @@ compiler:
 	unzip /tmp/closure-compiler.zip -d compiler || \
 	rm -rf compiler
 
-COMPILE1=java -jar compiler/compiler.jar \
+linter: FORCE
+	rm -rf linter
+	mkdir linter
+	( test -e /tmp/jslint4java.zip || \
+	  wget http://jslint4java.googlecode.com/files/jslint4java-2.0.1-dist.zip \
+	    -O /tmp/jslint4java.zip ) && \
+	unzip /tmp/jslint4java.zip -d linter || \
+	rm -rf linter
+
+COMPILE1 = java -jar compiler/compiler.jar \
 	--compilation_level SIMPLE_OPTIMIZATIONS \
 	--language_in=ECMASCRIPT5_STRICT \
 	--generate_exports
 
-COMPILE2=java -jar compiler/compiler.jar \
+COMPILE2 = java -jar compiler/compiler.jar \
 	--compilation_level ADVANCED_OPTIMIZATIONS \
 	--language_in=ECMASCRIPT5_STRICT \
 	--generate_exports
+
+LINT = java -jar linter/*/*.jar --indent 2
+
+#-----------------------------------------------------------------------------
+# common
+
+lint: FORCE
+	$(lint) common
+
 
 #-------------------------------------------------------------------------------
 # live
@@ -66,6 +87,11 @@ live.min: FORCE
 #-------------------------------------------------------------------------------
 # keys
 
+keys-lint:
+	$(LINT) --predef $,Modernizr --browser keys/keys.js || true
+	$(LINT) --predef importScripts keys/onsetworker.js || true
+	$(LINT) --predef importScripts keys/synthworker.js || true
+
 keys-test: build FORCE
 	sed 's/worker\.js\>/worker.min.js/g' < keys/keys.js > build/keys.js
 	$(COMPILE2) \
@@ -78,7 +104,6 @@ keys-test: build FORCE
 	  --js=common/testing.js \
 	  --js=common/rational.js \
 	  --js=build/keys.js \
-	  --js=keys/ui.js \
 	  --js_output_file=/dev/null
 
 build/synthworker.min.js: build FORCE
@@ -131,7 +156,7 @@ clean: FORCE
 	rm -f keys.tbz2
 
 cleaner: clean FORCE
-	rm -rf compiler
+	rm -rf compiler linter
 
 FORCE:
 
