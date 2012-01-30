@@ -357,19 +357,56 @@ test('RatGrid trajectory plot', function ($log) {
 
 test('RatGrid interference plot', function ($log) {
 
+  var monteCarlo = function (
+      grid1,
+      grid2,
+      sharpness1,
+      sharpness2,
+      numSamples,
+      maxTime) {
+
+    numSamples = numSamples || 10000;
+    maxTime = maxTime || 1000;
+
+    var envelope = function (grid, sharpness) {
+
+      var freq = grid.freq.toNumber();
+      var base = grid.base.toNumber();
+      var exp = Math.exp;
+      var scale = sharpness / (1 - exp(-sharpness));
+
+      return function (t) {
+        var phase = (freq * t + base) % 1;
+        return scale * exp(-sharpness * phase);
+      };
+    };
+
+    var env1 = envelope(grid1, sharpness1);
+    var env2 = envelope(grid2, sharpness2);
+
+    var sum = 0;
+    for (var n = 0; n < numSamples; ++n) {
+      var t = Math.random() * maxTime;
+      sum += env1(t) * env2(t);
+    }
+    return sum / numSamples;
+  };
+
   var sharpness0 = 2;
   var sharpness1 = 8;
 
-  var g0 = new RatGrid(Rational.ONE, Rational.ZERO);
+  var grid0 = new RatGrid(Rational.ONE, Rational.ZERO);
 
   var X = [];
-  var Y = [];
+  var Ypredicted = [];
+  var Yobserved = [];
 
   for (var n = 0, N = 100; n < N; ++n) {
-    var g1 = new RatGrid(new Rational(2,3), new Rational(n,N));
+    var grid1 = new RatGrid(new Rational(2,3), new Rational(n,N));
 
-    X[n] = g1.base.toNumber();
-    Y[n] = RatGrid.interference(g0, g1, sharpness0, sharpness1);
+    X[n] = grid1.base.toNumber();
+    Ypredicted[n] = RatGrid.interference(grid0, grid1, sharpness0, sharpness1);
+    Yobserved[n] = monteCarlo(grid0, grid1, sharpness0, sharpness1);
   }
 
   var canvas = $('<canvas>')[0];
@@ -391,18 +428,31 @@ test('RatGrid interference plot', function ($log) {
   context.lineTo(getX(1), getY(1));
   context.stroke();
 
-  context.fillStyle = 'black';
+  context.fillStyle = 'gray';
   context.font = '10pt Helvetica';
   context.fillText('1', getX(0), getY(1.05));
   context.fillText('0', getX(0), getY(0.05));
 
   context.strokeStyle = 'red';
-  context.beginPath();
-  context.moveTo(getX(X[0]), getY(Y[0]));
+  var radius = 0.5 * width / N;
+  var twoPi = 2 * Math.PI;
   for (var n = 1, N = 100; n < N; ++n) {
-    context.lineTo(getX(X[n]), getY(Y[n]));
+    context.beginPath();
+    context.arc(getX(X[n]), getY(Yobserved[n]), radius, twoPi, false);
+    context.stroke();
+  }
+  context.fillStyle = 'red';
+  context.fillText('observed', getX(0.5), getY(0.45));
+
+  context.strokeStyle = 'black';
+  context.beginPath();
+  context.moveTo(getX(X[0]), getY(Ypredicted[0]));
+  for (var n = 1, N = 100; n < N; ++n) {
+    context.lineTo(getX(X[n]), getY(Ypredicted[n]));
   }
   context.stroke();
+  context.fillStyle = 'black';
+  context.fillText('predicted', getX(0.5), getY(0.55));
 
   $('<p>')
       .css('text-align', 'center')
