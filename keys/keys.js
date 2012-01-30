@@ -577,8 +577,9 @@ Keyboard.prototype = {
   },
 
   onclick: function (index) {
-    this.harmony.updateAddMass(index, config.synth.clickGain);
-    this.synthesizer.playOnset(index, 1);
+    var gain = config.synth.clickGain;
+    this.harmony.updateAddMass(index, gain);
+    this.synthesizer.playOnset(index, gain);
   },
   onswipe: function (indices) {
     this._swiped = true;

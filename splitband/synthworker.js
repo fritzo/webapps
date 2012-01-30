@@ -138,7 +138,9 @@ var synthesize = function (data) {
       }
     }
   }
-  log('DEBUG synthesized ' + components + ' components');
+  //log('DEBUG synthesized ' + components + ' components');
+
+  // TODO slightly window the sample to avoid clicks
 
   return wavEncoder.encode(samples);
 };
