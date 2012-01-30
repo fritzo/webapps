@@ -64,34 +64,6 @@ RatGrid.prototype = {
     return result;
   },
 
-  /**
-   * see notes/ideas/music (2012:01:26-27) (N1.Q1.N1) for derivation
-   *
-   * @param {number}
-   * @returns {number}
-   */
-  interference: function (sharpness) {
-    var freq = this.freq;
-    var base = this.base;
-
-    var s = sharpness;
-    var n = freq.denom;
-    var m = freq.numer;
-    var b = base.toNumber();
-
-    var exp = Math.exp;
-
-    return ( s
-           * ( (1 - exp(-s / n)) * exp(-s * b)
-             + (1 - exp(-s / m)) * exp(s * b * m / n)
-             )
-           / ( (m + n)
-             * (1 - exp(-s))
-             * (1 - exp(-s / (m * n)))
-             )
-           );
-  },
-
   /** @returns {number} */
   period: function () {
     return this.freq.denom;
@@ -130,16 +102,14 @@ RatGrid.equal = function (lhs, rhs) {
  */
 RatGrid.relative = function (lhs, rhs) {
 
-  if (Rational.cmp(lhs.base, rhs.base) < 0) {
-    var temp = lhs;
-    lhs = rhs;
-    rhs = temp;
-  }
-
   var lf = lhs.freq;
   var lb = lhs.base;
   var rf = rhs.freq;
   var rb = rhs.base;
+
+  if (Rational.cmp(lb, rb) < 0) {
+    lb = new Rational(lb.numer + lb.denom, lb.denom);
+  }
 
   var freq = Rational.div(lf, rf);
   var base = Rational.div(new Rational.sub(lb, rb), rf);
@@ -174,15 +144,38 @@ RatGrid.dist = function (lhs, rhs) {
 };
 
 /**
- * TODO generalize to different sharpness in lhs, rhs
+ * see notes/ideas/music (2012:01:26-29) (N1.Q1.N1) for derivation
  *
  * @param {RatGrid}
+ * @param {number}
  * @param {RatGrid}
  * @param {number}
  * @returns {number}
  */
-RatGrid.interference = function (lhs, rhs, sharpness) {
-  return RatGrid.relative(lhs, rhs).interference(sharpness);
+RatGrid.interference = function (
+    grid1, sharpness1,
+    grid2, sharpness2) {
+
+  assert(sharpness1 > 0, 'bad sharpness1: ' + sharpness1);
+  assert(sharpness2 > 0, 'bad sharpness2: ' + sharpness2);
+
+  var normalForm = RatGrid.relative(grid1, grid2);
+
+  var freq = normalForm.freq;
+  var base = normalForm.base;
+
+  var m = freq.denom;
+  var n = freq.numer;
+  var bm = base.toNumber() * m % 1;
+  var s1 = sharpness1;
+  var s2 = sharpness2;
+
+  var exp = Math.exp;
+
+  var decreasing = exp(-s1 / m * bm) / (1 - exp(-s1 / m));
+  var increasing = exp(s2 / n * (bm - 1)) / (1 - exp(-s2 / n));
+
+  return (decreasing + increasing) / (m / s1 + n / s2) ;
 };
 
 /**
