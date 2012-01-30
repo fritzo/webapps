@@ -217,13 +217,14 @@ var initPlotting = function () {
 };
 
 /** @constructor */
-var Plotter = function (grids, tempoHz, amps) {
+var PhasePlotter = function (grids, tempoHz, fullAmps) {
 
   initPlotting();
 
   this.grids = grids;
   this.tempoHz = tempoHz;
-  this.amps = amps;
+  this.fullAmps = fullAmps;
+  this.gridAmps = new Array(grids.length);
 
   var freqs = this.freqs = grids.map(function(g){ return g.freq.toNumber(); });
   var bases = this.bases = grids.map(function(g){ return g.base.toNumber(); });
@@ -252,12 +253,20 @@ var Plotter = function (grids, tempoHz, amps) {
   }
 };
 
-Plotter.prototype = {
+PhasePlotter.prototype = {
 
   radiusScale: config.plot.circleRadiusScale,
 
   realToUnit: function (x) {
     return Math.atan(Math.log(x)) / Math.PI + 0.5;
+  },
+
+  projectAmps: function () {
+    var fullAmps = this.fullAmps;
+    var gridAmps = this.gridAmps;
+    for (var fg = 0, FG = fullAmps.length, G = gridAmps.length; fg < FG; ++fg) {
+      gridAmps[fg % G] = fullAmps[fg];
+    }
   },
 
   plot: function (time) {
@@ -272,8 +281,8 @@ Plotter.prototype = {
     var x0 = (width - minth) / 2;
     var y0 = (height - minth) / 2;
 
-    var amps = this.amps;
-    var ampScale = 1 / Math.max.apply(Math, amps);
+    var gridAmps = this.gridAmps;
+    var ampScale = 1 / Math.max.apply(Math, gridAmps);
     var freqs = this.freqs;
     var bases = this.bases;
     var xPos = this.xPos;
@@ -291,7 +300,7 @@ Plotter.prototype = {
       var freq = freqs[i];
       var phase = (freq * time + bases[i]) % 1;
 
-      var opacity = ampScale * amps[i] * exp(-phase / freq);
+      var opacity = ampScale * gridAmps[i] * exp(-phase / freq);
       context.fillStyle = 'rgba(255,255,255,' + opacity + ')';
 
       var x = xPos[i] * minth + x0;
@@ -308,21 +317,23 @@ Plotter.prototype = {
   start: function (clock, tempoKhz) {
 
     var tempoKhz = this.tempoHz / 1000;
-    var plotter = this;
+    var phasePlotter = this;
     var frameCount = 1;
 
-    plotter.plot(0);
+    phasePlotter.plot(0);
 
+    // TODO reimplement for variable tempo
     clock.continuouslyDo(function(timeMs){
-          plotter.plot(timeMs * tempoKhz);
+          phasePlotter.projectAmps();
+          phasePlotter.plot(timeMs * tempoKhz);
           frameCount += 1;
         }, 1000 / config.plot.framerateHz);
     clock.onStop(function(timeMs){
           var framerate = frameCount * 1000 / timeMs;
           log('plotting framerate = ' + framerate.toFixed(1) + ' Hz');
         });
-    $(window).on('resize.plotter', function () {
-          plotter.plot(clock.now() * tempoKhz);
+    $(window).on('resize.phasePlotter', function () {
+          phasePlotter.plot(clock.now() * tempoKhz);
           if (clock.running) frameCount += 1;
         });
   }
@@ -427,12 +438,12 @@ var main = function () {
   var grids = player.getGrids();
   var amps = player.getAmps();
 
-  var plotter = new Plotter(grids, tempoHz, amps);
+  var phasePlotter = new PhasePlotter(grids, tempoHz, amps);
   var synthesizer = new Synthesizer(freqs, grids, pitchHz, tempoHz, amps);
 
   var clock = new Clock();
   player.start(clock);
-  plotter.start(clock);
+  phasePlotter.start(clock);
   synthesizer.start(clock);
 
   var toggleRunning = function () { clock.toggleRunning(); };

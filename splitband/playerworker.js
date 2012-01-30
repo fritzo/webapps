@@ -32,12 +32,12 @@ var F;
 var G;
 var FG;
 
+var energy;
 var massG;
 var massFG;
 var interMassFG;
 var tempoEnergyG;
 var pitchEnergyFG;
-var energy;
 
 var distanceFF;
 var distanceGG;
@@ -78,12 +78,12 @@ var init = function (data) {
   amps = new MassVector(data['amps']);
   assertLength(amps.likes, FG, 'amps');
 
+  energy = new Array(FG);
   massG = new Array(G);
   massFG = new Array(F);
   interMassFG = new Array(F);
   tempoEnergyG = new Array(G);
   pitchEnergyFG = new Array(F);
-  energy = new Array(FG);
   for (var f = 0; f < F; ++f) {
     massFG[f] = new Array(G);
     interMassFG[f] = new Array(G);
@@ -94,7 +94,7 @@ var init = function (data) {
   for (var f1 = 0; f1 < F; ++f1) {
     var distanceRow = distanceFF[f1] = new Array(F);
     for (var f2 = 0; f2 < F; ++f2) {
-      distanceRow[f2] = Rational.distance(freqs[f1], freqs[f2]);
+      distanceRow[f2] = Rational.distance(freqs[f1], freqs[f2]) / pitchAcuity;
     }
   }
   interferenceGG = new Array(G);
@@ -103,7 +103,7 @@ var init = function (data) {
     var distanceRow = distanceGG[g1] = new Array(G);
     var interRow = interferenceGG[g1] = new Array(G);
     for (var g2 = 0; g2 < G; ++g2) {
-      distanceRow[g2] = RatGrid.distance(grids[g1], grids[g2]);
+      distanceRow[g2] = RatGrid.distance(grids[g1], grids[g2]) / tempoAcuity;
       interRow[g2] = RatGrid.interference(grids[g1], grids[g2], sharpness);
     }
   }
@@ -122,6 +122,7 @@ var getEnergy = function (mass) {
   for (var fg = 0; fg < FG; ++fg) {
     total += mass[fg];
   }
+  assert(total > 0.5, 'unexpectedly low mass: ' + total);
   var normalize = 1 / total;
   for (var g = 0; g < G; ++g) {
     massG[g] = 0;
@@ -200,7 +201,8 @@ var update = function (data) {
   }
 
   var energy = getEnergy(amps.likes);
-  var prior = MassVector.boltzmann(energy);
+  var temperature = 1; // pitchAcuity,tempoAcuity already control temperature
+  var prior = MassVector.boltzmann(energy, temperature);
   var drift = 1 - Math.exp(-timestepSec / grooveSec);
   amps.shiftTowards(prior, drift);
 
