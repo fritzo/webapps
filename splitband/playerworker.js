@@ -32,8 +32,16 @@ var F;
 var G;
 var FG;
 
-var freqEnergyMatrix;
-var gridEnergyMatrix;
+var massG;
+var massFG;
+var interMassFG;
+var tempoEnergyG;
+var pitchEnergyFG;
+var energy;
+
+var distanceFF;
+var distanceGG;
+var interferenceGG;
 
 var amps;
 //var ampsFG;
@@ -51,6 +59,7 @@ var init = function (data) {
 
   pitchAcuity = data['pitchAcuity'];
   tempoAcuity = data['tempoAcuity'];
+  sharpness = data['sharpness'];
   attackSec = data['attackSec'];
   sustainSec = data['sustainSec'];
   grooveSec = data['grooveSec'];
@@ -69,19 +78,33 @@ var init = function (data) {
   amps = new MassVector(data['amps']);
   assertLength(amps.likes, FG, 'amps');
 
-  freqEnergyMatrix = new Array(F);
-  for (var f1 = 0; f1 < F; ++f1) {
-    var row = freqEnergyMatrix[f1] = new Array(F);
-    for (var f2 = 0; f2 < F; ++f2) {
-      row[f2] = Rational.distance(freqs[f1], freqs[f2]);
-    }
+  massG = new Array(G);
+  massFG = new Array(F);
+  interMassFG = new Array(F);
+  tempoEnergyG = new Array(G);
+  pitchEnergyFG = new Array(F);
+  energy = new Array(FG);
+  for (var f = 0; f < F; ++f) {
+    massFG[f] = new Array(G);
+    interMassFG[f] = new Array(G);
+    pitchEnergyFG[f] = new Array(G);
   }
 
-  gridEnergyMatrix = new Array(G);
+  distanceFF = new Array(F);
+  for (var f1 = 0; f1 < F; ++f1) {
+    var distanceRow = distanceFF[f1] = new Array(F);
+    for (var f2 = 0; f2 < F; ++f2) {
+      distanceRow[f2] = Rational.distance(freqs[f1], freqs[f2]);
+    }
+  }
+  interferenceGG = new Array(G);
+  distanceGG = new Array(G);
   for (var g1 = 0; g1 < G; ++g1) {
-    var row = gridEnergyMatrix[g1] = new Array(G);
+    var distanceRow = distanceGG[g1] = new Array(G);
+    var interRow = interferenceGG[g1] = new Array(G);
     for (var g2 = 0; g2 < G; ++g2) {
-      row[g2] = RatGrid.distance(grids[g1], grids[g2]);
+      distanceRow[g2] = RatGrid.distance(grids[g1], grids[g2]);
+      interRow[g2] = RatGrid.interference(grids[g1], grids[g2], sharpness);
     }
   }
 
@@ -91,102 +114,73 @@ var init = function (data) {
 
 var getEnergy = function (mass) {
 
-  // Let m(f,g) be mass and E(m) be energy.
-  // Since E(m) is quadratic in m, we assume WLOG 1 = |m| = sum f,g. m(f,g).
-  //
-  // For motivation consider first a simpler system where pitch tempo decouple
-  //
-  //   m_pitch(f) = sum g. m(f,g)
-  //   E_pitch(m_pitch) = sum f,f'. d_pitch(f,f') m_pitch(f) m_pitch(f')
-  //   
-  //   m_tempo(g) = sum f. m(f,g)
-  //   E_tempo(m_tempo) = sum g,g'. d_tempo(g,g') m_tempo(g) m_tempo(g')
-  //
-  //   E(m) = E_pitch(sum g. m(-,g)) + E_tempo(sum f. m(f,-))
-  //
-  // We can now couple the system while retaining O(F^2 G + F G^2) complexity
-  // by defining a joint distance function
-  //
-  //   d((f,g),(f',g')) = d_pitch(f,f') + d_tempo(g,g')
-  //
-  // yielding coupled energy
-  //
-  //   E(m) = sum f,g. sum f',g'. d((f,g),(f',g')) m(f,g) m(f',g')
-  //
-  //        = sum f,g. sum f',g'. (d_pitch(f,f')+d_tempo(g,g')) m(f,g) m(f',g')
-  //
-  //        = sum f,g. sum f',g'. d_pitch(f,f') m(f,g) m(f',g')
-  //        + sum f,g. sum f',g'. d_tempo(g,g') m(f,g) m(f',g')
-  //
-  //        = sum f,f'. d_pitch(f,f') (sum g. m(f,g)) (sum g. m(f',g))
-  //        + sum g,g'. d_tempo(g,g') (sum f. m(f,g)) (sum f. m(f,g'))
-  //
-  //        = E
-  //
-  //
-  //            sum f'. mass(f',g) E_pitch(f,f')
-  //   E(f,g) = --------------------------------
-  //                  sum f'. mass(f',g)
-  //
-  //            sum g'. mass(f,g') E_tempo(g,g')
-  //          + --------------------------------
-  //                  sum g'. mass(f,g')
-  //
-  // which has complexity O(F^2 G + F G^2)
-
-  // TODO cache data structures to reduce gc load
-
   assertLength(mass, FG, 'mass');
 
+  // mass vector --> normalized mass matrix,
+  //                 normalized projected mass vector
   var total = 0;
   for (var fg = 0; fg < FG; ++fg) {
     total += mass[fg];
   }
-
-  var massFG = new Array(F);
+  var normalize = 1 / total;
+  for (var g = 0; g < G; ++g) {
+    massG[g] = 0;
+  }
   for (var f = 0; f < F; ++f) {
-    var row = massFG[f] = new Array(G);
+    var massRow = massFG[f];
     for (var g = 0; g < G; ++g) {
-      row[g] = mass[G * f + g];
+      massG[g] += massRow[g] = normalize * mass[G * f + g];
     }
   }
 
-  var massGF = new Array(G);
-  for (var g = 0; g < G; ++g) {
-    var row = massGF[g] = new Array(F);
-    for (var f = 0; f < F; ++f) {
-      row[f] = mass[G * f + g];
+  // E_tempo(g) = sum g'. (sum f. mass(f,g')) distance(g,g')
+  for (var g1 = 0; g1 < G; ++g1) {
+    var distanceRow = distanceGG[g1];
+    var sum = 0;
+    for (var g2 = 0; g2 < G; ++g2) {
+      sum += massG[g2] * distanceRow[g2];
     }
+    tempoEnergyG[g1] = sum;
   }
 
-  var energy = new Array(FG);
-
-  var pitchScale = 1 / (total * pitchAcuity);
-  for (var g = 0; g < G; ++g) {
-    var Eg = Epitch[g] = new Array(F);
-    var Mg = massGF[g];
-
-    for (var f1 = 0; f1 < F; ++f1) {
-      var massRow = massFG[f1];
-      var energyRow = pitchEnergyMatrix[f1];
-
+  // interMass(f,g) = sum g'. inter(g,g') mass(f,g')
+  for (var f = 0; f < F; ++f) {
+    var massRow = massFG[f];
+    var interMassRow = interMassFG[f];
+    for (var g1 = 0; g1 < G; ++g1) {
+      var interRow = interferenceGG[g1];
       var sum = 0;
-      for (var f2 = 0; f2 < F; ++f2) {
-        sum += massRow[f2] * energyRow[f2];
+      for (var g2 = 0; g2 < G; ++g2) {
+        sum += interRow[g2] * massRow[g2];
       }
-
-      energy[G * f1 + g] = pitchScale * sum;
+      interMassRow[g1] = sum;
     }
   }
 
-  var tempoScale = 1 / (total * tempoAcuity);
-  TODO();
-
-  var energyScale = 1 / mass.total();
-  var energy = [];
-  for (var i = 0, I = mass.likes.length; i < I; ++i) {
-    energy[i] = energyScale * mass.dot(energyMatrix[i]);
+  // E_pitch(f,g) = sum f'. distance(f,f'). interMass(f',g)
+  for (var f1 = 0; f1 < F; ++f1) {
+    var energyRow = pitchEnergyFG[f1];
+    var distanceRow = distanceFF[f1];
+    for (var g = 0; g < G; ++g) {
+      energyRow[g] = 0;
+    }
+    for (var f2 = 0; f2 < F; ++f2) {
+      var distance = distanceRow[f2];
+      var massRow = massFG[f2];
+      for (var g = 0; g < G; ++g) {
+        energyRow[g] += distance * massRow[g];
+      }
+    }
   }
+
+  // E(f,g) = E_tempo(g) + E_pitch(f,g)
+  for (var f = 0; f < F; ++f) {
+    var pitchRow = pitchEnergyFG[f];
+    for (var g = 0; g < G; ++g) {
+      energy[G * f + g] = tempoEnergyG[g] + pitchRow[g];
+    }
+  }
+
   return energy;
 };
 

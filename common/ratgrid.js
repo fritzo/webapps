@@ -349,10 +349,10 @@ test('RatGrid trajectory plot', function ($log) {
   }
 
   $('<p>')
-      .css('text-align', 'center')
-      .append($('<h2>').text('Trajectories should have Z2 x Z2 symmetry:'))
-      .append(canvas)
-      .appendTo($log);
+    .css('text-align', 'center')
+    .append($('<h2>').text('Trajectories should have Z2 x Z2 symmetry:'))
+    .append(canvas)
+    .appendTo($log);
 });
 
 test('RatGrid interference plot', function ($log) {
@@ -450,10 +450,10 @@ test('RatGrid interference plot', function ($log) {
   context.fillText('predicted', getX(0.5), getY(0.55));
 
   $('<p>')
-      .css('text-align', 'center')
-      .append($('<h2>').text('Interference of 2t/3 t + b for varying b'))
-      .append(canvas)
-      .appendTo($log);
+    .css('text-align', 'center')
+    .append($('<h2>').text('Interference of 2t/3 t + b for varying b'))
+    .append(canvas)
+    .appendTo($log);
 
   var allowedStdDevs = 10;
   var meanSquaredError = 0;

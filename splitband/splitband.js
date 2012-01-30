@@ -26,8 +26,7 @@ var config = {
 
     pitchAcuity: 3,
     tempoAcuity: 2.5,
-    sharpness: 3,
-    // TODO add pitch-tempo prior to exclude fast low notes
+    sharpness: 8,
 
     attackSec: 0.1,
     sustainSec: 1.0,
@@ -171,6 +170,7 @@ Player.prototype = {
       'data': {
           'pitchAcuity': this.pitchAcuity,
           'tempoAcuity': this.tempoAcuity,
+          'sharpness': this.sharpness,
           'grooveSec': this.grooveSec,
           'amps': this.amps.likes,
           'freqArgs': this.freqs.map(function(f){ return [f.numer, f.denom]; }),
