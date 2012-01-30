@@ -20,7 +20,7 @@ test._all = [];
 test.runAll = function (onExit) {
 
   var $log = $('<div>')
-    .attr({id:'testLog', title:'test results'})
+    .attr({id:'testLog'})
     .css({
           'position': 'absolute',
           'width': '100%',

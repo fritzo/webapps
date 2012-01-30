@@ -275,7 +275,7 @@ test('RatGrid.distance symmetry', function(){
 
 test('RatGrid.ball', function () {
 
-  var radius = 4;
+  var radius = 9;
   var rationalBall = Rational.ball(radius);
   var ratgridBall = RatGrid.ball(radius);
   log('Rational.ball('+radius+').length = '+rationalBall.length);
@@ -357,16 +357,10 @@ test('RatGrid trajectory plot', function ($log) {
 
 test('RatGrid interference plot', function ($log) {
 
-  var monteCarlo = function (
-      grid1,
-      grid2,
-      sharpness1,
-      sharpness2,
-      numSamples,
-      maxTime) {
+  var numSamples = 10000;
+  var maxTime = 1000;
 
-    numSamples = numSamples || 10000;
-    maxTime = maxTime || 1000;
+  var monteCarlo = function (grid1, grid2, sharpness1, sharpness2) {
 
     var envelope = function (grid, sharpness) {
 
@@ -393,15 +387,16 @@ test('RatGrid interference plot', function ($log) {
   };
 
   var sharpness0 = 2;
-  var sharpness1 = 8;
+  var sharpness1 = 12;
 
   var grid0 = new RatGrid(Rational.ONE, Rational.ZERO);
 
+  var N = 100;
   var X = [];
   var Ypredicted = [];
   var Yobserved = [];
 
-  for (var n = 0, N = 100; n < N; ++n) {
+  for (var n = 0; n < N; ++n) {
     var grid1 = new RatGrid(new Rational(2,3), new Rational(n,N));
 
     X[n] = grid1.base.toNumber();
@@ -436,7 +431,7 @@ test('RatGrid interference plot', function ($log) {
   context.strokeStyle = 'red';
   var radius = 0.5 * width / N;
   var twoPi = 2 * Math.PI;
-  for (var n = 1, N = 100; n < N; ++n) {
+  for (var n = 1; n < N; ++n) {
     context.beginPath();
     context.arc(getX(X[n]), getY(Yobserved[n]), radius, twoPi, false);
     context.stroke();
@@ -447,7 +442,7 @@ test('RatGrid interference plot', function ($log) {
   context.strokeStyle = 'black';
   context.beginPath();
   context.moveTo(getX(X[0]), getY(Ypredicted[0]));
-  for (var n = 1, N = 100; n < N; ++n) {
+  for (var n = 1; n < N; ++n) {
     context.lineTo(getX(X[n]), getY(Ypredicted[n]));
   }
   context.stroke();
@@ -460,5 +455,17 @@ test('RatGrid interference plot', function ($log) {
       .append(canvas)
       .appendTo($log);
 
+  var allowedStdDevs = 10;
+  var meanSquaredError = 0;
+  for (var n = 0; n < N; ++n) {
+    meanSquaredError += Math.pow(Ypredicted[n] - Yobserved[n], 2);
+  }
+  meanSquaredError /= N;
+  var rmsError = Math.sqrt(meanSquaredError);
+  log('interference rms error = ' + rmsError);
+  assert(meanSquaredError < allowedStdDevs * allowedStdDevs / numSamples,
+      'interference error was large: ' +
+      '\n    expected < ' + (allowedStdDevs / Math.sqrt(numSamples)) +
+      '\n    actual ' + rmsError);
 });
 
