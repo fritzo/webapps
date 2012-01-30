@@ -183,7 +183,7 @@ Rational.cmp = function (lhs, rhs) {
  * @param {Rational}
  * @returns {number}
  */
-Rational.dist = function (lhs, rhs) {
+Rational.distance = function (lhs, rhs) {
   return Rational.div(lhs, rhs).norm();
 };
 

@@ -73,7 +73,7 @@ var init = function (data) {
   for (var f1 = 0; f1 < F; ++f1) {
     var row = freqEnergyMatrix[f1] = new Array(F);
     for (var f2 = 0; f2 < F; ++f2) {
-      row[f2] = Rational.dist(freqs[f1], freqs[f2]);
+      row[f2] = Rational.distance(freqs[f1], freqs[f2]);
     }
   }
 
@@ -81,7 +81,7 @@ var init = function (data) {
   for (var g1 = 0; g1 < G; ++g1) {
     var row = gridEnergyMatrix[g1] = new Array(G);
     for (var g2 = 0; g2 < G; ++g2) {
-      row[g2] = RatGrid.dist(grids[g1], grids[g2]);
+      row[g2] = RatGrid.distance(grids[g1], grids[g2]);
     }
   }
 

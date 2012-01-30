@@ -139,7 +139,7 @@ RatGrid.relative = function (lhs, rhs) {
  * @param {RatGrid}
  * @returns {number}
  */
-RatGrid.dist = function (lhs, rhs) {
+RatGrid.distance = function (lhs, rhs) {
   return RatGrid.relative(lhs, rhs).norm();
 };
 
@@ -152,10 +152,9 @@ RatGrid.dist = function (lhs, rhs) {
  * @param {number}
  * @returns {number}
  */
-RatGrid.interference = function (
-    grid1, sharpness1,
-    grid2, sharpness2) {
+RatGrid.interference = function (grid1, grid2, sharpness1, sharpness2) {
 
+  sharpness2 = sharpness2 || sharpness1;
   assert(sharpness1 > 0, 'bad sharpness1: ' + sharpness1);
   assert(sharpness2 > 0, 'bad sharpness2: ' + sharpness2);
 
@@ -173,7 +172,7 @@ RatGrid.interference = function (
   var exp = Math.exp;
 
   var decreasing = exp(-s1 / m * bm) / (1 - exp(-s1 / m));
-  var increasing = exp(s2 / n * (bm - 1)) / (1 - exp(-s2 / n));
+  var increasing = exp(-s2 / n * (1 - bm)) / (1 - exp(-s2 / n));
 
   return (decreasing + increasing) / (m / s1 + n / s2) ;
 };
@@ -253,7 +252,7 @@ test('RatGrid(5/2, 1/15).norm()', function(){
       'bad grid.norm\n    grid = ' + grid);
 });
 
-test('RatGrid.dist symmetry', function(){
+test('RatGrid.distance symmetry', function(){
 
   var vars = [
       new RatGrid(new Rational(1,1), new Rational(0,1)),
@@ -268,7 +267,7 @@ test('RatGrid.dist symmetry', function(){
     for (var j = 0; j < vars.length; ++j) {
       var v = vars[j];
 
-      assertEqual(RatGrid.dist(u,v), RatGrid.dist(v,u),
+      assertEqual(RatGrid.distance(u,v), RatGrid.distance(v,u),
           'distance is asymmetric');
     }
   }
@@ -354,5 +353,62 @@ test('RatGrid trajectory plot', function ($log) {
       .append($('<h2>').text('Trajectories should have Z2 x Z2 symmetry:'))
       .append(canvas)
       .appendTo($log);
+});
+
+test('RatGrid interference plot', function ($log) {
+
+  var sharpness0 = 2;
+  var sharpness1 = 8;
+
+  var g0 = new RatGrid(Rational.ONE, Rational.ZERO);
+
+  var X = [];
+  var Y = [];
+
+  for (var n = 0, N = 100; n < N; ++n) {
+    var g1 = new RatGrid(new Rational(2,3), new Rational(n,N));
+
+    X[n] = g1.base.toNumber();
+    Y[n] = RatGrid.interference(g0, g1, sharpness0, sharpness1);
+  }
+
+  var canvas = $('<canvas>')[0];
+  var context = canvas.getContext('2d');
+
+  var width = canvas.width = 512;
+  var height = canvas.height = 256;
+
+  context.fillStyle = 'white';
+  context.fillRect(0,0,width,height);
+
+  var heightScale = 2;
+  var getX = function (x) { return x * width; }
+  var getY = function (y) { return (1 - y / heightScale) * height; }
+
+  context.strokeStyle = 'gray';
+  context.beginPath();
+  context.moveTo(getX(0), getY(1));
+  context.lineTo(getX(1), getY(1));
+  context.stroke();
+
+  context.fillStyle = 'black';
+  context.font = '10pt Helvetica';
+  context.fillText('1', getX(0), getY(1.05));
+  context.fillText('0', getX(0), getY(0.05));
+
+  context.strokeStyle = 'red';
+  context.beginPath();
+  context.moveTo(getX(X[0]), getY(Y[0]));
+  for (var n = 1, N = 100; n < N; ++n) {
+    context.lineTo(getX(X[n]), getY(Y[n]));
+  }
+  context.stroke();
+
+  $('<p>')
+      .css('text-align', 'center')
+      .append($('<h2>').text('Interference of 2t/3 t + b for varying b'))
+      .append(canvas)
+      .appendTo($log);
+
 });
 
