@@ -39,7 +39,8 @@ var config = {
 
   plot: {
     framerateHz: 100,
-    circleRadiusScale: 0.2
+    circleRadiusScale: 0.2,
+    baseShift: 0.08
   },
 
   synth: {
@@ -89,12 +90,6 @@ var Player = function () {
 };
 
 Player.prototype = {
-
-  getFreqs: function () { return this.freqs; },
-  getGrids: function () { return this.grids; },
-  getPitchHz: function () { return this.pitchHz; },
-  getTempoHz: function () { return this.tempoHz; },
-  getAmps: function () { return this.amps.likes; },
 
   // TODO attach this to a keyboard
   addAmp: function (timeMs) {
@@ -217,12 +212,13 @@ var initPlotting = function () {
 };
 
 /** @constructor */
-var PhasePlotter = function (grids, tempoHz, fullAmps) {
+var PhasePlotter = function (grids, tempoHz, sharpness, fullAmps) {
 
   initPlotting();
 
   this.grids = grids;
   this.tempoHz = tempoHz;
+  this.sharpness = sharpness;
   this.fullAmps = fullAmps;
   this.gridAmps = new Array(grids.length);
 
@@ -231,6 +227,7 @@ var PhasePlotter = function (grids, tempoHz, fullAmps) {
 
   var minFreq = Math.min.apply(Math, freqs);
   var radiusScale = this.radiusScale;
+  var baseShift = this.baseShift;
 
   var radii = this.radii = [];
   var xPos = this.xPos = [];
@@ -246,16 +243,16 @@ var PhasePlotter = function (grids, tempoHz, fullAmps) {
 
     var norm = grid.norm();
 
-    var rPos = 1 - realToUnit(freq);
-    xPos[i] = (rPos * Math.sin(twoPi * base) + 1) / 2;
-    yPos[i] = (rPos * Math.cos(twoPi * base) + 1) / 2;
-    radii[i] = rPos * radiusScale / norm;
+    yPos[i] = 1 - realToUnit(freq);
+    xPos[i] = (1 - base + baseShift) % 1;
+    radii[i] = radiusScale / norm;
   }
 };
 
 PhasePlotter.prototype = {
 
   radiusScale: config.plot.circleRadiusScale,
+  baseShift: config.plot.baseShift,
 
   realToUnit: function (x) {
     return Math.atan(Math.log(x)) / Math.PI + 0.5;
@@ -275,11 +272,12 @@ PhasePlotter.prototype = {
 
     assert(time >= 0, 'time is before zero: ' + time);
 
+    var sharpness = this.sharpness;
     var width = canvas.width;
     var height = canvas.height;
     var minth = Math.min(width, height);
-    var x0 = (width - minth) / 2;
-    var y0 = (height - minth) / 2;
+    var x0 = width / 2;
+    var y0 = height / 2;
 
     var gridAmps = this.gridAmps;
     var ampScale = 1 / Math.max.apply(Math, gridAmps);
@@ -290,22 +288,31 @@ PhasePlotter.prototype = {
     var radii = this.radii;
 
     context.clearRect(0, 0, width, height);
-    context.strokeStyle = 'rgba(255,255,255,0.333)';
+    context.strokeStyle = 'rgba(255,255,255,0.15)';
 
     var exp = Math.exp;
+    var cos = Math.cos;
+    var pow = Math.pow;
     var twoPi = 2 * Math.PI;
+    var round = Math.round;
 
     for (var i = 0, I = freqs.length; i < I; ++i) {
 
       var freq = freqs[i];
       var phase = (freq * time + bases[i]) % 1;
+      var pulsate = 1 / (1 + 4 * phase * (1 - phase)); // in [1/2,1]
 
-      var opacity = ampScale * gridAmps[i] * exp(-phase / freq);
-      context.fillStyle = 'rgba(255,255,255,' + opacity + ')';
+      // Version 1. opacity
+      //var opacity = ampScale * gridAmps[i] * exp(-sharpness * phase);
+      //context.fillStyle = 'rgba(255,255,255,' + opacity + ')';
 
-      var x = xPos[i] * minth + x0;
-      var y = yPos[i] * minth + y0;
-      var radius = radii[i] * minth * exp(-phase);
+      // Version 2. brightness
+      var rgb = round(255 * ampScale * gridAmps[i]);
+      context.fillStyle = 'rgb('+rgb+','+rgb+','+rgb+')';
+
+      var x = xPos[i] * width;
+      var y = yPos[i] * height;
+      var radius = radii[i] * minth * pulsate;
 
       context.beginPath();
       context.arc(x, y, radius, 0, twoPi, false);
@@ -432,13 +439,14 @@ Synthesizer.prototype = {
 var main = function () {
 
   var player = new Player();
-  var pitchHz = player.getPitchHz();
-  var tempoHz = player.getTempoHz();
-  var freqs = player.getFreqs();
-  var grids = player.getGrids();
-  var amps = player.getAmps();
+  var pitchHz = player.pitchHz;
+  var tempoHz = player.tempoHz;
+  var sharpness = player.sharpness;
+  var freqs = player.freqs;
+  var grids = player.grids;
+  var amps = player.amps.likes;
 
-  var phasePlotter = new PhasePlotter(grids, tempoHz, amps);
+  var phasePlotter = new PhasePlotter(grids, tempoHz, sharpness, amps);
   var synthesizer = new Synthesizer(freqs, grids, pitchHz, tempoHz, amps);
 
   var clock = new Clock();
