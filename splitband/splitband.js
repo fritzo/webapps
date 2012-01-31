@@ -41,6 +41,12 @@ var config = {
     baseShift: 0.08
   },
 
+  tonePlot: {
+    framerateHz: 60,
+    circleRadiusScale: 0.2,
+    baseShift: 0.08
+  },
+
   keyboard: {
     framerateHz: 60,
     keyThresh: 1e-4,
@@ -48,9 +54,9 @@ var config = {
   },
 
   synth: {
-    cyclesPerBeat: 4,
+    cyclesPerTactus: 4,
     numVoices: 64,
-    gain: 1.0
+    gain: 4.0
   },
 
   none: undefined
@@ -72,6 +78,8 @@ var Model = function () {
 
   this.pitchHz = config.model.pitchHz;
   this.tempoHz = config.model.tempoHz;
+  this.commonPeriod = RatGrid.commonPeriod(grids);
+  log('  with common period = ' + this.commonPeriod);
   this.grooveSec = config.model.grooveSec;
   this.minDelay = 1000 / config.model.updateRateHz;
 
@@ -90,7 +98,15 @@ var Model = function () {
 
 Model.prototype = {
 
-  // TODO augment with cycle parameter and make time-varying
+  // TODO generalize to variable tempo:
+  //   subtract lastTime, add lastCycle, and update at tempo changes
+  convertMsToTactus: function (clockTimeMs) {
+    assert(clockTimeMs >= 0,
+        'expected nonnegative clock time, actual: ' +clockTimeMs);
+    return (this.tempoHz * clockTimeMs / 1000) % this.commonPeriod;
+  },
+
+  // TODO augment with tactus parameter and make time-varying
   getFreqAmps: function () {
     var F = this.freqs.length;
     var G = this.grids.length;
@@ -143,8 +159,8 @@ Model.prototype = {
 
     assert(timeMs >= 0, 'bad timeMs: ' + timeMs);
 
-    var time = timeMs / (1000 * this.tempoHz);
-    log('DEBUG phase = ' + (this.grids[0].phaseAtTime(time) % 1));
+    var tactus = this.convertMsToTactus(timeMs);
+    log('DEBUG phase = ' + (this.grids[0].phaseAtTime(tactus) % 1));
 
     var grids = this.grids;
     var prior = this.prior.likes;
@@ -158,7 +174,7 @@ Model.prototype = {
     var newLikes = new Array(FG);
     var total = 0;
     for (var g = 0; g < G; ++g) {
-      var phase = grids[g].phaseAtTime(time) % 1;
+      var phase = grids[g].phaseAtTime(tactus) % 1;
       var like = pow(sustain, phase) + pow(sustain, 1 - phase);
       for (var f = 0; f < F; ++f) {
         var fg = G * f + g;
@@ -179,8 +195,8 @@ Model.prototype = {
     assert(0 <= freqIndex && freqIndex < this.freqs.length,
         'bad freq index: ' + freqIndex);
 
-    var time = timeMs / (1000 * this.tempoHz);
-    log('DEBUG phase = ' + (this.grids[0].phaseAtTime(time) % 1));
+    var tactus = this.convertMsToTactus(timeMs);
+    log('DEBUG phase = ' + (this.grids[0].phaseAtTime(tactus) % 1));
 
     var grids = this.grids;
     var prior = this.prior.likes;
@@ -194,7 +210,7 @@ Model.prototype = {
     var newLikes = new Array(G);
     var total = 0;
     for (var g = 0; g < G; ++g) {
-      var phase = grids[g].phaseAtTime(time) % 1;
+      var phase = grids[g].phaseAtTime(tactus) % 1;
       var like = pow(sustain, phase) + pow(sustain, 1 - phase);
       var fg = G * freqIndex + g;
       total += newLikes[g] = prior[fg] * like;
@@ -321,7 +337,6 @@ var PhasePlotter = function (model) {
   this.model = model;
 
   var grids = this.grids = model.grids;
-  this.tempoHz = model.tempoHz;
 
   var freqs = this.freqs = grids.map(function(g){ return g.freq.toNumber(); });
   var bases = this.bases = grids.map(function(g){ return g.base.toNumber(); });
@@ -413,18 +428,16 @@ PhasePlotter.prototype = {
     }
   },
 
-  start: function (clock, tempoKhz) {
-
-    // TODO call phasePlotter.model.getCycleAtTime(timeMs)
-    // instead of keeping tempoHz locally
-    var tempoKhz = this.tempoHz / 1000;
+  start: function (clock) {
 
     this.plot(0);
     var profileFrameCount = 1;
 
     var phasePlotter = this;
+    var model = this.model;
     clock.continuouslyDo(function(timeMs){
-          phasePlotter.plot(timeMs * tempoKhz);
+          var tactus = model.convertMsToTactus(timeMs);
+          phasePlotter.plot(tactus);
           profileFrameCount += 1;
         }, 1000 / config.phasePlot.framerateHz);
     clock.onStop(function(timeMs){
@@ -432,7 +445,9 @@ PhasePlotter.prototype = {
           log('phasePlotter framerate = ' + framerate.toFixed(1) + ' Hz');
         });
     $(window).resize(function () {
-          phasePlotter.plot(clock.now() * tempoKhz);
+          var timeMs = clock.now();
+          var tactus = model.convertMsToTactus(timeMs);
+          phasePlotter.plot(tactus);
           if (clock.running) profileFrameCount += 1;
         });
   }
@@ -450,6 +465,146 @@ PhasePlotter.initCanvas = function () {
       }).resize();
 
   PhasePlotter.context = canvas.getContext('2d');
+};
+
+//------------------------------------------------------------------------------
+// TonePlot
+
+/** @constructor */
+var TonePlotter = function (model) {
+
+  this.model = model;
+
+  var grids = this.grids = model.grids;
+
+  var freqs = this.freqs = grids.map(function(g){ return g.freq.toNumber(); });
+  var bases = this.bases = grids.map(function(g){ return g.base.toNumber(); });
+
+  var radii = this.radii = [];
+  var xPos = this.xPos = [];
+  var yPos = this.yPos = [];
+
+  var minFreq = Math.min.apply(Math, freqs);
+  var maxFreq = Math.max.apply(Math, freqs);
+  var radiusScale = this.radiusScale;
+  var baseShift = 0.5 * minFreq;
+  var freqShift = 0.5 / maxFreq;
+
+  for (var i = 0, I = this.grids.length; i < I; ++i) {
+    var grid = grids[i];
+    var freq = freqs[i];
+    var base = bases[i];
+
+    var norm = grid.norm();
+
+    yPos[i] = (1 - base - baseShift - freqShift * freq) % 1;
+    xPos[i] = Math.log(freq);
+    radii[i] = radiusScale / norm;
+  }
+  var xPosMin = Math.min.apply(Math, xPos);
+  var xPosMax = Math.max.apply(Math, xPos);
+  var xScale = (1 - minFreq) / (xPosMax - xPosMin);
+  var xShift = 0.5 * minFreq - xScale * xPosMin;
+  for (var i = 0, I = this.grids.length; i < I; ++i) {
+    xPos[i] = xShift + xScale * xPos[i];
+  }
+
+  TonePlotter.initCanvas();
+};
+
+TonePlotter.prototype = {
+
+  radiusScale: config.tonePlot.circleRadiusScale,
+  baseShift: config.tonePlot.baseShift,
+
+  // TODO factor into updateGeometry and draw
+  plot: function (time) {
+
+    time = time || 0;
+
+    assert(time >= 0, 'time is before zero: ' + time);
+
+    var context = TonePlotter.context;
+    var width = TonePlotter.canvas.width;
+    var height = TonePlotter.canvas.height;
+    var minth = Math.min(width, height);
+    var x0 = width / 2;
+    var y0 = height / 2;
+
+    var amps = this.model.amps.likes;
+    var ampScale = 1 / Math.max.apply(Math, amps);
+    var freqs = this.freqs;
+    var bases = this.bases;
+    var xPos = this.xPos;
+    var yPos = this.yPos;
+    var radii = this.radii;
+
+    context.clearRect(0, 0, width, height);
+    context.strokeStyle = 'rgba(255,255,255,0.333)';
+
+    var exp = Math.exp;
+    var cos = Math.cos;
+    var pow = Math.pow;
+    var twoPi = 2 * Math.PI;
+    var round = Math.round;
+
+    for (var i = 0, I = freqs.length; i < I; ++i) {
+
+      var freq = freqs[i];
+      var phase = (freq * time + bases[i]) % 1;
+      var pulsate = 1 / (1 + 4 * phase * (1 - phase)); // in [1/2,1]
+
+      var rgb = round(255 * ampScale * amps[i]);
+      context.fillStyle = 'rgb('+rgb+','+rgb+','+rgb+')';
+
+      var x = xPos[i] * width;
+      var y = yPos[i] * height;
+      var radius = radii[i] * minth * pulsate;
+
+      context.beginPath();
+      context.arc(x, y, radius, 0, twoPi, false);
+      context.fill();
+      context.stroke();
+    }
+  },
+
+  start: function (clock) {
+
+    this.plot(0);
+    var profileFrameCount = 1;
+
+    var tonePlotter = this;
+    var model = this.model;
+    clock.continuouslyDo(function(timeMs){
+          var tactus = model.convertMsToTactus(timeMs);
+          tonePlotter.plot(tactus);
+          profileFrameCount += 1;
+        }, 1000 / config.tonePlot.framerateHz);
+    clock.onStop(function(timeMs){
+          var framerate = profileFrameCount * 1000 / timeMs;
+          log('tonePlotter framerate = ' + framerate.toFixed(1) + ' Hz');
+        });
+    $(window).resize(function () {
+          var timeMs = clock.now();
+          var tactus = model.convertMsToTactus(timeMs);
+          tonePlotter.plot(tactus);
+          if (clock.running) profileFrameCount += 1;
+        });
+  }
+};
+
+TonePlotter.initCanvas = function () {
+
+  if (TonePlotter.canvas !== undefined) return;
+
+  var canvas = TonePlotter.canvas = $('#tonePlot')[0];
+
+  $(window).resize(function(){
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+      }).resize();
+
+  TonePlotter.context = canvas.getContext('2d');
 };
 
 //------------------------------------------------------------------------------
@@ -822,7 +977,7 @@ Keyboard.initCanvas = function () {
 
   if (Keyboard.canvas !== undefined) return;
 
-  var canvas = Keyboard.canvas = $('#keyboard')[0];
+  var canvas = Keyboard.canvas = $('#tonePlot')[0];
 
   $(window).resize(function(){
         canvas.width = canvas.offsetWidth;
@@ -907,8 +1062,8 @@ var Synthesizer = function (model) {
 
   this.amps = model.amps.likes;
 
-  this.cyclesPerBeat = config.synth.cyclesPerBeat;
-  this.periodMs = 1000 / (model.tempoHz * this.cyclesPerBeat);
+  this.cyclesPerTactus = config.synth.cyclesPerTactus;
+  this.periodMs = 1000 / (model.tempoHz * this.cyclesPerTactus);
   assert(this.periodMs > 0, 'bad period: ' + this.periodMs);
   this.numVoices = config.synth.numVoices;
   this.gain = config.synth.gain;
@@ -949,7 +1104,7 @@ var Synthesizer = function (model) {
         'freqs': model.freqs.map(function(f){ return f.toNumber(); }),
         'gridFreqs': model.grids.map(function(g){ return g.freq.toNumber(); }),
         'gridBases': model.grids.map(function(g){ return g.base.toNumber(); }),
-        'cyclesPerBeat': this.cyclesPerBeat,
+        'cyclesPerTactus': this.cyclesPerTactus,
         'numVoices': this.numVoices,
         'gain': this.gain
       }

@@ -23,7 +23,7 @@ var freqs;
 var gridFreqs;
 var gridBases;
 var gain;
-var cyclesPerBeat;
+var cyclesPerTactus;
 var numVoices;
 var tempo;
 var omega;
@@ -50,13 +50,13 @@ var init = function (data) {
   tempoHz = data['tempoHz'];
   pitchHz = data['pitchHz'];
   sharpness = data['sharpness'];
-  cyclesPerBeat = data['cyclesPerBeat'];
+  cyclesPerTactus = data['cyclesPerTactus'];
   numVoices = data['numVoices'];
   gain = data['gain'];
 
   assert(tempoHz > 0, 'bad tempoHz : ' + tempoHz);
   assert(pitchHz > 0, 'bad pitchHz : ' + pitchHz);
-  assert(cyclesPerBeat > 0, 'bad cyclesPerBeat: ' + cyclesPerBeat);
+  assert(cyclesPerTactus > 0, 'bad cyclesPerTactus: ' + cyclesPerTactus);
   assert(0 < numVoices, 'bad numVoices: ' + numVoices);
   assert(gain > 0, 'bad gain: ' + gain);
 
@@ -70,7 +70,7 @@ var init = function (data) {
   assertEqual(gridFreqs.length, gridBases.length,
       'gridFreqs size is not same as gridBases');
 
-  T = Math.round(1 / (tempo * cyclesPerBeat));
+  T = Math.round(1 / (tempo * cyclesPerTactus));
   F = freqs.length;
   G = gridFreqs.length;
   FG = F * G;
@@ -92,8 +92,8 @@ var synthesize = function (data) {
   assertEqual(amps.length, FG, 'amps has wrong length');
 
   var cycle = data['cycle'];
-  assertEqual(cycle, Math.round(cycle), 'bad cycle number: ' + cycle);
-  var beat = cycle / cyclesPerBeat;
+  assert(cycle % 1 === 0, 'bad cycle number: ' + cycle);
+  var tactus = cycle / cyclesPerTactus;
 
   var scaledGain = gain * freqs[0];
   var sustain = Math.exp(-sharpness);
@@ -120,7 +120,7 @@ var synthesize = function (data) {
   for (var g = 0; g < G; ++g) {
     var gridFreq = gridFreqs[g];
     var gridBase = gridBases[g];
-    var phase = (gridFreq * beat + gridBase) % 1;
+    var phase = (gridFreq * tactus + gridBase) % 1;
     var dphase = gridFreq * tempo;
 
     for (var f = 0; f < F; ++f) {
