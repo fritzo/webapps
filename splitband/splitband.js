@@ -329,7 +329,110 @@ Model.prototype = {
 };
 
 //------------------------------------------------------------------------------
-// Phase Plotting
+// Synthesis
+
+/** @constructor */
+var Synthesizer = function (model) {
+
+  this.amps = model.amps.likes;
+
+  this.cyclesPerTactus = config.synth.cyclesPerTactus;
+  this.periodMs = 1000 / (model.tempoHz * this.cyclesPerTactus);
+  assert(this.periodMs > 0, 'bad period: ' + this.periodMs);
+  this.numVoices = config.synth.numVoices;
+  this.gain = config.synth.gain;
+
+  this.audio = undefined;
+  this.profileCount = 0;
+  this.profileElapsedMs = 0;
+
+  var synth = this;
+  this.synthworker = new Worker('synthworker.js');
+  this.synthworker.addEventListener('message', function (e) {
+        var data = e['data'];
+        switch (data['type']) {
+          case 'wave':
+            synth.audio = new Audio(data['data']);
+            synth.profileCount += 1;
+            synth.profileElapsedMs += data['profileElapsedMs'];
+            if (synth.readyCallback) {
+              synth.readyCallback();
+              synth.readyCallback = undefined;
+            }
+            break;
+
+          case 'log':
+            log('Synth Worker: ' + data['data']);
+            break;
+
+          case 'error':
+            throw new WorkerException('Synth ' + data['data']);
+        }
+      }, false);
+  this.synthworker.postMessage({
+    'cmd': 'init',
+    'data': {
+        'pitchHz': model.pitchHz,
+        'tempoHz': model.tempoHz,
+        'sharpness': model.sharpness,
+        'freqs': model.freqs.map(function(f){ return f.toNumber(); }),
+        'gridFreqs': model.grids.map(function(g){ return g.freq.toNumber(); }),
+        'gridBases': model.grids.map(function(g){ return g.base.toNumber(); }),
+        'cyclesPerTactus': this.cyclesPerTactus,
+        'numVoices': this.numVoices,
+        'gain': this.gain
+      }
+    });
+};
+
+Synthesizer.prototype = {
+
+  synthesize: function (cycle) {
+    this.synthworker.postMessage({
+          'cmd': 'synthesize',
+          'data': {
+            'amps': this.amps,
+            'cycle': cycle
+          }
+        });
+  },
+
+  playOnset: function (freqIndex, gain) {
+    log('TODO implement Synthesizer.playOnset('+freqIndex+','+gain+')');
+  },
+
+  ready: function (callback) {
+    if (this.readyCallback === undefined) {
+      this.readyCallback = callback;
+    } else {
+      var oldCallback = this.readyCallback;
+      this.readyCallback = function () { oldCallback(); callback(); };
+    }
+  },
+
+  start: function (clock) {
+
+    // TODO XXX FIXME the clock seems to drift and lose alignment
+    var synth = this;
+    clock.onStop(function(time){
+          synth.synthworker.postMessage({'cmd':'profile'})
+        });
+    clock.discretelyDo(function(cycle){
+          if (synth.audio) {
+            synth.audio.play();          // play current cycle
+            synth.audio = undefined;
+            synth.synthesize(cycle + 1); // start synthesizing next cycle
+          } else {
+            log('WARNING dropped audio cycle ' + cycle);
+          }
+        }, this.periodMs);
+
+    this.synthesize(0, this.amps);
+  }
+};
+
+//------------------------------------------------------------------------------
+// PhasePlotter
 
 /** @constructor */
 var PhasePlotter = function (model) {
@@ -468,7 +571,7 @@ PhasePlotter.initCanvas = function () {
 };
 
 //------------------------------------------------------------------------------
-// TonePlot
+// TonePlotter
 
 /** @constructor */
 var TonePlotter = function (model) {
@@ -1053,109 +1156,6 @@ test('Keyboard.swipe', function(){
   };
   testAndWait();
 });
-
-//------------------------------------------------------------------------------
-// Synthesis
-
-/** @constructor */
-var Synthesizer = function (model) {
-
-  this.amps = model.amps.likes;
-
-  this.cyclesPerTactus = config.synth.cyclesPerTactus;
-  this.periodMs = 1000 / (model.tempoHz * this.cyclesPerTactus);
-  assert(this.periodMs > 0, 'bad period: ' + this.periodMs);
-  this.numVoices = config.synth.numVoices;
-  this.gain = config.synth.gain;
-
-  this.audio = undefined;
-  this.profileCount = 0;
-  this.profileElapsedMs = 0;
-
-  var synth = this;
-  this.synthworker = new Worker('synthworker.js');
-  this.synthworker.addEventListener('message', function (e) {
-        var data = e['data'];
-        switch (data['type']) {
-          case 'wave':
-            synth.audio = new Audio(data['data']);
-            synth.profileCount += 1;
-            synth.profileElapsedMs += data['profileElapsedMs'];
-            if (synth.readyCallback) {
-              synth.readyCallback();
-              synth.readyCallback = undefined;
-            }
-            break;
-
-          case 'log':
-            log('Synth Worker: ' + data['data']);
-            break;
-
-          case 'error':
-            throw new WorkerException('Synth ' + data['data']);
-        }
-      }, false);
-  this.synthworker.postMessage({
-    'cmd': 'init',
-    'data': {
-        'pitchHz': model.pitchHz,
-        'tempoHz': model.tempoHz,
-        'sharpness': model.sharpness,
-        'freqs': model.freqs.map(function(f){ return f.toNumber(); }),
-        'gridFreqs': model.grids.map(function(g){ return g.freq.toNumber(); }),
-        'gridBases': model.grids.map(function(g){ return g.base.toNumber(); }),
-        'cyclesPerTactus': this.cyclesPerTactus,
-        'numVoices': this.numVoices,
-        'gain': this.gain
-      }
-    });
-};
-
-Synthesizer.prototype = {
-
-  synthesize: function (cycle) {
-    this.synthworker.postMessage({
-          'cmd': 'synthesize',
-          'data': {
-            'amps': this.amps,
-            'cycle': cycle
-          }
-        });
-  },
-
-  playOnset: function (freqIndex, gain) {
-    log('TODO implement Synthesizer.playOnset('+freqIndex+','+gain+')');
-  },
-
-  ready: function (callback) {
-    if (this.readyCallback === undefined) {
-      this.readyCallback = callback;
-    } else {
-      var oldCallback = this.readyCallback;
-      this.readyCallback = function () { oldCallback(); callback(); };
-    }
-  },
-
-  start: function (clock) {
-
-    // TODO XXX FIXME the clock seems to drift and lose alignment
-    var synth = this;
-    clock.onStop(function(time){
-          synth.synthworker.postMessage({'cmd':'profile'})
-        });
-    clock.discretelyDo(function(cycle){
-          if (synth.audio) {
-            synth.audio.play();          // play current cycle
-            synth.audio = undefined;
-            synth.synthesize(cycle + 1); // start synthesizing next cycle
-          } else {
-            log('WARNING dropped audio cycle ' + cycle);
-          }
-        }, this.periodMs);
-
-    this.synthesize(0, this.amps);
-  }
-};
 
 //------------------------------------------------------------------------------
 // Main
