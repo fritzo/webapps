@@ -37,14 +37,13 @@ var config = {
 
   phasePlot: {
     framerateHz: 60,
-    circleRadiusScale: 0.2,
-    baseShift: 0.08
+    circleRadiusScale: 0.2
   },
 
   tonePlot: {
     framerateHz: 60,
-    circleRadiusScale: 0.2,
-    baseShift: 0.08
+    circleRadiusScale: 0.05,
+    border: 1/16
   },
 
   keyboard: {
@@ -106,35 +105,84 @@ Model.prototype = {
     return (this.tempoHz * clockTimeMs / 1000) % this.commonPeriod;
   },
 
-  // TODO augment with tactus parameter and make time-varying
-  getFreqAmps: function () {
+  getEnvelopeAtTactus: function (tactus) {
+    assert(tactus >= 0, 'bad tactus: ' + tactus);
+    var grids = this.grids;
+    var G = grids.length;
+    var envelope = new Array(G);
+    var sharpness = this.sharpness;
+    var sustain = Math.exp(-sharpness);
+    var scale = 0.5 * sharpness / (1 - sustain);
+    var pow = Math.pow;
+    for (var g = 0; g < G; ++g) {
+      var phase = grids[g].phaseAtTime(tactus) % 1; // slow
+      envelope[g] = scale * pow(sustain, phase) * pow(sustain, 1 - phase);
+    }
+    return envelope;
+  },
+
+  getCartoonEnvelopeAtTactus: function (tactus) {
+    assert(tactus >= 0, 'bad tactus: ' + tactus);
+    var grids = this.grids;
+    var G = grids.length;
+    var envelope = new Array(G);
+    for (var g = 0; g < G; ++g) {
+      var phase = grids[g].phaseAtTime(tactus) % 1; // slow
+      envelope[g] = 1 / (1 + 4 * phase * (1 - phase)); // in [1/2,1]
+    }
+    return envelope;
+  },
+
+  getFreqAmps: function (envelope) {
     var F = this.freqs.length;
     var G = this.grids.length;
     var result = new MassVector(F);
     var resultLikes = result.likes;
     var ampsLikes = this.amps.likes;
-    for (var f = 0; f < F; ++f) {
-      var sum = 0;
-      for (var g = 0; g < G; ++g) {
-        sum += ampsLikes[G * f + g];
+    if (envelope) {
+      assertLength(envelope, G, 'envelope');
+      for (var f = 0; f < F; ++f) {
+        var sum = 0;
+        for (var g = 0; g < G; ++g) {
+          sum += envelope[g] * ampsLikes[G * f + g];
+        }
+        resultLikes[f] = sum;
       }
-      resultLikes[f] = sum;
+    } else {
+      for (var f = 0; f < F; ++f) {
+        var sum = 0;
+        for (var g = 0; g < G; ++g) {
+          sum += ampsLikes[G * f + g];
+        }
+        resultLikes[f] = sum;
+      }
     }
     return result;
   },
 
-  getFreqPrior: function () {
+  getFreqPrior: function (envelope) {
     var F = this.freqs.length;
     var G = this.grids.length;
     var result = new MassVector(F);
     var resultLikes = result.likes;
     var priorLikes = this.prior.likes;
-    for (var f = 0; f < F; ++f) {
-      var sum = 0;
-      for (var g = 0; g < G; ++g) {
-        sum += priorLikes[G * f + g];
+    if (envelope) {
+      assertLength(envelope, G, 'envelope');
+      for (var f = 0; f < F; ++f) {
+        var sum = 0;
+        for (var g = 0; g < G; ++g) {
+          sum += envelope[g] * priorLikes[G * f + g];
+        }
+        resultLikes[f] = sum;
       }
-      resultLikes[f] = sum;
+    } else {
+      for (var f = 0; f < F; ++f) {
+        var sum = 0;
+        for (var g = 0; g < G; ++g) {
+          sum += priorLikes[G * f + g];
+        }
+        resultLikes[f] = sum;
+      }
     }
     return result;
   },
@@ -439,8 +487,7 @@ var PhasePlotter = function (model) {
 
   this.model = model;
 
-  var grids = this.grids = model.grids;
-
+  var grids = model.grids;
   var freqs = this.freqs = grids.map(function(g){ return g.freq.toNumber(); });
   var bases = this.bases = grids.map(function(g){ return g.base.toNumber(); });
 
@@ -450,11 +497,11 @@ var PhasePlotter = function (model) {
 
   var minFreq = Math.min.apply(Math, freqs);
   var maxFreq = Math.max.apply(Math, freqs);
-  var radiusScale = this.radiusScale;
+  var radiusScale = config.phasePlot.circleRadiusScale;
   var baseShift = 0.5 * minFreq;
   var freqShift = 0.5 / maxFreq;
 
-  for (var i = 0, I = this.grids.length; i < I; ++i) {
+  for (var i = 0, I = grids.length; i < I; ++i) {
     var grid = grids[i];
     var freq = freqs[i];
     var base = bases[i];
@@ -469,7 +516,7 @@ var PhasePlotter = function (model) {
   var xPosMax = Math.max.apply(Math, xPos);
   var xScale = (1 - minFreq) / (xPosMax - xPosMin);
   var xShift = 0.5 * minFreq - xScale * xPosMin;
-  for (var i = 0, I = this.grids.length; i < I; ++i) {
+  for (var i = 0, I = grids.length; i < I; ++i) {
     xPos[i] = xShift + xScale * xPos[i];
   }
 
@@ -478,26 +525,20 @@ var PhasePlotter = function (model) {
 
 PhasePlotter.prototype = {
 
-  radiusScale: config.phasePlot.circleRadiusScale,
-  baseShift: config.phasePlot.baseShift,
+  plot: function (tactus) {
 
-  plot: function (time) {
-
-    time = time || 0;
-
-    assert(time >= 0, 'time is before zero: ' + time);
+    tactus = tactus || 0;
+    assert(tactus >= 0, 'tactus is before zero: ' + tactus);
 
     var context = PhasePlotter.context;
     var width = PhasePlotter.canvas.width;
     var height = PhasePlotter.canvas.height;
-    var minth = Math.min(width, height);
+    var minth = Math.min(width / 2, height);
     var x0 = width / 2;
     var y0 = height / 2;
 
     var amps = this.model.getGridAmps().likes;
     var ampScale = 1 / Math.max.apply(Math, amps);
-    var freqs = this.freqs;
-    var bases = this.bases;
     var xPos = this.xPos;
     var yPos = this.yPos;
     var radii = this.radii;
@@ -511,18 +552,16 @@ PhasePlotter.prototype = {
     var twoPi = 2 * Math.PI;
     var round = Math.round;
 
-    for (var i = 0, I = freqs.length; i < I; ++i) {
+    var envelope = this.model.getCartoonEnvelopeAtTactus(tactus);
 
-      var freq = freqs[i];
-      var phase = (freq * time + bases[i]) % 1;
-      var pulsate = 1 / (1 + 4 * phase * (1 - phase)); // in [1/2,1]
+    for (var i = 0, I = radii.length; i < I; ++i) {
 
-      var rgb = round(255 * ampScale * amps[i]);
-      context.fillStyle = 'rgb('+rgb+','+rgb+','+rgb+')';
+      var lum = round(255 * ampScale * amps[i]);
+      context.fillStyle = 'rgb('+lum+','+lum+','+lum+')';
 
       var x = xPos[i] * width;
       var y = yPos[i] * height;
-      var radius = radii[i] * minth * pulsate;
+      var radius = radii[i] * envelope[i] * minth;
 
       context.beginPath();
       context.arc(x, y, radius, 0, twoPi, false);
@@ -578,38 +617,43 @@ var TonePlotter = function (model) {
 
   this.model = model;
 
-  var grids = this.grids = model.grids;
-
-  var freqs = this.freqs = grids.map(function(g){ return g.freq.toNumber(); });
-  var bases = this.bases = grids.map(function(g){ return g.base.toNumber(); });
+  var freqs = model.freqs;
+  var numers = freqs.map(function(f){ return f.numer; });
+  var denoms = freqs.map(function(f){ return f.denom; });
 
   var radii = this.radii = [];
   var xPos = this.xPos = [];
   var yPos = this.yPos = [];
 
-  var minFreq = Math.min.apply(Math, freqs);
-  var maxFreq = Math.max.apply(Math, freqs);
-  var radiusScale = this.radiusScale;
-  var baseShift = 0.5 * minFreq;
-  var freqShift = 0.5 / maxFreq;
+  var maxNumer = Math.max.apply(Math, numer);
+  var maxDenom = Math.max.apply(Math, denom);
+  var radiusScale = config.tonePlot.circleRadiusScale;
 
-  for (var i = 0, I = this.grids.length; i < I; ++i) {
-    var grid = grids[i];
-    var freq = freqs[i];
-    var base = bases[i];
+  for (var i = 0, I = freqs.length; i < I; ++i) {
+    var numer = numers[i];
+    var denom = denoms[i];
 
-    var norm = grid.norm();
-
-    yPos[i] = (1 - base - baseShift - freqShift * freq) % 1;
-    xPos[i] = Math.log(freq);
-    radii[i] = radiusScale / norm;
+    var x = Math.log(numer / denom);
+    var y = Math.log(numer * numer + denom * denom) / 2;
+    xPos[i] = x;
+    yPos[i] = y * y - x * x;
+    radii[i] = radiusScale;
   }
+
   var xPosMin = Math.min.apply(Math, xPos);
   var xPosMax = Math.max.apply(Math, xPos);
-  var xScale = (1 - minFreq) / (xPosMax - xPosMin);
-  var xShift = 0.5 * minFreq - xScale * xPosMin;
-  for (var i = 0, I = this.grids.length; i < I; ++i) {
-    xPos[i] = xShift + xScale * xPos[i];
+  var yPosMin = Math.min.apply(Math, yPos);
+  var yPosMax = Math.max.apply(Math, yPos);
+  for (var i = 0, I = freqs.length; i < I; ++i) {
+    xPos[i] = (xPos[i] - xPosMin) / (xPosMax - xPosMin);
+    yPos[i] = (yPos[i] - yPosMin) / (yPosMax - yPosMin);
+  }
+
+  var border = config.tonePlot.border;
+  var borderScale = 1 - 2 * border;
+  for (var i = 0, I = freqs.length; i < I; ++i) {
+    xPos[i] = border + borderScale * xPos[i];
+    yPos[i] = border + borderScale * (1 - yPos[i]);
   }
 
   TonePlotter.initCanvas();
@@ -617,27 +661,29 @@ var TonePlotter = function (model) {
 
 TonePlotter.prototype = {
 
-  radiusScale: config.tonePlot.circleRadiusScale,
-  baseShift: config.tonePlot.baseShift,
-
   // TODO factor into updateGeometry and draw
-  plot: function (time) {
+  plot: function (tactus) {
 
-    time = time || 0;
-
-    assert(time >= 0, 'time is before zero: ' + time);
+    tactus = tactus || 0;
+    assert(tactus >= 0, 'tactus is before zero: ' + tactus);
 
     var context = TonePlotter.context;
     var width = TonePlotter.canvas.width;
     var height = TonePlotter.canvas.height;
-    var minth = Math.min(width, height);
+    var minth = Math.min(width / 2, height);
     var x0 = width / 2;
     var y0 = height / 2;
 
-    var amps = this.model.amps.likes;
+    //var envelope = this.model.getEnvelopeAtTactus(tactus);
+    var envelope = this.model.getCartoonEnvelopeAtTactus(tactus);
+
+    var amps = this.model.getFreqAmps(envelope).likes;
+    var prior = this.model.getFreqPrior(envelope).likes;
+
+    // TODO time-average these or something
     var ampScale = 1 / Math.max.apply(Math, amps);
-    var freqs = this.freqs;
-    var bases = this.bases;
+    var priorScale = 1 / Math.max.apply(Math, prior);
+
     var xPos = this.xPos;
     var yPos = this.yPos;
     var radii = this.radii;
@@ -651,18 +697,14 @@ TonePlotter.prototype = {
     var twoPi = 2 * Math.PI;
     var round = Math.round;
 
-    for (var i = 0, I = freqs.length; i < I; ++i) {
+    for (var i = 0, I = radii.length; i < I; ++i) {
 
-      var freq = freqs[i];
-      var phase = (freq * time + bases[i]) % 1;
-      var pulsate = 1 / (1 + 4 * phase * (1 - phase)); // in [1/2,1]
-
-      var rgb = round(255 * ampScale * amps[i]);
-      context.fillStyle = 'rgb('+rgb+','+rgb+','+rgb+')';
+      var lum = round(255 * ampScale * amps[i]);
+      context.fillStyle = 'rgb('+lum+','+lum+','+lum+')';
 
       var x = xPos[i] * width;
       var y = yPos[i] * height;
-      var radius = radii[i] * minth * pulsate;
+      var radius = radii[i] * priorScale * prior[i] * minth;
 
       context.beginPath();
       context.arc(x, y, radius, 0, twoPi, false);
@@ -1165,11 +1207,11 @@ var main = function () {
   var model = new Model();
   var synthesizer = new Synthesizer(model);
   var phasePlotter = new PhasePlotter(model);
-  var keyboard = new Keyboard(model, synthesizer);
+  var tonePlotter = new TonePlotter(model, synthesizer);
 
   var clock = new Clock();
   model.start(clock);
-  keyboard.start(clock);
+  tonePlotter.start(clock);
   phasePlotter.start(clock);
   synthesizer.start(clock);
 
