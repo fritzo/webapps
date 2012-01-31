@@ -602,7 +602,34 @@ PhasePlotter.prototype = {
     }
   },
 
+  click: function (x01, y01) {
+    var radii = this.radii;
+    var xPos = this.xPos;
+    var yPos = this.yPos;
+
+    var bestDistance = 1/0;
+    var bestIndex = undefined;
+    for (var i = 0, I = radii.length; i < I; ++i) {
+
+      var dx = xPos[i] - x01;
+      var dy = yPos[i] - y01;
+      var r = radii[i] + 1e-4;
+      var distance = (dx * dx + dy * dy) / (r * r);
+
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestIndex = i;
+      }
+    }
+
+    log('DEBUG best index = ' + bestIndex);
+
+    this.model.addAmpAtGrid(bestIndex);
+  },
+
   start: function (clock) {
+
+    this.clock = clock;
 
     this.updateGeometry(0);
     this.draw();
@@ -610,6 +637,8 @@ PhasePlotter.prototype = {
 
     var phasePlotter = this;
     var model = this.model;
+    var canvas = PhasePlotter.canvas;
+
     clock.continuouslyDo(function(timeMs){
           var tactus = model.convertMsToTactus(timeMs);
           phasePlotter.updateGeometry(tactus);
@@ -620,10 +649,19 @@ PhasePlotter.prototype = {
           var framerate = profileFrameCount * 1000 / timeMs;
           log('phasePlotter framerate = ' + framerate.toFixed(1) + ' Hz');
         });
+
     $(window).resize(function () {
           var timeMs = clock.now();
           var tactus = model.convertMsToTactus(timeMs);
           phasePlotter.draw();
+        });
+
+    $(canvas).on('mouseup', function (e) {
+          if (clock.running) {
+            phasePlotter.click(
+                e.pageX / innerWidth,
+                2 * e.pageY / innerHeight - 1);
+          }
         });
   }
 };
@@ -646,9 +684,10 @@ PhasePlotter.initCanvas = function () {
 // TonePlotter
 
 /** @constructor */
-var TonePlotter = function (model) {
+var TonePlotter = function (model, synthesizer) {
 
   this.model = model;
+  this.synthesizer = synthesizer;
 
   var freqs = model.freqs;
   var numers = freqs.map(function(f){ return f.numer; });
@@ -765,7 +804,38 @@ TonePlotter.prototype = {
     }
   },
 
+  click: function (x01, y01) {
+    var clockTime = this.clock.now();
+
+    var radii = this.radii;
+    var xPos = this.xPos;
+    var yPos = this.yPos;
+
+    var bestDistance = 1/0;
+    var bestIndex = undefined;
+    for (var i = 0, I = radii.length; i < I; ++i) {
+
+      var dx = xPos[i] - x01;
+      var dy = yPos[i] - y01;
+      var r = radii[i] + 1e-4;
+      var distance = (dx * dx + dy * dy) / (r * r);
+
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestIndex = i;
+      }
+    }
+
+    log('DEBUG best index = ' + bestIndex);
+
+    var gain = config.synth.clickGain;
+    this.synthesizer.playOnset(bestIndex, gain);
+    this.model.addAmpAtTimeFreq(clockTime, bestIndex, gain);
+  },
+
   start: function (clock) {
+
+    this.clock = clock;
 
     this.updateGeometry(0);
     this.draw();
@@ -773,6 +843,8 @@ TonePlotter.prototype = {
 
     var tonePlotter = this;
     var model = this.model;
+    var canvas = TonePlotter.canvas;
+
     clock.continuouslyDo(function(timeMs){
           var tactus = model.convertMsToTactus(timeMs);
           tonePlotter.updateGeometry(tactus);
@@ -783,10 +855,19 @@ TonePlotter.prototype = {
           var framerate = profileFrameCount * 1000 / timeMs;
           log('tonePlotter framerate = ' + framerate.toFixed(1) + ' Hz');
         });
+
     $(window).resize(function () {
           var timeMs = clock.now();
           var tactus = model.convertMsToTactus(timeMs);
           tonePlotter.draw();
+        });
+
+    $(canvas).on('mouseup', function (e) {
+          if (clock.running) {
+            tonePlotter.click(
+                e.pageX / innerWidth,
+                2 * e.pageY / innerHeight);
+          }
         });
   }
 };
