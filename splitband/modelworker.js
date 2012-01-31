@@ -222,8 +222,8 @@ addEventListener('message', function (e) {
         profileCount += 1;
         profileElapsedMs += Date.now() - profileStartTime;
         postMessage({
-              'type':'update',
-              'data':{'amps':amps.likes, 'prior':prior.likes}
+              'type': 'update',
+              'data': {'amps':amps.likes, 'prior':prior.likes}
             });
         break;
 

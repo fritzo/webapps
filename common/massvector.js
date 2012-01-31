@@ -14,7 +14,7 @@ var MassVector = function (init) {
     this.likes = init.likes.slice();
   } else if (init instanceof Array) {
     this.likes = init.slice();
-  } else if (init instanceof Number) {
+  } else if (typeof init === 'number') {
     this.likes = new Array(init);
   } else {
     assert(init === undefined,

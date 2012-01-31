@@ -35,13 +35,13 @@ var config = {
   },
 
   phasePlot: {
-    framerateHz: 100,
+    framerateHz: 60,
     circleRadiusScale: 0.2,
     baseShift: 0.08
   },
 
   keyboard: {
-    updateHz: 30,
+    framerateHz: 60,
     keyThresh: 1e-4,
     cornerRadius: 1/3
   },
@@ -85,11 +85,11 @@ var Model = function () {
 
   this.prior = new MassVector(this.amps);
   this.damps = MassVector.zero(this.amps.likes.length);
-  this.tempDamps = MassVector.zero(this.amps.likes.length);
 };
 
 Model.prototype = {
 
+  // TODO augment with cycle parameter and make time-varying
   getFreqAmps: function () {
     var F = this.freqs.length;
     var G = this.grids.length;
@@ -122,45 +122,103 @@ Model.prototype = {
     return result;
   },
 
-  addAmpAtTime: function (timeMs) {
+  addAmpAtTime: function (timeMs, gain) {
 
     assert(timeMs >= 0, 'bad timeMs: ' + timeMs);
+
     var time = timeMs / (1000 * this.tempoHz);
+    log('DEBUG phase = ' + (this.grids[0].phaseAtTime(time) % 1));
+
     var grids = this.grids;
-    var prior = this.prior;
+    var prior = this.prior.likes;
     var F = this.freqs.length;
     var G = this.grids.length;
+    var FG = F * G;
 
     var sustain = Math.exp(-this.sharpness);
     var pow = Math.pow;
 
-    log('DEBUG phase = ' + (grids[0].phaseAtTime(time) % 1));
-
-    var likes = this.tempDamps.likes;
+    var newLikes = new Array(FG);
+    var total = 0;
     for (var g = 0; g < G; ++g) {
       var phase = grids[g].phaseAtTime(time) % 1;
       var like = pow(sustain, phase) + pow(sustain, 1 - phase);
       for (var f = 0; f < F; ++f) {
         var fg = G * f + g;
-        likes[fg] = prior[fg] * like;
+        total += newLikes[fg] = prior[fg] * like;
       }
     }
-    this.tempDamps.normalize();
+    var scale = (gain || 1) / total;
 
-    this.damps.iadd(this.tempDamps);
+    var likes = this.damps.likes;
+    for (var fg = 0; fg < FG; ++fg) {
+      likes[fg] += scale * newLikes[fg];
+    }
   },
 
-  addAmpAtTimeFreq: function (timeMs, freqIndex) {
-    TODO();
+  addAmpAtTimeFreq: function (timeMs, freqIndex, gain) {
+
+    assert(timeMs >= 0, 'bad timeMs: ' + timeMs);
+    assert(0 <= freqIndex && freqIndex < this.freqs.length,
+        'bad freq index: ' + freqIndex);
+
+    var time = timeMs / (1000 * this.tempoHz);
+    log('DEBUG phase = ' + (this.grids[0].phaseAtTime(time) % 1));
+
+    var grids = this.grids;
+    var prior = this.prior.likes;
+    var F = this.freqs.length;
+    var G = this.grids.length;
+    var FG = F * G;
+
+    var sustain = Math.exp(-this.sharpness);
+    var pow = Math.pow;
+
+    var newLikes = new Array(G);
+    var total = 0;
+    for (var g = 0; g < G; ++g) {
+      var phase = grids[g].phaseAtTime(time) % 1;
+      var like = pow(sustain, phase) + pow(sustain, 1 - phase);
+      var fg = G * freqIndex + g;
+      total += newLikes[g] = prior[fg] * like;
+    }
+    var scale = (gain || 1) / total;
+
+    var likes = this.damps.likes;
+    for (var g = 0; g < G; ++g) {
+      var fg = G * freqIndex + g;
+      likes[fg] += scale * newLikes[g];
+    }
   },
 
-  addAmpAtTimeGrid: function (timeMs, gridIndex) {
-    TODO();
+  addAmpAtGrid: function (gridIndex, gain) {
+
+    assert(0 <= gridIndex && gridIndex < this.grids.length,
+        'bad grid index: ' + gridIndex);
+
+    var prior = this.prior.likes;
+    var F = this.freqs.length;
+    var G = this.grids.length;
+    var FG = F * G;
+
+    var newLikes = new Array(F);
+    var total = 0;
+    for (var f = 0; f < F; ++f) {
+      var fg = G * f + gridIndex;
+      total += newLikes[f] = prior[fg];
+    }
+    var scale = (gain || 1) / total;
+
+    var likes = this.damps.likes;
+    for (var f = 0; f < F; ++f) {
+      var fg = G * f + gridIndex;
+      likes[fg] += scale * newLikes[f];
+    }
   },
 
   start: function (clock) {
 
-    var running = false;
+    // TODO XXX FIXME this mechanism exhibits drift
     var lastTime = undefined;
 
     var model = this;
@@ -171,7 +229,7 @@ Model.prototype = {
 
     var modelworker = new Worker('modelworker.js');
     var update = function () {
-      if (running) {
+      if (clock.running) {
         var time = Date.now();
         var timestepSec = (time - lastTime) / 1000;
         lastTime = Date.now();
@@ -199,7 +257,7 @@ Model.prototype = {
                 amps[i] = newAmps[i];
                 prior[i] = newPrior[i];
               }
-              if (running) setTimeout(update(), minDelay);
+              if (clock.running) setTimeout(update(), minDelay);
               break;
 
             case 'log':
@@ -226,12 +284,10 @@ Model.prototype = {
       });
 
     clock.onStart(function(){
-          running = true;
           lastTime = Date.now();
           update();
         });
     clock.onStop(function(){
-          running = false;
           modelworker.postMessage({'cmd':'profile'});
         });
   },
@@ -287,6 +343,7 @@ PhasePlotter.prototype = {
   radiusScale: config.phasePlot.circleRadiusScale,
   baseShift: config.phasePlot.baseShift,
 
+  // TODO move this to model.getGridAmps
   projectAmps: function () {
     var fullAmps = this.fullAmps;
     var gridAmps = this.gridAmps;
@@ -348,12 +405,12 @@ PhasePlotter.prototype = {
   start: function (clock, tempoKhz) {
 
     var tempoKhz = this.tempoHz / 1000;
-    var phasePlotter = this;
+
+    this.plot(0);
     var profileFrameCount = 1;
 
-    phasePlotter.plot(0);
-
     // TODO reimplement for variable tempo
+    var phasePlotter = this;
     clock.continuouslyDo(function(timeMs){
           phasePlotter.projectAmps();
           phasePlotter.plot(timeMs * tempoKhz);
@@ -361,9 +418,9 @@ PhasePlotter.prototype = {
         }, 1000 / config.phasePlot.framerateHz);
     clock.onStop(function(timeMs){
           var framerate = profileFrameCount * 1000 / timeMs;
-          log('plotting framerate = ' + framerate.toFixed(1) + ' Hz');
+          log('phasePlotter framerate = ' + framerate.toFixed(1) + ' Hz');
         });
-    $(window).on('resize.phasePlotter', function () {
+    $(window).resize(function () {
           phasePlotter.plot(clock.now() * tempoKhz);
           if (clock.running) profileFrameCount += 1;
         });
@@ -400,7 +457,6 @@ var Keyboard = function (model, synthesizer) {
 
   this.model = model;
   this.synthesizer = synthesizer || mockSynthesizer;
-  this.delayMs = 1000 / config.keyboard.updateHz;
 
   Keyboard.initCanvas();
 
@@ -409,114 +465,21 @@ var Keyboard = function (model, synthesizer) {
 
 Keyboard.prototype = {
 
-  start: function (clock) {
-
-    this.clock = clock;
-    TODO('update to use a clock');
-
-    if (this.running) return;
-    this.running = true;
-
-    this.profileTime = Date.now();
-    this.profileCount = 0;
-
-    this.updateTask = undefined;
-    this.update();
-
-    var keyboard = this;
-    $(window).off('resize.keyboard').on('resize.keyboard', function () {
-          keyboard.updateGeometry(); // used by .draw() and .click()
-          keyboard.draw();
-        });
-
-    var $canvas = $(Keyboard.canvas);
-
-    var move = function (e) {
-      keyboard.swipeX1 = e.pageX / innerWidth;
-      keyboard.swipeY1 = e.pageY / innerHeight;
-    };
-
-    $canvas.on('mousedown.keyboard', function (e) {
-          keyboard._swiped = false;
-          keyboard.swipeX0 = keyboard.swipeX1 = e.pageX / innerWidth;
-          keyboard.swipeY0 = keyboard.swipeY1 = e.pageY / innerHeight;
-          $canvas.off('mousemove.keyboard').on('mousemove.keyboard', move);
-          e.preventDefault(); // avoid selecting buttons
-        });
-    $canvas.on('mouseover.keyboard', function (e) {
-          if (e.which) {
-            keyboard._swiped = false;
-            keyboard.swipeX0 = keyboard.swipeX1 = e.pageX / innerWidth;
-            keyboard.swipeY0 = keyboard.swipeY1 = e.pageY / innerHeight;
-            $canvas.off('mousemove.keyboard').on('mousemove.keyboard', move);
-          }
-          e.preventDefault(); // avoid selecting buttons
-        });
-    $canvas.on('mouseup.keyboard', function (e) {
-          $canvas.off('mousemove.keyboard');
-          if (!keyboard._swiped) {
-            keyboard.click(
-                e.pageX / innerWidth,
-                e.pageY / innerHeight);
-          }
-          keyboard._swiped = true;
-          e.preventDefault(); // avoid selecting buttons
-        });
-    $canvas.on('mouseout.keyboard', function (e) {
-          $canvas.off('mousemove.keyboard');
-          e.preventDefault(); // avoid selecting buttons
-        });
-  },
-
-  stop: function () {
-    this.running = false;
-    if (this.updateTask !== undefined) {
-      clearTimeout(this.updateTask);
-      this.updateTask = undefined;
-    }
-
-    if (!testing) {
-      var profileRate =
-        this.profileCount * 1e3 / (Date.now() - this.profileTime);
-      log('Keyboard update rate = ' + profileRate + ' Hz');
-    }
-
-    var $canvas = $(Keyboard.canvas);
-    $canvas.off('mousedown.keyboard');
-    $canvas.off('mousemove.keyboard');
-    $canvas.on('mouseup.keyboard');
-    $canvas.off('mouseout.keyboard');
-  },
-
-  update: function () {
-    this.updateSwipe();
-    this.updateGeometry();
-    this.draw();
-
-    if (this.running) {
-      var keyboard = this;
-      this.updateTask = setTimeout(function(){
-            keyboard.updateTask = undefined;
-            keyboard.update();
-          }, this.delayMs);
-    }
-
-    this.profileCount += 1;
-  },
-
   onclick: function (index) {
+    var clockTime = this.clock.now();
     var gain = config.synth.clickGain;
     this.synthesizer.playOnset(index, gain);
-    this.model.addAmpAtTimeFreq(this.clock.now(), index, gain);
+    this.model.addAmpAtTimeFreq(clockTime, index, gain);
   },
   onswipe: function (indices) {
-    this._swiped = true;
+    var clockTime = this.clock.now();
     var gain = config.synth.swipeGain;
     for (var i = 0, I = indices.length; i < I; ++i) {
       var index = indices[i];
       this.synthesizer.playOnset(index, gain); // works poorly in firefox
-      this.model.addAmpAtTimeFreq(this.clock.now(), index, gain);
+      this.model.addAmpAtTimeFreq(clockTime, index, gain);
     }
+    this._swiped = true;
   },
 
   updateGeometry: function () {
@@ -525,11 +488,11 @@ Keyboard.prototype = {
     var X = this.model.freqs.length;
     var Y = Math.floor(2 + Math.sqrt(innerHeight + innerWidth));
 
-    var probs = this.model.getFreqPrior();
+    var probs = this.model.getFreqPrior(); // TODO make this depend on time
     var keys = probs.truncate(keyThresh);
     var K = keys.length;
     if (testing) {
-      assert(probs.likes.length === keys.length, 'probs,keys length mismatch');
+      assertLength(probs.likes, keys.length, 'probs');
       for (var k = 0; k < K; ++k) {
         assert(0 <= probs.likes[k],
             'bad prob: probs.likes[' + k + '] = ' + probs.likes[k]);
@@ -625,6 +588,7 @@ Keyboard.prototype = {
     this.xpos = xpos;
     this.ypos = ypos;
 
+    // TODO use chroma class for color, instead of activation
     var colorParam = this.model.getFreqPrior().likes;
     var colorScale = 1 / Math.max.apply(Math, colorParam);
     var activeParam = this.model.getFreqAmps().likes;
@@ -759,59 +723,93 @@ Keyboard.prototype = {
     }
   },
 
+  start: function (clock) {
+
+    this.clock = clock;
+
+    var profileFrameCount = 0;
+
+    var keyboard = this;
+    var $canvas = $(Keyboard.canvas);
+
+    var move = function (e) {
+      keyboard.swipeX1 = e.pageX / innerWidth;
+      keyboard.swipeY1 = e.pageY / innerHeight;
+    };
+
+    $(window).resize(function () {
+          keyboard.updateGeometry(); // used by .draw() and .click()
+          keyboard.draw();
+          if (clock.running) profileFrameCount += 1;
+        });
+
+    clock.continuouslyDo(function(timeMs){
+
+          keyboard.updateSwipe();
+          keyboard.updateGeometry();
+          keyboard.draw();
+
+          profileFrameCount += 1;
+
+        }, 1000 / config.keyboard.framerateHz);
+
+    clock.onStart(function(){
+
+          keyboard.updateSwipe();
+          keyboard.updateGeometry();
+          keyboard.draw();
+          profileFrameCount += 1;
+
+          $canvas.on('mousedown.keyboard', function (e) {
+                keyboard._swiped = false;
+                keyboard.swipeX0 = keyboard.swipeX1 = e.pageX / innerWidth;
+                keyboard.swipeY0 = keyboard.swipeY1 = e.pageY / innerHeight;
+                $canvas.off('mousemove.keyboard')
+                       .on('mousemove.keyboard', move);
+                e.preventDefault(); // avoid selecting buttons
+              });
+          $canvas.on('mouseover.keyboard', function (e) {
+                if (e.which) {
+                  keyboard._swiped = false;
+                  keyboard.swipeX0 = keyboard.swipeX1 = e.pageX / innerWidth;
+                  keyboard.swipeY0 = keyboard.swipeY1 = e.pageY / innerHeight;
+                  $canvas.off('mousemove.keyboard')
+                         .on('mousemove.keyboard', move);
+                }
+                e.preventDefault(); // avoid selecting buttons
+              });
+          $canvas.on('mouseup.keyboard', function (e) {
+                $canvas.off('mousemove.keyboard');
+                if (!keyboard._swiped) {
+                  keyboard.click(
+                      e.pageX / innerWidth,
+                      e.pageY / innerHeight);
+                }
+                keyboard._swiped = true;
+                e.preventDefault(); // avoid selecting buttons
+              });
+          $canvas.on('mouseout.keyboard', function (e) {
+                $canvas.off('mousemove.keyboard');
+                e.preventDefault(); // avoid selecting buttons
+              });
+
+        });
+
+    clock.onStop(function(timeMs){
+
+          $canvas.off('mousedown.keyboard');
+          $canvas.off('mousemove.keyboard');
+          $canvas.off('mouseover.keyboard');
+          $canvas.off('mouseup.keyboard');
+          $canvas.off('mouseout.keyboard');
+
+          var framerate = profileFrameCount * 1000 / timeMs;
+          log('keyboard framerate = ' + framerate.toFixed(1) + ' Hz');
+        });
+  },
+
   fracBars: '\u2013\u2014\u2015' // narrow, medium, wide
 };
-
-Keyboard.canvas = undefined;
-Keyboard.context = undefined;
-
-test('Keyboard.update', function(){
-  var model = new Harmony(4);
-  model.start();
-  model.stop();
-
-  var keyboard = new Keyboard(model);
-  keyboard.update();
-});
-
-test('Keyboard.click', function(){
-  var model = new Harmony(4);
-  var keyboard = new Keyboard(model);
-
-  model.start();
-  keyboard.start();
-  keyboard.stop();
-  model.stop();
-
-  for (var i = 0; i < 10; ++i) {
-    keyboard.click(Math.random(), Math.random());
-    model.updateDiffusion();
-    keyboard.update();
-  }
-});
-
-test('Keyboard.swipe', function(){
-  var model = new Harmony(4);
-  var keyboard = new Keyboard(model);
-
-  model.start();
-  keyboard.start();
-  keyboard.stop();
-  model.stop();
-
-  keyboard._swiped = false;
-  keyboard.swipeX0 = keyboard.swipeX1 = Math.random();
-  keyboard.swipeY0 = keyboard.swipeY1 = Math.random();
-
-  for (var i = 0; i < 10; ++i) {
-    keyboard._swiped = false;
-    keyboard.swipeX1 = Math.random();
-    keyboard.swipeY1 = Math.random();
-
-    model.updateDiffusion();
-    keyboard.update();
-  }
-});
 
 Keyboard.initCanvas = function () {
 
@@ -832,6 +830,73 @@ Keyboard.initCanvas = function () {
 
   Keyboard.context = canvas.getContext('2d');
 };
+
+test('Keyboard update', function(){
+
+  var model = new Model();
+  var keyboard = new Keyboard(model);
+
+  var clock = new Clock();
+  model.start(clock);
+  keyboard.start(clock);
+
+  clock.start();
+  setTimeout(function(){ clock.stop(); }, 100);
+});
+
+test('Keyboard.click', function(){
+
+  var model = new Model();
+  var keyboard = new Keyboard(model);
+
+  var clock = new Clock();
+  model.start(clock);
+  keyboard.start(clock);
+
+  clock.start();
+  var count = 10;
+  var testAndWait = function () {
+    if (count--) {
+      keyboard.click(Math.random(), Math.random());
+      setTimeout(testAndWait, 20);
+    } else {
+      clock.stop();
+      log('passed Keyboard.click test');
+    }
+  };
+  testAndWait();
+});
+
+test('Keyboard.swipe', function(){
+
+  var model = new Model();
+  var keyboard = new Keyboard(model);
+
+  var clock = new Clock();
+  model.start(clock);
+  keyboard.start(clock);
+
+  keyboard._swiped = false;
+  keyboard.swipeX0 = keyboard.swipeX1 = Math.random();
+  keyboard.swipeY0 = keyboard.swipeY1 = Math.random();
+
+  clock.start();
+  var count = 10;
+  var testAndWait = function () {
+    if (count--) {
+
+      keyboard._swiped = false;
+      keyboard.swipeX1 = Math.random();
+      keyboard.swipeY1 = Math.random();
+
+      setTimeout(testAndWait, 20);
+    } else {
+      clock.stop();
+      log('passed Keyboard.swipe test');
+    }
+  };
+  testAndWait();
+});
 
 //------------------------------------------------------------------------------
 // Synthesis
@@ -932,17 +997,17 @@ var main = function () {
   var model = new Model();
   var synthesizer = new Synthesizer(model);
   var phasePlotter = new PhasePlotter(model);
-  //var keyboard = new Keyboard(model, synthesizer); // TODO
+
+  //var keyboard = new Keyboard(model, synthesizer);
+  var keyboard = new Keyboard(model); // TODO add playOnset to synthesizer
 
   var clock = new Clock();
   model.start(clock);
-  //keyboard.start(clock); // TODO
+  keyboard.start(clock);
   phasePlotter.start(clock);
   synthesizer.start(clock);
 
   var toggleRunning = function () { clock.toggleRunning(); };
-  $('#phasesPlot').click(toggleRunning);
-  $('canvas').click(toggleRunning);
 
   $(window).on('keydown', function (e) {
         switch (e.which) {
