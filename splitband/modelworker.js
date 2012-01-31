@@ -21,9 +21,6 @@ importScripts('../common/massvector.js');
 var pitchAcuity;
 var tempoAcuity;
 var sharpness;
-var attackSec;
-var sustainSec;
-var grooveSec;
 
 var freqs;
 var grids;
@@ -43,9 +40,6 @@ var distanceFF;
 var distanceGG;
 var interferenceGG;
 
-var amps;
-var prior;
-
 var profileCount = 0;
 var profileElapsedMs = 0;
 var initialized = false;
@@ -59,9 +53,6 @@ var init = function (data) {
   pitchAcuity = data['pitchAcuity'];
   tempoAcuity = data['tempoAcuity'];
   sharpness = data['sharpness'];
-  attackSec = data['attackSec'];
-  sustainSec = data['sustainSec'];
-  grooveSec = data['grooveSec'];
 
   freqs = data['freqArgs'].map(function(a){
         return new Rational(a[0],a[1]);
@@ -73,9 +64,6 @@ var init = function (data) {
   F = freqs.length;
   G = grids.length;
   FG = F * G;
-
-  amps = new MassVector(data['amps']);
-  assertLength(amps.likes, FG, 'amps');
 
   energy = new Array(FG);
   massG = new Array(G);
@@ -115,42 +103,44 @@ var computeEnergy = function (mass) {
 
   assertLength(mass, FG, 'mass');
 
+  var f,f1,f2,g,g1,g2,fg;
+
   // mass vector --> normalized mass matrix,
   //                 normalized projected mass vector
   var total = 0;
-  for (var fg = 0; fg < FG; ++fg) {
+  for (fg = 0; fg < FG; ++fg) {
     total += mass[fg];
   }
   assert(total > 0.5, 'unexpectedly low mass: ' + total);
   var normalize = 1 / total;
-  for (var g = 0; g < G; ++g) {
+  for (g = 0; g < G; ++g) {
     massG[g] = 0;
   }
-  for (var f = 0; f < F; ++f) {
+  for (f = 0; f < F; ++f) {
     var massRow = massFG[f];
-    for (var g = 0; g < G; ++g) {
+    for (g = 0; g < G; ++g) {
       massG[g] += massRow[g] = normalize * mass[G * f + g];
     }
   }
 
   // E_tempo(g) = sum g'. (sum f. mass(f,g')) distance(g,g')
-  for (var g1 = 0; g1 < G; ++g1) {
+  for (g1 = 0; g1 < G; ++g1) {
     var distanceRow = distanceGG[g1];
     var sum = 0;
-    for (var g2 = 0; g2 < G; ++g2) {
+    for (g2 = 0; g2 < G; ++g2) {
       sum += massG[g2] * distanceRow[g2];
     }
     tempoEnergyG[g1] = sum;
   }
 
   // interMass(f,g) = sum g'. inter(g,g') mass(f,g')
-  for (var f = 0; f < F; ++f) {
+  for (f = 0; f < F; ++f) {
     var massRow = massFG[f];
     var interMassRow = interMassFG[f];
-    for (var g1 = 0; g1 < G; ++g1) {
+    for (g1 = 0; g1 < G; ++g1) {
       var interRow = interferenceGG[g1];
       var sum = 0;
-      for (var g2 = 0; g2 < G; ++g2) {
+      for (g2 = 0; g2 < G; ++g2) {
         sum += interRow[g2] * massRow[g2];
       }
       interMassRow[g1] = sum;
@@ -158,51 +148,36 @@ var computeEnergy = function (mass) {
   }
 
   // E_pitch(f,g) = sum f'. distance(f,f'). interMass(f',g)
-  for (var f1 = 0; f1 < F; ++f1) {
+  for (f1 = 0; f1 < F; ++f1) {
     var energyRow = pitchEnergyFG[f1];
     var distanceRow = distanceFF[f1];
-    for (var g = 0; g < G; ++g) {
+    for (g = 0; g < G; ++g) {
       energyRow[g] = 0;
     }
-    for (var f2 = 0; f2 < F; ++f2) {
+    for (f2 = 0; f2 < F; ++f2) {
       var distance = distanceRow[f2];
       var massRow = massFG[f2];
-      for (var g = 0; g < G; ++g) {
+      for (g = 0; g < G; ++g) {
         energyRow[g] += distance * massRow[g];
       }
     }
   }
 
   // E(f,g) = E_tempo(g) + E_pitch(f,g)
-  for (var f = 0; f < F; ++f) {
+  for (f = 0; f < F; ++f) {
     var pitchRow = pitchEnergyFG[f];
-    for (var g = 0; g < G; ++g) {
+    for (g = 0; g < G; ++g) {
       energy[G * f + g] = tempoEnergyG[g] + pitchRow[g];
     }
   }
+
+  return energy;
 };
 
-var update = function (data) {
-  assert(initialized, 'worker has not been initialized');
-
-  var timestepSec = data['timestepSec'];
-  assert(0 <= timestepSec, 'bad timestep: ' + timestepSec);
-
-  var likes = amps.likes;
-
-  var damps = data['damps'];
-  assertLength(damps, FG, 'damps');
-
-  for (var fg = 0; fg < FG; ++fg) {
-    likes[fg] += damps[fg];
-  }
-
-  computeEnergy(amps.likes);
+var computePrior = function (amps) {
+  var energy = computeEnergy(amps);
   var temperature = 1; // pitchAcuity,tempoAcuity already control temperature
-  prior = MassVector.boltzmann(energy, temperature);
-
-  var rate = 1 - Math.exp(-timestepSec / grooveSec);
-  amps.shiftTowards(prior, rate);
+  return MassVector.boltzmann(energy, temperature);
 };
 
 //------------------------------------------------------------------------------
@@ -218,14 +193,16 @@ addEventListener('message', function (e) {
         break;
 
       case 'update':
+        assert(initialized, 'worker has not been initialized');
         var profileStartTime = Date.now();
-        update(data['data']);
+
+        var amps = data['data'];
+        assertLength(amps, FG, 'amps');
+        var prior = computePrior(amps);
+
         profileCount += 1;
         profileElapsedMs += Date.now() - profileStartTime;
-        postMessage({
-              'type': 'update',
-              'data': {'amps':amps.likes, 'prior':prior.likes}
-            });
+        postMessage({'type':'update', 'data':prior.likes});
         break;
 
       case 'profile':

@@ -30,7 +30,7 @@ var config = {
     tempoAcuity: 2.5,
     sharpness: 8,
 
-    updateRateHz: 100,
+    framerateHz: 100,
 
     none: undefined
   },
@@ -80,8 +80,6 @@ var Model = function () {
   this.tempoHz = config.model.tempoHz;
   this.commonPeriod = RatGrid.commonPeriod(grids);
   log('  with common period = ' + this.commonPeriod);
-  this.grooveSec = config.model.grooveSec;
-  this.minDelay = 1000 / config.model.updateRateHz;
 
   var fCenter = (freqs.length - 1) / 2;
   var gDownBeat = 0;
@@ -93,7 +91,6 @@ var Model = function () {
   this.amps = MassVector.degenerate(fgInitial, freqs.length * grids.length);
 
   this.prior = new MassVector(this.amps);
-  this.damps = MassVector.zero(this.amps.likes.length);
 };
 
 Model.prototype = {
@@ -236,21 +233,21 @@ Model.prototype = {
     var sustain = Math.exp(-this.sharpness);
     var pow = Math.pow;
 
-    var newLikes = new Array(FG);
+    var damps = new Array(FG);
     var total = 0;
     for (var g = 0; g < G; ++g) {
       var phase = grids[g].phaseAtTime(tactus) % 1;
       var like = pow(sustain, phase) + pow(sustain, 1 - phase);
       for (var f = 0; f < F; ++f) {
         var fg = G * f + g;
-        total += newLikes[fg] = prior[fg] * like;
+        total += damps[fg] = prior[fg] * like;
       }
     }
     var scale = (gain || 1) / total;
 
-    var likes = this.damps.likes;
+    var likes = this.amps.likes;
     for (var fg = 0; fg < FG; ++fg) {
-      likes[fg] += scale * newLikes[fg];
+      likes[fg] += scale * damps[fg];
     }
   },
 
@@ -272,20 +269,20 @@ Model.prototype = {
     var sustain = Math.exp(-this.sharpness);
     var pow = Math.pow;
 
-    var newLikes = new Array(G);
+    var damps = new Array(G);
     var total = 0;
     for (var g = 0; g < G; ++g) {
       var phase = grids[g].phaseAtTime(tactus) % 1;
       var like = pow(sustain, phase) + pow(sustain, 1 - phase);
       var fg = G * freqIndex + g;
-      total += newLikes[g] = prior[fg] * like;
+      total += damps[g] = prior[fg] * like;
     }
     var scale = (gain || 1) / total;
 
-    var likes = this.damps.likes;
+    var likes = this.amps.likes;
     for (var g = 0; g < G; ++g) {
       var fg = G * freqIndex + g;
-      likes[fg] += scale * newLikes[g];
+      likes[fg] += scale * damps[g];
     }
   },
 
@@ -299,63 +296,44 @@ Model.prototype = {
     var G = this.grids.length;
     var FG = F * G;
 
-    var newLikes = new Array(F);
+    var damps = new Array(F);
     var total = 0;
     for (var f = 0; f < F; ++f) {
       var fg = G * f + gridIndex;
-      total += newLikes[f] = prior[fg];
+      total += damps[f] = prior[fg];
     }
     var scale = (gain || 1) / total;
 
-    var likes = this.damps.likes;
+    var likes = this.amps.likes;
     for (var f = 0; f < F; ++f) {
       var fg = G * f + gridIndex;
-      likes[fg] += scale * newLikes[f];
+      likes[fg] += scale * damps[f];
     }
+  },
+
+  updateAmps: function () {
   },
 
   start: function (clock) {
 
-    // TODO XXX FIXME this mechanism exhibits drift
-    var lastTime = undefined;
+    this.clock = clock;
 
     var model = this;
-    var amps = this.amps.likes;
-    var prior = this.prior.likes;
-    var damps = this.damps.likes;
-    var minDelay = this.minDelay;
+    var grooveMs = config.model.grooveSec * 1000;
+    var profileFrameCount = 0;
 
     var modelworker = new Worker('modelworker.js');
-    var update = function () {
-      if (clock.running) {
-        var time = Date.now();
-        var timestepSec = (time - lastTime) / 1000;
-        lastTime = Date.now();
-        modelworker.postMessage({
-              'cmd': 'update',
-              'data': {
-                'timestepSec': timestepSec,
-                'damps': model.damps.likes
-              }
-            });
-        for (var i = 0, I = damps.length; i < I; ++i) {
-          damps[i] = 0;
-        }
-      }
+    var updatePrior = function () {
+      modelworker.postMessage({'cmd':'update', 'data':model.amps.likes});
     };
     modelworker.addEventListener('message', function (e) {
           var data = e['data'];
           switch (data['type']) {
             case 'update':
-              newAmps = data['data']['amps'];
-              newPrior = data['data']['prior'];
-              assertLength(newAmps, amps.length, 'updated amps');
-              assertLength(newPrior, prior.length, 'updated prior');
-              for (var i = 0, I = amps.length; i < I; ++i) {
-                amps[i] = newAmps[i];
-                prior[i] = newPrior[i];
-              }
-              if (clock.running) setTimeout(update(), minDelay);
+              var newPrior = data['data'];
+              assertLength(newPrior, model.prior.likes.length, 'updated prior');
+              model.prior.likes = newPrior;
+              if (clock.running) updatePrior();
               break;
 
             case 'log':
@@ -372,8 +350,6 @@ Model.prototype = {
           'pitchAcuity': this.pitchAcuity,
           'tempoAcuity': this.tempoAcuity,
           'sharpness': this.sharpness,
-          'grooveSec': this.grooveSec,
-          'amps': this.amps.likes,
           'freqArgs': this.freqs.map(function(f){ return [f.numer, f.denom]; }),
           'gridArgs': this.grids.map(function(g){
                 return [g.freq.numer, g.freq.denom, g.base.numer, g.base.denom];
@@ -381,16 +357,23 @@ Model.prototype = {
         }
       });
 
-    clock.onStart(function(){
-          lastTime = Date.now();
-          update();
+    clock.onStart(function (timeMs) {
+          model.lastUpdateMs = timeMs;
+          updatePrior();
         });
-    clock.onStop(function(){
+    clock.continuouslyDo(function (timeMs) {
+          var timestepMs = timeMs - model.lastUpdateMs;
+          model.lastUpdateMs = timeMs;
+          var rate = 1 - Math.exp(-timestepMs / grooveMs);
+          model.amps.shiftTowards(model.prior, rate);
+          profileFrameCount += 1;
+        }, 1000 / config.model.framerateHz);
+    clock.onStop(function(timeMs){
+          var framerate = profileFrameCount * 1000 / timeMs;
+          log('model framerate = ' + framerate.toFixed(1) + ' Hz');
           modelworker.postMessage({'cmd':'profile'});
         });
   },
-
-  
 };
 
 //------------------------------------------------------------------------------
@@ -660,7 +643,7 @@ PhasePlotter.prototype = {
           if (clock.running) {
             phasePlotter.click(
                 e.pageX / innerWidth,
-                2 * e.pageY / innerHeight - 1);
+                2 * e.pageY / innerHeight - 1); // HACK
           }
         });
   }
@@ -673,8 +656,8 @@ PhasePlotter.initCanvas = function () {
   var canvas = PhasePlotter.canvas = $('#phasePlot')[0];
 
   $(window).resize(function(){
-        canvas.width = canvas.offsetWidth;
-        canvas.height = canvas.offsetHeight;
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
       }).resize();
 
   PhasePlotter.context = canvas.getContext('2d');
@@ -866,7 +849,7 @@ TonePlotter.prototype = {
           if (clock.running) {
             tonePlotter.click(
                 e.pageX / innerWidth,
-                2 * e.pageY / innerHeight);
+                2 * e.pageY / innerHeight); // HACK
           }
         });
   }
@@ -879,8 +862,8 @@ TonePlotter.initCanvas = function () {
   var canvas = TonePlotter.canvas = $('#tonePlot')[0];
 
   $(window).resize(function(){
-        canvas.width = canvas.offsetWidth;
-        canvas.height = canvas.offsetHeight;
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
       }).resize();
 
   TonePlotter.context = canvas.getContext('2d');
@@ -1259,8 +1242,8 @@ Keyboard.initCanvas = function () {
   var canvas = Keyboard.canvas = $('#tonePlot')[0];
 
   $(window).resize(function(){
-        canvas.width = canvas.offsetWidth;
-        canvas.height = canvas.offsetHeight;
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
       }).resize();
 
   Keyboard.context = canvas.getContext('2d');
