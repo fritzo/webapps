@@ -94,8 +94,8 @@ Model.prototype = {
     var F = this.freqs.length;
     var G = this.grids.length;
     var result = new MassVector(F);
-    var ampsLikes = this.amps.likes;
     var resultLikes = result.likes;
+    var ampsLikes = this.amps.likes;
     for (var f = 0; f < F; ++f) {
       var sum = 0;
       for (var g = 0; g < G; ++g) {
@@ -110,14 +110,30 @@ Model.prototype = {
     var F = this.freqs.length;
     var G = this.grids.length;
     var result = new MassVector(F);
-    var priorLikes = this.prior.likes;
     var resultLikes = result.likes;
+    var priorLikes = this.prior.likes;
     for (var f = 0; f < F; ++f) {
       var sum = 0;
       for (var g = 0; g < G; ++g) {
         sum += priorLikes[G * f + g];
       }
       resultLikes[f] = sum;
+    }
+    return result;
+  },
+
+  getGridAmps: function () {
+    var F = this.freqs.length;
+    var G = this.grids.length;
+    var result = new MassVector(G);
+    var resultLikes = result.likes;
+    var ampsLikes = this.amps.likes;
+    for (var g = 0; g < G; ++g) {
+      var sum = 0;
+      for (var f = 0; f < F; ++f) {
+        sum += ampsLikes[G * f + g];
+      }
+      resultLikes[g] = sum;
     }
     return result;
   },
@@ -301,11 +317,10 @@ Model.prototype = {
 /** @constructor */
 var PhasePlotter = function (model) {
 
+  this.model = model;
+
   var grids = this.grids = model.grids;
   this.tempoHz = model.tempoHz;
-  this.sharpness = model.sharpness;
-  this.fullAmps = model.amps.likes;
-  this.gridAmps = new Array(grids.length);
 
   var freqs = this.freqs = grids.map(function(g){ return g.freq.toNumber(); });
   var bases = this.bases = grids.map(function(g){ return g.base.toNumber(); });
@@ -343,15 +358,6 @@ PhasePlotter.prototype = {
   radiusScale: config.phasePlot.circleRadiusScale,
   baseShift: config.phasePlot.baseShift,
 
-  // TODO move this to model.getGridAmps
-  projectAmps: function () {
-    var fullAmps = this.fullAmps;
-    var gridAmps = this.gridAmps;
-    for (var fg = 0, FG = fullAmps.length, G = gridAmps.length; fg < FG; ++fg) {
-      gridAmps[fg % G] = fullAmps[fg];
-    }
-  },
-
   plot: function (time) {
 
     time = time || 0;
@@ -365,8 +371,8 @@ PhasePlotter.prototype = {
     var x0 = width / 2;
     var y0 = height / 2;
 
-    var gridAmps = this.gridAmps;
-    var ampScale = 1 / Math.max.apply(Math, gridAmps);
+    var amps = this.model.getGridAmps().likes;
+    var ampScale = 1 / Math.max.apply(Math, amps);
     var freqs = this.freqs;
     var bases = this.bases;
     var xPos = this.xPos;
@@ -388,7 +394,7 @@ PhasePlotter.prototype = {
       var phase = (freq * time + bases[i]) % 1;
       var pulsate = 1 / (1 + 4 * phase * (1 - phase)); // in [1/2,1]
 
-      var rgb = round(255 * ampScale * gridAmps[i]);
+      var rgb = round(255 * ampScale * amps[i]);
       context.fillStyle = 'rgb('+rgb+','+rgb+','+rgb+')';
 
       var x = xPos[i] * width;
@@ -404,15 +410,15 @@ PhasePlotter.prototype = {
 
   start: function (clock, tempoKhz) {
 
+    // TODO call phasePlotter.model.getCycleAtTime(timeMs)
+    // instead of keeping tempoHz locally
     var tempoKhz = this.tempoHz / 1000;
 
     this.plot(0);
     var profileFrameCount = 1;
 
-    // TODO reimplement for variable tempo
     var phasePlotter = this;
     clock.continuouslyDo(function(timeMs){
-          phasePlotter.projectAmps();
           phasePlotter.plot(timeMs * tempoKhz);
           profileFrameCount += 1;
         }, 1000 / config.phasePlot.framerateHz);
@@ -904,11 +910,7 @@ test('Keyboard.swipe', function(){
 /** @constructor */
 var Synthesizer = function (model) {
 
-  this.freqs = model.freqs;
-  this.grids = model.grids;
-  this.pitchHz = model.pitchHz;
   this.tempoHz = model.tempoHz;
-  this.sharpness = model.sharpness;
   this.amps = model.amps.likes;
 
   this.cyclesPerBeat = config.synth.cyclesPerBeat;
@@ -928,6 +930,10 @@ var Synthesizer = function (model) {
             synth.audio = new Audio(data['data']);
             synth.profileCount += 1;
             synth.profileElapsedMs += data['profileElapsedMs'];
+            if (synth.readyCallback) {
+              synth.readyCallback();
+              synth.readyCallback = undefined;
+            }
             break;
 
           case 'log':
@@ -941,12 +947,12 @@ var Synthesizer = function (model) {
   this.synthworker.postMessage({
     'cmd': 'init',
     'data': {
-        'pitchHz': this.pitchHz,
-        'tempoHz': this.tempoHz,
-        'sharpness': this.sharpness,
-        'freqs': this.freqs.map(function(f){ return f.toNumber(); }),
-        'gridFreqs': this.grids.map(function(g){ return g.freq.toNumber(); }),
-        'gridBases': this.grids.map(function(g){ return g.base.toNumber(); }),
+        'pitchHz': model.pitchHz,
+        'tempoHz': model.tempoHz,
+        'sharpness': model.sharpness,
+        'freqs': model.freqs.map(function(f){ return f.toNumber(); }),
+        'gridFreqs': model.grids.map(function(g){ return g.freq.toNumber(); }),
+        'gridBases': model.grids.map(function(g){ return g.base.toNumber(); }),
         'cyclesPerBeat': this.cyclesPerBeat,
         'numVoices': this.numVoices,
         'gain': this.gain
@@ -955,6 +961,7 @@ var Synthesizer = function (model) {
 };
 
 Synthesizer.prototype = {
+
   synthesize: function (cycle) {
     this.synthworker.postMessage({
           'cmd': 'synthesize',
@@ -963,6 +970,19 @@ Synthesizer.prototype = {
             'cycle': cycle
           }
         });
+  },
+
+  playOnset: function (freqIndex, gain) {
+    log('TODO implement Synthesizer.playOnset('+freqIndex+','+gain+')');
+  },
+
+  ready: function (callback) {
+    if (this.readyCallback === undefined) {
+      this.readyCallback = callback;
+    } else {
+      var oldCallback = this.readyCallback;
+      this.readyCallback = function () { oldCallback(); callback(); };
+    }
   },
 
   start: function (clock) {
@@ -997,9 +1017,7 @@ var main = function () {
   var model = new Model();
   var synthesizer = new Synthesizer(model);
   var phasePlotter = new PhasePlotter(model);
-
-  //var keyboard = new Keyboard(model, synthesizer);
-  var keyboard = new Keyboard(model); // TODO add playOnset to synthesizer
+  var keyboard = new Keyboard(model, synthesizer);
 
   var clock = new Clock();
   model.start(clock);
@@ -1026,8 +1044,7 @@ var main = function () {
         }
       });
 
-  // TODO synthesizer.ready(toggleRunning());
-  //   or put up a titlepage banner or something
+  synthesizer.ready(toggleRunning);
 };
 
 $(function(){
