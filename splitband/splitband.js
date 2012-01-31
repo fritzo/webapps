@@ -495,6 +495,8 @@ Keyboard.prototype = {
     var Y = Math.floor(2 + Math.sqrt(innerHeight + innerWidth));
 
     var probs = this.model.getFreqPrior(); // TODO make this depend on time
+    //log('DEBUG min,max probs = ' + Math.min.apply(Math, probs.likes) +
+    //                         ',' + Math.max.apply(Math, probs.likes));
     var keys = probs.truncate(keyThresh);
     var K = keys.length;
     if (testing) {
@@ -910,10 +912,11 @@ test('Keyboard.swipe', function(){
 /** @constructor */
 var Synthesizer = function (model) {
 
-  this.tempoHz = model.tempoHz;
   this.amps = model.amps.likes;
 
   this.cyclesPerBeat = config.synth.cyclesPerBeat;
+  this.periodMs = 1000 / (model.tempoHz * this.cyclesPerBeat);
+  assert(this.periodMs > 0, 'bad period: ' + this.periodMs);
   this.numVoices = config.synth.numVoices;
   this.gain = config.synth.gain;
 
@@ -987,9 +990,6 @@ Synthesizer.prototype = {
 
   start: function (clock) {
 
-    var synthRateHz = this.tempoHz * this.cyclesPerBeat;
-    var periodMs = 1000 / synthRateHz;
-
     // TODO XXX FIXME the clock seems to drift and lose alignment
     var synth = this;
     clock.onStop(function(time){
@@ -1003,7 +1003,7 @@ Synthesizer.prototype = {
           } else {
             log('WARNING dropped audio cycle ' + cycle);
           }
-        }, periodMs);
+        }, this.periodMs);
 
     this.synthesize(0, this.amps);
   }
@@ -1053,8 +1053,8 @@ $(function(){
 
     document.title = 'Splitband - Unit Test';
     test.runAll(function(){
-          window.location.hash = '';
-          document.title = 'Splitband';
+          //window.location.hash = '';
+          //document.title = 'Splitband';
           main();
         });
 

@@ -200,8 +200,9 @@ var update = function (data) {
   computeEnergy(amps.likes);
   var temperature = 1; // pitchAcuity,tempoAcuity already control temperature
   prior = MassVector.boltzmann(energy, temperature);
-  var drift = 1 - Math.exp(-timestepSec / grooveSec);
-  amps.shiftTowards(prior, drift);
+
+  var rate = 1 - Math.exp(-timestepSec / grooveSec);
+  amps.shiftTowards(prior, rate);
 };
 
 //------------------------------------------------------------------------------
