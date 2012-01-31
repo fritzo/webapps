@@ -336,11 +336,6 @@ var PhasePlotter = function (model) {
   var baseShift = 0.5 * minFreq;
   var freqShift = 0.5 / maxFreq;
 
-  var twoPi = 2 * Math.PI;
-  var realToUnit = function (x) {
-    return Math.atan(Math.log(x)) / Math.PI + 0.5;
-  };
-
   for (var i = 0, I = this.grids.length; i < I; ++i) {
     var grid = grids[i];
     var freq = freqs[i];
@@ -349,8 +344,15 @@ var PhasePlotter = function (model) {
     var norm = grid.norm();
 
     yPos[i] = (1 - base - baseShift - freqShift * freq) % 1;
-    xPos[i] = realToUnit(freq);
+    xPos[i] = Math.log(freq);
     radii[i] = radiusScale / norm;
+  }
+  var xPosMin = Math.min.apply(Math, xPos);
+  var xPosMax = Math.max.apply(Math, xPos);
+  var xScale = (1 - minFreq) / (xPosMax - xPosMin);
+  var xShift = 0.5 * minFreq - xScale * xPosMin;
+  for (var i = 0, I = this.grids.length; i < I; ++i) {
+    xPos[i] = xShift + xScale * xPos[i];
   }
 
   PhasePlotter.initCanvas();
