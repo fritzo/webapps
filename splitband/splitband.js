@@ -561,6 +561,9 @@ PhasePlotter.prototype = {
     for (var i = 0, I = radii.length; i < I; ++i) {
       radii[i] = radiusScale * sqrt(prior[i]) * envelope[i];
     }
+
+    this.sorted = prior.argsort();
+    this.sorted.reverse();
   },
 
   draw: function () {
@@ -581,7 +584,9 @@ PhasePlotter.prototype = {
     var round = Math.round;
     var twoPi = 2 * Math.PI;
 
-    for (var i = 0, I = radii.length; i < I; ++i) {
+    var sorted = this.sorted;
+    for (var s = 0, S = sorted.length; s < S; ++s) {
+      var i = sorted[s];
 
       var lum = round(255 * amps[i]);
       context.fillStyle = 'rgb('+lum+','+lum+','+lum+')';
@@ -715,6 +720,9 @@ TonePlotter.prototype = {
     for (var i = 0, I = radii.length; i < I; ++i) {
       radii[i] = radiusScale * sqrt(prior[i]);
     }
+
+    this.sorted = prior.argsort();
+    this.sorted.reverse();
   },
 
   draw: function () {
@@ -739,7 +747,9 @@ TonePlotter.prototype = {
     var twoPi = 2 * Math.PI;
     var round = Math.round;
 
-    for (var i = 0, I = radii.length; i < I; ++i) {
+    var sorted = this.sorted;
+    for (var s = 0, S = sorted.length; s < S; ++s) {
+      var i = sorted[s];
 
       var lum = round(255 * amps[i]);
       context.fillStyle = 'rgb('+lum+','+lum+','+lum+')';
