@@ -18,7 +18,8 @@ var config = {
     //   8sec      1     8Hz 11Hz           261Hz           6.28kHz
     //                       C/24             C              24 C
 
-    pitchRadius: Math.sqrt(24*24 + 1*1 + 1e-4), // barely including 1/24
+    //pitchRadius: Math.sqrt(24*24 + 1*1 + 1e-4), // barely including 1/24
+    pitchRadius: Math.sqrt(16*16 + 1*1 + 1e-4), // barely including 1/16
     tempoRadius: Math.sqrt(8*8 + 1*1 + 1e-4),   // barely including 1/8 t + 0/1
 
     pitchHz: 261.625565, // middle C
@@ -329,9 +330,11 @@ var PhasePlotter = function (model) {
   var xPos = this.xPos = [];
   var yPos = this.yPos = [];
 
-  var minFreq = Math.min.apply(Math, this.freqs);
+  var minFreq = Math.min.apply(Math, freqs);
+  var maxFreq = Math.max.apply(Math, freqs);
   var radiusScale = this.radiusScale;
-  var baseShift = this.baseShift;
+  var baseShift = 0.5 * minFreq;
+  var freqShift = 0.5 / maxFreq;
 
   var twoPi = 2 * Math.PI;
   var realToUnit = function (x) {
@@ -345,8 +348,8 @@ var PhasePlotter = function (model) {
 
     var norm = grid.norm();
 
-    yPos[i] = 1 - realToUnit(freq);
-    xPos[i] = (1 - base + baseShift) % 1;
+    yPos[i] = (1 - base - baseShift - freqShift * freq) % 1;
+    xPos[i] = realToUnit(freq);
     radii[i] = radiusScale / norm;
   }
 
@@ -380,7 +383,7 @@ PhasePlotter.prototype = {
     var radii = this.radii;
 
     context.clearRect(0, 0, width, height);
-    context.strokeStyle = 'rgba(255,255,255,0.15)';
+    context.strokeStyle = 'rgba(255,255,255,0.333)';
 
     var exp = Math.exp;
     var cos = Math.cos;
@@ -437,17 +440,11 @@ PhasePlotter.initCanvas = function () {
 
   if (PhasePlotter.canvas !== undefined) return;
 
-  var canvas = PhasePlotter.canvas = $('<canvas>').css({
-        'position': 'fixed',
-        'width': '100%',
-        'height': '50%',
-        'left': '0%',
-        'top': '0%'
-      }).appendTo(document.body)[0];
+  var canvas = PhasePlotter.canvas = $('#phasePlot')[0];
 
   $(window).resize(function(){
-        canvas.width = innerWidth;
-        canvas.height = innerHeight / 2;
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
       }).resize();
 
   PhasePlotter.context = canvas.getContext('2d');
@@ -823,17 +820,11 @@ Keyboard.initCanvas = function () {
 
   if (Keyboard.canvas !== undefined) return;
 
-  var canvas = Keyboard.canvas = $('<canvas>').css({
-        'position': 'fixed',
-        'width': '100%',
-        'height': '50%',
-        'left': '0%',
-        'top': '50%'
-      }).appendTo(document.body)[0];
+  var canvas = Keyboard.canvas = $('#keyboard')[0];
 
   $(window).resize(function(){
-        canvas.width = innerWidth;
-        canvas.height = innerHeight / 2;
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
       }).resize();
 
   Keyboard.context = canvas.getContext('2d');
