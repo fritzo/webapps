@@ -10,7 +10,7 @@
 
 var config = {
 
-  player: {
+  model: {
 
     // We split the frequency spectrum into high (pitch) + low (tempo)
     //
@@ -23,24 +23,27 @@ var config = {
 
     pitchHz: 261.625565, // middle C
     tempoHz: 1, // TODO allow real-time tempo control
+    grooveSec: 10.0,
 
     pitchAcuity: 3,
     tempoAcuity: 2.5,
     sharpness: 8,
-
-    attackSec: 0.1,
-    sustainSec: 1.0,
-    grooveSec: 10.0,
 
     updateRateHz: 100,
 
     none: undefined
   },
 
-  plot: {
+  phasePlot: {
     framerateHz: 100,
     circleRadiusScale: 0.2,
     baseShift: 0.08
+  },
+
+  keyboard: {
+    updateHz: 30,
+    keyThresh: 1e-4,
+    cornerRadius: 1/3
   },
 
   synth: {
@@ -53,30 +56,23 @@ var config = {
 };
 
 //------------------------------------------------------------------------------
-// Player
+// Model
 
 /** @constructor */
-var Player = function () {
+var Model = function () {
 
-  assert(config.player.attackSec > 1 / config.player.updateRateHz,
-      'player attackSec is too slow for updateRateHz:'+
-      '\n   attackSec = ' + config.player.attackSec +
-      '\n   updateRateHz = ' + config.player.updateRateHz);
+  this.pitchAcuity = config.model.pitchAcuity;
+  this.tempoAcuity = config.model.tempoAcuity;
+  this.sharpness = config.model.sharpness;
 
-  this.pitchAcuity = config.player.pitchAcuity;
-  this.tempoAcuity = config.player.tempoAcuity;
-  this.sharpness = config.player.sharpness;
-  this.attackSec = config.player.attackSec;
-  this.sustainSec = config.player.sustainSec;
-  this.grooveSec = config.player.grooveSec;
-
-  var freqs = this.freqs = Rational.ball(config.player.pitchRadius);
-  var grids = this.grids = RatGrid.ball(config.player.tempoRadius);
+  var freqs = this.freqs = Rational.ball(config.model.pitchRadius);
+  var grids = this.grids = RatGrid.ball(config.model.tempoRadius);
   log('using ' + freqs.length + ' freqs x ' + grids.length + ' grids');
 
-  this.pitchHz = config.player.pitchHz;
-  this.tempoHz = config.player.tempoHz;
-  this.minDelay = 1000 / config.player.updateRateHz;
+  this.pitchHz = config.model.pitchHz;
+  this.tempoHz = config.model.tempoHz;
+  this.grooveSec = config.model.grooveSec;
+  this.minDelay = 1000 / config.model.updateRateHz;
 
   var fCenter = (freqs.length - 1) / 2;
   var gDownBeat = 0;
@@ -87,31 +83,79 @@ var Player = function () {
   var fgInitial = grids.length * fCenter + gDownBeat;
   this.amps = MassVector.degenerate(fgInitial, freqs.length * grids.length);
 
+  this.prior = new MassVector(this.amps);
   this.damps = MassVector.zero(this.amps.likes.length);
+  this.tempDamps = MassVector.zero(this.amps.likes.length);
 };
 
-Player.prototype = {
+Model.prototype = {
 
-  // TODO attach this to a keyboard
-  addAmp: function (timeMs) {
+  getFreqAmps: function () {
+    var F = this.freqs.length;
+    var G = this.grids.length;
+    var result = new MassVector(F);
+    var ampsLikes = this.amps.likes;
+    var resultLikes = result.likes;
+    for (var f = 0; f < F; ++f) {
+      var sum = 0;
+      for (var g = 0; g < G; ++g) {
+        sum += ampsLikes[G * f + g];
+      }
+      resultLikes[f] = sum;
+    }
+    return result;
+  },
 
+  getFreqPrior: function () {
+    var F = this.freqs.length;
+    var G = this.grids.length;
+    var result = new MassVector(F);
+    var priorLikes = this.prior.likes;
+    var resultLikes = result.likes;
+    for (var f = 0; f < F; ++f) {
+      var sum = 0;
+      for (var g = 0; g < G; ++g) {
+        sum += priorLikes[G * f + g];
+      }
+      resultLikes[f] = sum;
+    }
+    return result;
+  },
+
+  addAmpAtTime: function (timeMs) {
+
+    assert(timeMs >= 0, 'bad timeMs: ' + timeMs);
     var time = timeMs / (1000 * this.tempoHz);
     var grids = this.grids;
-    var damps = this.damps;
-    var likes = damps.likes;
+    var prior = this.prior;
+    var F = this.freqs.length;
+    var G = this.grids.length;
 
-    // TODO switch to using attackSec instead of sharpness.
-    //   This requires a bayesian prior that integrates over cos^p(theta)
-    //   or whatever beat function is used.
-    var sharpness = this.sharpness;
+    var sustain = Math.exp(-this.sharpness);
+    var pow = Math.pow;
 
     log('DEBUG phase = ' + (grids[0].phaseAtTime(time) % 1));
 
-    for (var i = 0, I = likes.length; i < I; ++i) {
-      var phase = grids[i].phaseAtTime(time);
-      likes[i] = Math.pow(1 + Math.cos(2 * Math.PI * phase), sharpness);
+    var likes = this.tempDamps.likes;
+    for (var g = 0; g < G; ++g) {
+      var phase = grids[g].phaseAtTime(time) % 1;
+      var like = pow(sustain, phase) + pow(sustain, 1 - phase);
+      for (var f = 0; f < F; ++f) {
+        var fg = G * f + g;
+        likes[fg] = prior[fg] * like;
+      }
     }
-    damps.normalize();
+    this.tempDamps.normalize();
+
+    this.damps.iadd(this.tempDamps);
+  },
+
+  addAmpAtTimeFreq: function (timeMs, freqIndex) {
+    TODO();
+  },
+
+  addAmpAtTimeGrid: function (timeMs, gridIndex) {
+    TODO();
   },
 
   start: function (clock) {
@@ -119,22 +163,23 @@ Player.prototype = {
     var running = false;
     var lastTime = undefined;
 
-    var player = this;
+    var model = this;
     var amps = this.amps.likes;
+    var prior = this.prior.likes;
     var damps = this.damps.likes;
     var minDelay = this.minDelay;
 
-    var playerworker = new Worker('playerworker.js');
+    var modelworker = new Worker('modelworker.js');
     var update = function () {
       if (running) {
         var time = Date.now();
         var timestepSec = (time - lastTime) / 1000;
         lastTime = Date.now();
-        playerworker.postMessage({
+        modelworker.postMessage({
               'cmd': 'update',
               'data': {
                 'timestepSec': timestepSec,
-                'damps': player.damps.likes
+                'damps': model.damps.likes
               }
             });
         for (var i = 0, I = damps.length; i < I; ++i) {
@@ -142,26 +187,30 @@ Player.prototype = {
         }
       }
     };
-    playerworker.addEventListener('message', function (e) {
+    modelworker.addEventListener('message', function (e) {
           var data = e['data'];
           switch (data['type']) {
             case 'update':
-              newAmps = data['data'];
+              newAmps = data['data']['amps'];
+              newPrior = data['data']['prior'];
+              assertLength(newAmps, amps.length, 'updated amps');
+              assertLength(newPrior, prior.length, 'updated prior');
               for (var i = 0, I = amps.length; i < I; ++i) {
                 amps[i] = newAmps[i];
+                prior[i] = newPrior[i];
               }
               if (running) setTimeout(update(), minDelay);
               break;
 
             case 'log':
-              log('Player Worker: ' + data['data']);
+              log('Model Worker: ' + data['data']);
               break;
 
             case 'error':
-              throw new WorkerException('Player ' + data['data']);
+              throw new WorkerException('Model ' + data['data']);
           }
         }, false);
-    playerworker.postMessage({
+    modelworker.postMessage({
       'cmd': 'init',
       'data': {
           'pitchAcuity': this.pitchAcuity,
@@ -183,51 +232,42 @@ Player.prototype = {
         });
     clock.onStop(function(){
           running = false;
-          playerworker.postMessage({'cmd':'profile'});
+          modelworker.postMessage({'cmd':'profile'});
         });
-  }
+  },
+
+  
 };
 
 //------------------------------------------------------------------------------
 // Phase Plotting
 
 /** @constructor */
-var PhasePlotter = function (grids, tempoHz, sharpness, fullAmps) {
+var PhasePlotter = function (model) {
 
-  var canvas = this.canvas = $('<canvas>').css({
-        'position': 'fixed',
-        'width': '100%',
-        'height': '50%',
-        'left': '0%',
-        'top': '0%'
-      }).appendTo(document.body)[0];
-  $(window).resize(function(){
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight / 2;
-      }).resize();
-  this.context = canvas.getContext('2d');
-
-  this.grids = grids;
-  this.tempoHz = tempoHz;
-  this.sharpness = sharpness;
-  this.fullAmps = fullAmps;
+  var grids = this.grids = model.grids;
+  this.tempoHz = model.tempoHz;
+  this.sharpness = model.sharpness;
+  this.fullAmps = model.amps.likes;
   this.gridAmps = new Array(grids.length);
 
   var freqs = this.freqs = grids.map(function(g){ return g.freq.toNumber(); });
   var bases = this.bases = grids.map(function(g){ return g.base.toNumber(); });
 
-  var minFreq = Math.min.apply(Math, freqs);
-  var radiusScale = this.radiusScale;
-  var baseShift = this.baseShift;
-
   var radii = this.radii = [];
   var xPos = this.xPos = [];
   var yPos = this.yPos = [];
 
-  var twoPi = 2 * Math.PI;
-  var realToUnit = this.realToUnit;
+  var minFreq = Math.min.apply(Math, this.freqs);
+  var radiusScale = this.radiusScale;
+  var baseShift = this.baseShift;
 
-  for (var i = 0, I = grids.length; i < I; ++i) {
+  var twoPi = 2 * Math.PI;
+  var realToUnit = function (x) {
+    return Math.atan(Math.log(x)) / Math.PI + 0.5;
+  };
+
+  for (var i = 0, I = this.grids.length; i < I; ++i) {
     var grid = grids[i];
     var freq = freqs[i];
     var base = bases[i];
@@ -238,16 +278,14 @@ var PhasePlotter = function (grids, tempoHz, sharpness, fullAmps) {
     xPos[i] = (1 - base + baseShift) % 1;
     radii[i] = radiusScale / norm;
   }
+
+  PhasePlotter.initCanvas();
 };
 
 PhasePlotter.prototype = {
 
-  radiusScale: config.plot.circleRadiusScale,
-  baseShift: config.plot.baseShift,
-
-  realToUnit: function (x) {
-    return Math.atan(Math.log(x)) / Math.PI + 0.5;
-  },
+  radiusScale: config.phasePlot.circleRadiusScale,
+  baseShift: config.phasePlot.baseShift,
 
   projectAmps: function () {
     var fullAmps = this.fullAmps;
@@ -263,9 +301,9 @@ PhasePlotter.prototype = {
 
     assert(time >= 0, 'time is before zero: ' + time);
 
-    var context = this.context;
-    var width = this.canvas.width;
-    var height = this.canvas.height;
+    var context = PhasePlotter.context;
+    var width = PhasePlotter.canvas.width;
+    var height = PhasePlotter.canvas.height;
     var minth = Math.min(width, height);
     var x0 = width / 2;
     var y0 = height / 2;
@@ -320,7 +358,7 @@ PhasePlotter.prototype = {
           phasePlotter.projectAmps();
           phasePlotter.plot(timeMs * tempoKhz);
           profileFrameCount += 1;
-        }, 1000 / config.plot.framerateHz);
+        }, 1000 / config.phasePlot.framerateHz);
     clock.onStop(function(timeMs){
           var framerate = profileFrameCount * 1000 / timeMs;
           log('plotting framerate = ' + framerate.toFixed(1) + ' Hz');
@@ -332,39 +370,50 @@ PhasePlotter.prototype = {
   }
 };
 
-//----------------------------------------------------------------------------
-// Keyboard
+PhasePlotter.initCanvas = function () {
 
-/** @constructor */
-var Keyboard = function (harmony, synthesizer) {
+  if (PhasePlotter.canvas !== undefined) return;
 
-  TODO('use a player instead of a Harmony');
-
-  var mockSynthesizer = {playOnset : function(){}};
-
-  this.harmony = harmony;
-  this.synthesizer = synthesizer || mockSynthesizer;
-  this.delayMs = 1000 / config.keyboard.updateHz;
-
-  Keyboard.canvas = $('<canvas>').css({
+  var canvas = PhasePlotter.canvas = $('<canvas>').css({
         'position': 'fixed',
         'width': '100%',
         'height': '50%',
         'left': '0%',
-        'top': '50%'
+        'top': '0%'
       }).appendTo(document.body)[0];
-  Keyboard.context = Keyboard.canvas.getContext('2d');
+
   $(window).resize(function(){
-        Keyboard.canvas.width = window.innerWidth;
-        Keyboard.canvas.height = window.innerHeight / 2;
+        canvas.width = innerWidth;
+        canvas.height = innerHeight / 2;
       }).resize();
+
+  PhasePlotter.context = canvas.getContext('2d');
+};
+
+//------------------------------------------------------------------------------
+// Keyboard
+
+/** @constructor */
+var Keyboard = function (model, synthesizer) {
+
+  var mockSynthesizer = {playOnset : function(){}};
+
+  this.model = model;
+  this.synthesizer = synthesizer || mockSynthesizer;
+  this.delayMs = 1000 / config.keyboard.updateHz;
+
+  Keyboard.initCanvas();
 
   this.running = false;
 };
 
 Keyboard.prototype = {
 
-  start: function () {
+  start: function (clock) {
+
+    this.clock = clock;
+    TODO('update to use a clock');
+
     if (this.running) return;
     this.running = true;
 
@@ -457,8 +506,8 @@ Keyboard.prototype = {
 
   onclick: function (index) {
     var gain = config.synth.clickGain;
-    this.harmony.updateAddMass(index, gain);
     this.synthesizer.playOnset(index, gain);
+    this.model.addAmpAtTimeFreq(this.clock.now(), index, gain);
   },
   onswipe: function (indices) {
     this._swiped = true;
@@ -466,23 +515,17 @@ Keyboard.prototype = {
     for (var i = 0, I = indices.length; i < I; ++i) {
       var index = indices[i];
       this.synthesizer.playOnset(index, gain); // works poorly in firefox
-      this.harmony.updateAddMass(index, gain);
+      this.model.addAmpAtTimeFreq(this.clock.now(), index, gain);
     }
   },
 
   updateGeometry: function () {
-    var keyThresh = config.keyboard['piano'].keyThresh;
-    var temperature = config.keyboard['piano'].temperature;
+    var keyThresh = config.keyboard.keyThresh;
 
-    TODO('updateGeometry using player instead of harmony');
+    var X = this.model.freqs.length;
+    var Y = Math.floor(2 + Math.sqrt(innerHeight + innerWidth));
 
-    var X = this.harmony.length;
-    var Y = Math.floor(
-        2 + Math.sqrt(window.innerHeight + window.innerWidth));
-
-    var energy = this.harmony.getEnergy(this.harmony.prior);
-    var probs = MassVector.boltzmann(energy);
-
+    var probs = this.model.getFreqPrior();
     var keys = probs.truncate(keyThresh);
     var K = keys.length;
     if (testing) {
@@ -495,7 +538,6 @@ Keyboard.prototype = {
 
     var ypos = probs.likes.map(function(p){
           return Math.log(p + keyThresh);
-          //return Math.pow(p, 1/temperature);
         });
     var ymin = Math.log(keyThresh);
     var ymax = Math.max.apply(Math, ypos); // TODO use soft max
@@ -583,9 +625,9 @@ Keyboard.prototype = {
     this.xpos = xpos;
     this.ypos = ypos;
 
-    var colorParam = this.harmony.prior.likes;
+    var colorParam = this.model.getFreqPrior().likes;
     var colorScale = 1 / Math.max.apply(Math, colorParam);
-    var activeParam = this.harmony.dmass.likes;
+    var activeParam = this.model.getFreqAmps().likes;
     var color = this.color = [];
     var active = this.active = [];
     for (var k = 0; k < K; ++k) {
@@ -605,9 +647,7 @@ Keyboard.prototype = {
     var color = this.color;
     var active = this.active;
 
-    TODO('draw using player instead of harmony');
-
-    var points = this.harmony.points;
+    var points = this.model.freqs;
     var context = Keyboard.context;
     var probs = this.probs;
     var keys = this.keys;
@@ -615,7 +655,7 @@ Keyboard.prototype = {
     var K = keys.length;
     var W = window.innerWidth;
     var H = window.innerHeight;
-    var R = config.keyboard['piano'].cornerRadius;
+    var R = config.keyboard.cornerRadius;
 
     context.clearRect(0, 0, W, H);
     var fracBars = this.fracBars;
@@ -726,38 +766,38 @@ Keyboard.canvas = undefined;
 Keyboard.context = undefined;
 
 test('Keyboard.update', function(){
-  var harmony = new Harmony(4);
-  harmony.start();
-  harmony.stop();
+  var model = new Harmony(4);
+  model.start();
+  model.stop();
 
-  var keyboard = new Keyboard(harmony);
+  var keyboard = new Keyboard(model);
   keyboard.update();
 });
 
 test('Keyboard.click', function(){
-  var harmony = new Harmony(4);
-  var keyboard = new Keyboard(harmony);
+  var model = new Harmony(4);
+  var keyboard = new Keyboard(model);
 
-  harmony.start();
+  model.start();
   keyboard.start();
   keyboard.stop();
-  harmony.stop();
+  model.stop();
 
   for (var i = 0; i < 10; ++i) {
     keyboard.click(Math.random(), Math.random());
-    harmony.updateDiffusion();
+    model.updateDiffusion();
     keyboard.update();
   }
 });
 
 test('Keyboard.swipe', function(){
-  var harmony = new Harmony(4);
-  var keyboard = new Keyboard(harmony);
+  var model = new Harmony(4);
+  var keyboard = new Keyboard(model);
 
-  harmony.start();
+  model.start();
   keyboard.start();
   keyboard.stop();
-  harmony.stop();
+  model.stop();
 
   keyboard._swiped = false;
   keyboard.swipeX0 = keyboard.swipeX1 = Math.random();
@@ -768,25 +808,44 @@ test('Keyboard.swipe', function(){
     keyboard.swipeX1 = Math.random();
     keyboard.swipeY1 = Math.random();
 
-    harmony.updateDiffusion();
+    model.updateDiffusion();
     keyboard.update();
   }
 });
+
+Keyboard.initCanvas = function () {
+
+  if (Keyboard.canvas !== undefined) return;
+
+  var canvas = Keyboard.canvas = $('<canvas>').css({
+        'position': 'fixed',
+        'width': '100%',
+        'height': '50%',
+        'left': '0%',
+        'top': '50%'
+      }).appendTo(document.body)[0];
+
+  $(window).resize(function(){
+        canvas.width = innerWidth;
+        canvas.height = innerHeight / 2;
+      }).resize();
+
+  Keyboard.context = canvas.getContext('2d');
+};
 
 //------------------------------------------------------------------------------
 // Synthesis
 
 /** @constructor */
-var Synthesizer = function (freqs, grids, pitchHz, tempoHz, sharpness, amps) {
+var Synthesizer = function (model) {
 
-  assertLength(amps, freqs.length * grids.length, 'amps');
+  this.freqs = model.freqs;
+  this.grids = model.grids;
+  this.pitchHz = model.pitchHz;
+  this.tempoHz = model.tempoHz;
+  this.sharpness = model.sharpness;
+  this.amps = model.amps.likes;
 
-  this.freqs = freqs;
-  this.grids = grids;
-  this.pitchHz = pitchHz;
-  this.tempoHz = tempoHz;
-  this.sharpness = sharpness;
-  this.amps = amps;
   this.cyclesPerBeat = config.synth.cyclesPerBeat;
   this.numVoices = config.synth.numVoices;
   this.gain = config.synth.gain;
@@ -820,9 +879,9 @@ var Synthesizer = function (freqs, grids, pitchHz, tempoHz, sharpness, amps) {
         'pitchHz': this.pitchHz,
         'tempoHz': this.tempoHz,
         'sharpness': this.sharpness,
-        'freqs': freqs.map(function(f){ return f.toNumber(); }),
-        'gridFreqs': grids.map(function(g){ return g.freq.toNumber(); }),
-        'gridBases': grids.map(function(g){ return g.base.toNumber(); }),
+        'freqs': this.freqs.map(function(f){ return f.toNumber(); }),
+        'gridFreqs': this.grids.map(function(g){ return g.freq.toNumber(); }),
+        'gridBases': this.grids.map(function(g){ return g.base.toNumber(); }),
         'cyclesPerBeat': this.cyclesPerBeat,
         'numVoices': this.numVoices,
         'gain': this.gain
@@ -870,25 +929,14 @@ Synthesizer.prototype = {
 
 var main = function () {
 
-  var player = new Player();
-  var pitchHz = player.pitchHz;
-  var tempoHz = player.tempoHz;
-  var sharpness = player.sharpness;
-  var freqs = player.freqs;
-  var grids = player.grids;
-  var amps = player.amps.likes;
-
-  var phasePlotter = new PhasePlotter(grids, tempoHz, sharpness, amps);
-  var synthesizer = new Synthesizer(
-      freqs,
-      grids,
-      pitchHz,
-      tempoHz,
-      sharpness,
-      amps);
+  var model = new Model();
+  var synthesizer = new Synthesizer(model);
+  var phasePlotter = new PhasePlotter(model);
+  //var keyboard = new Keyboard(model, synthesizer); // TODO
 
   var clock = new Clock();
-  player.start(clock);
+  model.start(clock);
+  //keyboard.start(clock); // TODO
   phasePlotter.start(clock);
   synthesizer.start(clock);
 
@@ -906,7 +954,7 @@ var main = function () {
           case 32: // spacebar
             if (clock.running) {
               var timeMs = Date.now() - clock.beginTime;
-              player.addAmp(timeMs);
+              model.addAmpAtTime(timeMs);
             }
             e.preventDefault();
             break;
@@ -931,7 +979,6 @@ $(function(){
   } else {
 
     main ();
-
   }
 });
 

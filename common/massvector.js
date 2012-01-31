@@ -10,7 +10,9 @@
 
 /** @constructor */
 var MassVector = function (init) {
-  if (init instanceof Array) {
+  if (init instanceof MassVector) {
+    this.likes = init.likes.slice();
+  } else if (init instanceof Array) {
     this.likes = init.slice();
   } else if (init instanceof Number) {
     this.likes = new Array(init);
@@ -60,6 +62,22 @@ MassVector.prototype = {
     return result;
   },
 
+  iadd: function (other, scale) {
+    if (other instanceof MassVector) other = other.likes;
+    var likes = this.likes;
+    assertLength(other, likes.length, 'iadd argument');
+
+    if (scale === undefined) {
+      for (var i = 0, I = likes.length; i < I; ++i) {
+        likes[i] += other[i];
+      }
+    } else {
+      for (var i = 0, I = likes.length; i < I; ++i) {
+        likes[i] += other[i] * scale;
+      }
+    }
+  },
+
   shiftTowards: function (other, rate) {
     var likes0 = this.likes;
     var likes1 = other.likes;
@@ -87,7 +105,9 @@ MassVector.prototype = {
       }
     }
     return indices;
-  }
+  },
+
+  none: undefined
 };
 
 MassVector.zero = function (N) {
@@ -109,6 +129,16 @@ MassVector.degenerate = function (n, N) {
     likes[i] = 0;
   }
   likes[n] = 1;
+  return result;
+};
+
+MassVector.uniform = function (N) {
+  assert(0 < N, 'bad size MassVector.uniform: ' + N);
+  var result = new MassVector(N);
+  var likes = result.likes;
+  for (var i = 0; i < N; ++i) {
+    likes[i] = 1/N;
+  }
   return result;
 };
 

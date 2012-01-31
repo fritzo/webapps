@@ -44,8 +44,7 @@ var distanceGG;
 var interferenceGG;
 
 var amps;
-//var ampsFG;
-//var ampsGF;
+var prior;
 
 var profileCount = 0;
 var profileElapsedMs = 0;
@@ -112,7 +111,7 @@ var init = function (data) {
   log('initialized in ' + ((Date.now() - profileStart) / 1000) + ' sec');
 };
 
-var getEnergy = function (mass) {
+var computeEnergy = function (mass) {
 
   assertLength(mass, FG, 'mass');
 
@@ -181,8 +180,6 @@ var getEnergy = function (mass) {
       energy[G * f + g] = tempoEnergyG[g] + pitchRow[g];
     }
   }
-
-  return energy;
 };
 
 var update = function (data) {
@@ -200,13 +197,11 @@ var update = function (data) {
     likes[fg] += damps[fg];
   }
 
-  var energy = getEnergy(amps.likes);
+  computeEnergy(amps.likes);
   var temperature = 1; // pitchAcuity,tempoAcuity already control temperature
-  var prior = MassVector.boltzmann(energy, temperature);
+  prior = MassVector.boltzmann(energy, temperature);
   var drift = 1 - Math.exp(-timestepSec / grooveSec);
   amps.shiftTowards(prior, drift);
-
-  return amps.likes;
 };
 
 //------------------------------------------------------------------------------
@@ -223,10 +218,13 @@ addEventListener('message', function (e) {
 
       case 'update':
         var profileStartTime = Date.now();
-        var amps = update(data['data']);
+        update(data['data']);
         profileCount += 1;
         profileElapsedMs += Date.now() - profileStartTime;
-        postMessage({'type':'update', 'data':amps});
+        postMessage({
+              'type':'update',
+              'data':{'amps':amps.likes, 'prior':prior.likes}
+            });
         break;
 
       case 'profile':
