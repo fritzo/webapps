@@ -140,7 +140,13 @@ var synthesize = function (data) {
     }
   }
 
-  // TODO slightly window the sample to avoid clicks
+  // window & soft clip
+  var windowRate = 100;
+  for (t = 0; t < T; ++t) {
+    var s = (t + 0.5) / T;
+    var x = samples[t];
+    samples[t] = x / (1 + x * x + windowRate / (t+1) + windowRate / (T-t));
+  }
 
   return wavEncoder.encode(samples);
 };
