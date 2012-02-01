@@ -15,6 +15,8 @@ importScripts('../common/wavencoder.js');
 //------------------------------------------------------------------------------
 // Data
 
+var envelopeStride = 16;
+
 var tempoHz;
 var pitchHz;
 var sharpness;
@@ -29,11 +31,13 @@ var tempo;
 var omega;
 
 var T;
+var E;
 var F;
 var G;
 var FG;
 
 var bestIndices;
+var envelopes;
 var wavEncoder;
 var samples;
 
@@ -71,6 +75,7 @@ var init = function (data) {
       'gridFreqs size is not same as gridBases');
 
   T = Math.round(1 / (tempo * cyclesPerTactus));
+  E = Math.ceil(T / envelopeStride);
   F = freqs.length;
   G = gridFreqs.length;
   FG = F * G;
@@ -78,6 +83,10 @@ var init = function (data) {
   assert(numVoices < FG, 'too many voices: ' + numVoices);
 
   bestIndices = new Array(FG);
+  envelopes = new Array(F);
+  for (var f = 0; f < F; ++f) {
+    envelopes[f] = new Array(E);
+  }
   wavEncoder = new WavEncoder(T);
   samples = new Array(T);
 
@@ -88,7 +97,7 @@ var init = function (data) {
 var synthesize = function (data) {
   assert(initialized, 'worker has not been initialized');
 
-  var t,f,g,fg;
+  var t,e,f,g,fg;
 
   var amps = data['amps'];
   assertEqual(amps.length, FG, 'amps has wrong length');
@@ -114,6 +123,8 @@ var synthesize = function (data) {
       amps[bestIndices[numVoices]],
       amps[bestIndices[0]] / 10000);
 
+  // Version 1. simple
+  /*
   for (t = 0; t < T; ++t) {
     samples[t] = 0;
   }
@@ -139,6 +150,75 @@ var synthesize = function (data) {
       }
     }
   }
+  */
+
+  // Version 2. low-resolution envelopes + all-frequencies synthesis
+  for (f = 0; f < F; ++f) {
+    var envelope = envelopes[f];
+    for (e = 0; e <= E; ++e) {
+      envelope[e] = 0;
+    }
+  }
+
+  for (g = 0; g < G; ++g) {
+    var gridFreq = gridFreqs[g];
+    var gridBase = gridBases[g];
+    var phase0 = (gridFreq * tactus + gridBase) % 1;
+    var dphase = gridFreq * tempo * envelopeStride;
+
+    for (f = 0; f < F; ++f) {
+
+      var amp = amps[G * f + g];
+      if (amp < ampThresh) continue;
+
+      var envelope = envelopes[f];
+      var scaledAmp = sqrt(amp) * scaledGain / freqs[f];
+
+      var phase = phase0;
+      for (e = 0; e <= E; ++e) {
+        envelope[e] += scaledAmp * pow(sustain, phase);
+        phase = (phase + dphase) % 1;
+      }
+    }
+  }
+
+  for (t = 0; t < E * envelopeStride; ++t) {
+    samples[t] = 0;
+  }
+
+  var envelope;
+  var envelope0;
+  var denvelope;
+  var angle;
+  for (f = 0; f < F; ++f) {
+    var freq = freqs[f];
+    envelope = envelopes[f];
+    envelope1 = envelope[0];
+    for (e = 0; e < E; ++e) {
+      envelope0 = envelope[e];
+      denvelope = (envelope[e+1] - envelope0) / envelopeStride;
+      t = e * envelopeStride;
+      angle = freq * t;
+
+      samples[t +  0] += sin(angle) * envelope0;
+      samples[t +  1] += sin(angle += freq) * (envelope0 += denvelope);
+      samples[t +  2] += sin(angle += freq) * (envelope0 += denvelope);
+      samples[t +  3] += sin(angle += freq) * (envelope0 += denvelope);
+      samples[t +  4] += sin(angle += freq) * (envelope0 += denvelope);
+      samples[t +  5] += sin(angle += freq) * (envelope0 += denvelope);
+      samples[t +  6] += sin(angle += freq) * (envelope0 += denvelope);
+      samples[t +  7] += sin(angle += freq) * (envelope0 += denvelope);
+      samples[t +  8] += sin(angle += freq) * (envelope0 += denvelope);
+      samples[t +  9] += sin(angle += freq) * (envelope0 += denvelope);
+      samples[t + 10] += sin(angle += freq) * (envelope0 += denvelope);
+      samples[t + 11] += sin(angle += freq) * (envelope0 += denvelope);
+      samples[t + 12] += sin(angle += freq) * (envelope0 += denvelope);
+      samples[t + 13] += sin(angle += freq) * (envelope0 += denvelope);
+      samples[t + 14] += sin(angle += freq) * (envelope0 += denvelope);
+      samples[t + 15] += sin(angle += freq) * (envelope0 += denvelope);
+    }
+  }
+  samples.length = T;
 
   // window & soft clip
   var windowRate = 100;

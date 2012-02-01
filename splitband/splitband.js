@@ -55,7 +55,7 @@ var config = {
 
   synth: {
     cyclesPerTactus: 4,
-    numVoices: 128,
+    numVoices: 1024,
     gain: 4.0
   },
 
