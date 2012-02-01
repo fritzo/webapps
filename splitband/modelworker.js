@@ -159,6 +159,23 @@ var computeEnergy = function (mass) {
     }
   }
 
+  // make columns of pitchEnergyFG zero-mean WRT their boltzmann distribution
+  var exp = Math.exp;
+  for (g = 0; g < G; ++g) {
+    var sum_z = 0;
+    var sum_ze = 0;
+    for (f = 0; f < F; ++f) {
+      var e = pitchEnergyFG[f][g];
+      var z = exp(-e);
+      sum_z += z;
+      sum_ze += z * e;
+    }
+    var de = -sum_ze / sum_z;
+    for (f = 0; f < F; ++f) {
+      pitchEnergyFG[f][g] += de;
+    }
+  }
+
   // E(f,g) = E_tempo(g) + E_pitch(f,g)
   for (f = 0; f < F; ++f) {
     var pitchRow = pitchEnergyFG[f];
