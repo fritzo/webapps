@@ -18,10 +18,6 @@ importScripts('../common/massvector.js');
 //------------------------------------------------------------------------------
 // Data
 
-var pitchAcuity;
-var tempoAcuity;
-var sharpness;
-
 var freqs;
 var grids;
 
@@ -50,9 +46,9 @@ var initialized = false;
 var init = function (data) {
   var profileStart = Date.now();
 
-  pitchAcuity = data['pitchAcuity'];
-  tempoAcuity = data['tempoAcuity'];
-  sharpness = data['sharpness'];
+  var pitchAcuity = data['pitchAcuity'];
+  var tempoAcuity = data['tempoAcuity'];
+  var sharpness = data['sharpness'];
 
   freqs = data['freqArgs'].map(function(a){
         return new Rational(a[0],a[1]);
@@ -91,7 +87,7 @@ var init = function (data) {
     var interRow = interferenceGG[g1] = new Array(G);
     for (var g2 = 0; g2 < G; ++g2) {
       distanceRow[g2] = RatGrid.distance(grids[g1], grids[g2]) / tempoAcuity;
-      interRow[g2] = RatGrid.interference(grids[g1], grids[g2], sharpness);
+      interRow[g2] = RatGrid.interference2(grids[g1], grids[g2], sharpness);
     }
   }
 

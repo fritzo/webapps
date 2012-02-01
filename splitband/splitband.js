@@ -55,7 +55,7 @@ var config = {
 
   synth: {
     cyclesPerTactus: 4,
-    numVoices: 64,
+    numVoices: 128,
     gain: 4.0
   },
 
@@ -368,7 +368,7 @@ Model.prototype = {
           model.amps.shiftTowards(model.prior, rate);
           profileFrameCount += 1;
         }, 1000 / config.model.framerateHz);
-    clock.onStop(function(timeMs){
+    clock.onStop(function (timeMs) {
           var framerate = profileFrameCount * 1000 / timeMs;
           log('model framerate = ' + framerate.toFixed(1) + ' Hz');
           modelworker.postMessage({'cmd':'profile'});
@@ -462,10 +462,10 @@ Synthesizer.prototype = {
 
     // TODO XXX FIXME the clock seems to drift and lose alignment
     var synth = this;
-    clock.onStop(function(time){
+    clock.onStop(function(){
           synth.synthworker.postMessage({'cmd':'profile'})
         });
-    clock.discretelyDo(function(cycle){
+    clock.discretelyDo(function (cycle) {
           if (synth.audio) {
             synth.audio.play();          // play current cycle
             synth.audio = undefined;
@@ -622,13 +622,13 @@ PhasePlotter.prototype = {
     var model = this.model;
     var canvas = PhasePlotter.canvas;
 
-    clock.continuouslyDo(function(timeMs){
+    clock.continuouslyDo(function (timeMs) {
           var tactus = model.convertMsToTactus(timeMs);
           phasePlotter.updateGeometry(tactus);
           phasePlotter.draw();
           profileFrameCount += 1;
         }, 1000 / config.phasePlot.framerateHz);
-    clock.onStop(function(timeMs){
+    clock.onStop(function (timeMs) {
           var framerate = profileFrameCount * 1000 / timeMs;
           log('phasePlotter framerate = ' + framerate.toFixed(1) + ' Hz');
         });
@@ -828,13 +828,13 @@ TonePlotter.prototype = {
     var model = this.model;
     var canvas = TonePlotter.canvas;
 
-    clock.continuouslyDo(function(timeMs){
+    clock.continuouslyDo(function (timeMs) {
           var tactus = model.convertMsToTactus(timeMs);
           tonePlotter.updateGeometry(tactus);
           tonePlotter.draw();
           profileFrameCount += 1;
         }, 1000 / config.tonePlot.framerateHz);
-    clock.onStop(function(timeMs){
+    clock.onStop(function (timeMs) {
           var framerate = profileFrameCount * 1000 / timeMs;
           log('tonePlotter framerate = ' + framerate.toFixed(1) + ' Hz');
         });
@@ -1167,7 +1167,7 @@ Keyboard.prototype = {
           if (clock.running) profileFrameCount += 1;
         });
 
-    clock.continuouslyDo(function(timeMs){
+    clock.continuouslyDo(function (timeMs) {
 
           keyboard.updateSwipe();
           keyboard.updateGeometry();
@@ -1219,7 +1219,7 @@ Keyboard.prototype = {
 
         });
 
-    clock.onStop(function(timeMs){
+    clock.onStop(function (timeMs) {
 
           $canvas.off('mousedown.keyboard');
           $canvas.off('mousemove.keyboard');

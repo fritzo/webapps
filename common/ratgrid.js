@@ -178,6 +178,31 @@ RatGrid.interference = function (grid1, grid2, sharpness1, sharpness2) {
 };
 
 /**
+ * this form assumes L2 rather than L1 normalization
+ *
+ * @param {RatGrid}
+ * @param {number}
+ * @param {RatGrid}
+ * @param {number}
+ * @returns {number}
+ */
+RatGrid.interference2 = function (grid1, grid2, sharpness1, sharpness2) {
+
+  sharpness2 = sharpness2 || sharpness1;
+
+  var interference1 = RatGrid.interference(
+      grid1,
+      grid2,
+      sharpness1 / 2,
+      sharpness2 / 2);
+
+  var exp = Math.exp;
+  var normFactor1 = 2 * (1 - exp(-sharpness1 / 2)) / (1 - exp(-sharpness1));
+  var normFactor2 = 2 * (1 - exp(-sharpness2 / 2)) / (1 - exp(-sharpness2));
+  return interference1 * normFactor1 * normFactor2;
+};
+
+/**
  * @param {number}
  * @returns {RatGrid[]}
  */

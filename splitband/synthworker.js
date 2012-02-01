@@ -88,6 +88,8 @@ var init = function (data) {
 var synthesize = function (data) {
   assert(initialized, 'worker has not been initialized');
 
+  var t,f,g,fg;
+
   var amps = data['amps'];
   assertEqual(amps.length, FG, 'amps has wrong length');
 
@@ -102,7 +104,7 @@ var synthesize = function (data) {
   var sin = Math.sin;
   var pow = Math.pow;
 
-  for (var fg = 0; fg < FG; ++fg) {
+  for (fg = 0; fg < FG; ++fg) {
     bestIndices[fg] = fg;
   }
   bestIndices.sort(function(lhs,rhs){ return amps[rhs] - amps[lhs]; });
@@ -112,33 +114,31 @@ var synthesize = function (data) {
       amps[bestIndices[numVoices]],
       amps[bestIndices[0]] / 10000);
 
-  for (var t = 0; t < T; ++t) {
+  for (t = 0; t < T; ++t) {
     samples[t] = 0;
   }
 
-  var components = 0;
-  for (var g = 0; g < G; ++g) {
+  for (g = 0; g < G; ++g) {
     var gridFreq = gridFreqs[g];
     var gridBase = gridBases[g];
-    var phase = (gridFreq * tactus + gridBase) % 1;
+    var phase0 = (gridFreq * tactus + gridBase) % 1;
     var dphase = gridFreq * tempo;
 
-    for (var f = 0; f < F; ++f) {
+    for (f = 0; f < F; ++f) {
 
       var amp = amps[G * f + g];
       if (amp < ampThresh) continue;
-      ++components;
 
       var freq = freqs[f];
       var scaledAmp = sqrt(amp) * scaledGain / freq;
 
-      for (var t = 0; t < T; ++t) {
+      var phase = phase0;
+      for (t = 0; t < T; ++t) {
         samples[t] += scaledAmp * pow(sustain, phase) * sin(freq * t);
         phase = (phase + dphase) % 1;
       }
     }
   }
-  //log('DEBUG synthesized ' + components + ' components');
 
   // TODO slightly window the sample to avoid clicks
 
