@@ -1225,11 +1225,16 @@ Keyboard.styles['piano'] = {
     var indices = [];
     for (var k = 0, K = keys.length; k < K; ++k) {
       var y = ypos[k];
-      if ((y0 > y) || (y1 > y)) continue; // approximate
+      var x = xpos[k];
+      var r = radii[k];
 
-      var x = xpos[k] + dir * radii[k];
-      if ((x0 - x) * (x - x1) > 0) {
-        indices.push(keys[k]);
+      if (y0 <= y && y1 <= y) { // approximate
+        x += dir * r;
+        if ((x0 - x) * (x - x1) > 0) {
+          indices.push(keys[k]); // sideways swipe
+        }
+      } else if (x - r <= x1 && x1 <= x + r && y1 <= y && y < y0) {
+        indices.push(keys[k]); // upward swipe
       }
     }
 
