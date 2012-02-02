@@ -26,7 +26,8 @@ var config = {
     tempoHz: 1, // TODO allow real-time tempo control
     grooveSec: 10.0,
 
-    pitchAcuity: 3,
+    //pitchAcuity: 3,
+    pitchAcuity: 0.01, // DEBUG
     tempoAcuity: 2.5,
     sharpness: 8,
 
@@ -322,6 +323,7 @@ Model.prototype = {
     var grooveMs = config.model.grooveSec * 1000;
     var profileFrameCount = 0;
 
+    // TODO update to allow very short modelworker cycles
     var modelworker = new Worker('modelworker.js');
     var updatePrior = function () {
       modelworker.postMessage({'cmd':'update', 'data':model.amps.likes});
