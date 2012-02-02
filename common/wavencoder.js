@@ -5,8 +5,8 @@
  *
  * Since this encoder does not rely on window.btoa for encoding,
  * it can be used also in Web Worker threads.
- * To use in the main window, include safety.js;
- * to use in a web worker, include workersafety.js.
+ *
+ * Requires: safety.js
  *
  * Copyright (c) 2012, Fritz Obermeyer
  * Dual licensed under the MIT or GPL Version 2 licenses.

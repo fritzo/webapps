@@ -1,5 +1,5 @@
 CACHE MANIFEST
-# version 2011-02-01
+# version 2011-02-02
 
 # use CACHE or NETWORK here
 NETWORK: #DEBUG
@@ -8,8 +8,6 @@ NETWORK: #DEBUG
 index.html
 ../common/jquery.min.js
 ../common/jquery.ba-hashchange.min.js
-../common/logger.js
-../common/workerlogger.js
 ../common/safety.js
 ../common/testing.js
 ../common/wavencoder.js

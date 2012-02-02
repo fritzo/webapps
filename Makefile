@@ -2,20 +2,25 @@
 #-------------------------------------------------------------------------------
 # export to public git repository
 
-R = ~/rationalkeyboard/keys
+RK = ~/rationalkeyboard/keys
 rationalkeyboard: FORCE
-	rm -rf $R
-	cp -rL keys $R
-	mv $R/release.manifest $R/cache.manifest
+	rm -rf $(RK)
+	cp -rL keys $(RK)
+	mv $(RK)/release.manifest $(RK)/cache.manifest
 	for js in $$(cat keys/index.html keys/synthworker.js | \
 			grep -o 'common\/.*\.js');\
-		do cp $$js $R/; \
+		do cp $$js $(RK)/; \
 	done
-	sed -i 's/\.\.\/common\///g' $R/*.html $R/*.js $R/cache.manifest
-	sed -i 's/http:\/\/fritzo\.org\/keys/http:\/\/fritzo\.org\/keys\n * http:\/\/github.com\/fritzo\/rationalkeyboard/g' $R/*.js
-	sed -i 's/ http:\/\/fritzo\.org\/keys/ http:\/\/fritzo\.org\/keys\n  http:\/\/github.com\/fritzo\/rationalkeyboard/g' $R/*.html
-	rm -rf $R/temp*
-	sed -i 's/NETWORK: #DEBUG/CACHE:/g' $R/cache.manifest
+	sed -i 's/\.\.\/common\///g' $(RK)/*.html $(RK)/*.js $(RK)/cache.manifest
+	sed -i 's/http:\/\/fritzo\.org\/keys/http:\/\/fritzo\.org\/keys\n * http:\/\/github.com\/fritzo\/rationalkeyboard/g' $(RK)/*.js
+	sed -i 's/ http:\/\/fritzo\.org\/keys/ http:\/\/fritzo\.org\/keys\n  http:\/\/github.com\/fritzo\/rationalkeyboard/g' $(RK)/*.html
+	rm -rf $(RK)/temp*
+	sed -i 's/NETWORK: #DEBUG/CACHE:/g' $(RK)/cache.manifest
+
+WE = ~/wavencoderjs.git
+wavencoder:
+	cp commmon/wavencoder.js $(WE)/
+	cp commmon/safety.js $(WE)/
 
 #-------------------------------------------------------------------------------
 # build & release tools
