@@ -253,6 +253,39 @@ var Synthesizer = function (harmony) {
 
   this.initOnsets();
 
+  this.profileCount = 0;
+  this.profileElapsed = 0;
+
+  var synth = this;
+  this.synthworker = new Worker('synthworker.js');
+  this.synthworker.addEventListener('message', function (e) {
+        var data = e['data'];
+        switch (data['type']) {
+          case 'wave':
+            synth.play(data['data']);
+            synth.profileCount += 1;
+            synth.profileElapsed += data['profileElapsed'];
+            break;
+
+          case 'log':
+            log('Synth Worker: ' + data['data']);
+            break;
+
+          case 'error':
+            log('Synth Worker Error: ' + data['data']);
+            break;
+        }
+      }, false);
+  this.synthworker.postMessage({
+    'cmd': 'init',
+    'data': {
+        'gain': this.sustainGain,
+        'freqs': this.freqs,
+        'numVoices': this.numVoices,
+        'numSamples': this.synthSamples
+      }
+    });
+
   this.running = false;
   this.targetTime = Date.now();
 };
@@ -262,39 +295,6 @@ Synthesizer.prototype = {
   start: function () {
     if (this.running) return;
     this.running = true;
-    var synth = this;
-
-    this.profileCount = 0;
-    this.profileElapsed = 0;
-
-    this.synthworker = new Worker('synthworker.js');
-    this.synthworker.addEventListener('message', function (e) {
-          var data = e['data'];
-          switch (data['type']) {
-            case 'wave':
-              synth.play(data['data']);
-              synth.profileCount += 1;
-              synth.profileElapsed += data['profileElapsed'];
-              break;
-
-            case 'log':
-              log('Synth Worker: ' + data['data']);
-              break;
-
-            case 'error':
-              log('Synth Worker Error: ' + data['data']);
-              break;
-          }
-        }, false);
-    this.synthworker.postMessage({
-      'cmd': 'init',
-      'data': {
-          'gain': this.sustainGain,
-          'freqs': this.freqs,
-          'numVoices': this.numVoices,
-          'numSamples': this.synthSamples
-        }
-      });
 
     this.targetTime = Date.now() + this.delayMs;
     this.updateTask = undefined;
@@ -307,8 +307,6 @@ Synthesizer.prototype = {
       this.updateTask = undefined;
     }
 
-    this.synthworker.terminate();
-
     if (!testing) {
       var profileMean = 1e-3 * this.profileElapsed / this.profileCount;
       log('Synthesizer mean time = ' + profileMean + ' sec');
@@ -316,10 +314,9 @@ Synthesizer.prototype = {
   },
 
   update: function () {
-    var mass = this.harmony.mass.likes;
     this.synthworker.postMessage({
           'cmd': 'synthesize',
-          'data': mass
+          'data': this.harmony.mass.likes
         });
   },
   play: function (uri) {
