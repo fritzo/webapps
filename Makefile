@@ -19,8 +19,7 @@ rationalkeyboard: FORCE
 
 WE = ~/wavencoderjs.git
 wavencoder:
-	cp commmon/wavencoder.js $(WE)/
-	cp commmon/safety.js $(WE)/
+	cp common/wavencoder.js $(WE)/
 
 #-------------------------------------------------------------------------------
 # build & release tools
