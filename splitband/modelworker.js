@@ -80,7 +80,7 @@ var init = function (data) {
   for (var f1 = 0; f1 < F; ++f1) {
     var distanceRow = distanceFF[f1] = new Array(F);
     for (var f2 = 0; f2 < F; ++f2) {
-      distanceRow[f2] = Rational.distance(freqs[f1], freqs[f2]) / pitchAcuity;
+      distanceRow[f2] = Rational.dissonance(freqs[f1], freqs[f2]) / pitchAcuity;
     }
   }
   interferenceGG = new Array(G);
@@ -89,7 +89,7 @@ var init = function (data) {
     var distanceRow = distanceGG[g1] = new Array(G);
     var interRow = interferenceGG[g1] = new Array(G);
     for (var g2 = 0; g2 < G; ++g2) {
-      distanceRow[g2] = RatGrid.distance(grids[g1], grids[g2]) / tempoAcuity;
+      distanceRow[g2] = RatGrid.dissonance(grids[g1], grids[g2]) / tempoAcuity;
       interRow[g2] = RatGrid.interference2(grids[g1], grids[g2], sharpness);
     }
   }

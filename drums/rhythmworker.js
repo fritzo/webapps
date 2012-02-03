@@ -36,7 +36,7 @@ var init = function (data) {
   for (var i = 0; i < I; ++i) {
     var row = energyMatrix[i] = new Array(I);
     for (var j = 0; j < I; ++j) {
-      row[j] = RatGrid.distance(self.grids[i], self.grids[j]);
+      row[j] = RatGrid.dissonance(self.grids[i], self.grids[j]);
     }
   }
 
