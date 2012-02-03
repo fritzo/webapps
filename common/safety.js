@@ -11,7 +11,7 @@
 // Logging in the main window & web workers
 
 var log;
-if (this.window) { // in main window
+if (this.document) { // in main window
 
   if (window.console && window.console.log) {
     log = function (message) { console.log(message); };
