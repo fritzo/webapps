@@ -380,7 +380,7 @@ test('RatGrid trajectory plot', function ($log) {
     .appendTo($log);
 });
 
-test('RatGrid interference plot', function ($log) {
+test('RatGrid interference (statistical)', function ($log) {
 
   var numSamples = 10000;
   var maxTime = 1000;
