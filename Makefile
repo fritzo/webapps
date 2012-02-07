@@ -1,4 +1,12 @@
 
+extern: FORCE
+	( test -e extern || mkdir extern ) && \
+	rm -rf extern/CodeMirror-* && \
+	( test -e /tmp/codemirror.zip || \
+	  wget http://codemirror.net/codemirror.zip -O /tmp/codemirror.zip ) && \
+	unzip /tmp/codemirror.zip -d extern/ && \
+	( cd extern; ln -sf CodeMirror-* codemirror )
+
 #-------------------------------------------------------------------------------
 # export to public git repository
 

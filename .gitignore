@@ -1,4 +1,5 @@
 temp*
+extern
 compiler
 linter
 build
