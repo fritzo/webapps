@@ -6,6 +6,7 @@ NETWORK: #DEBUG
 
 # Code
 index.html
+../common/toolbar.css
 ../common/jquery.min.js
 ../common/jquery.ba-hashchange.min.js
 ../common/safety.js

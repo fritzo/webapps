@@ -16,7 +16,7 @@ rationalkeyboard: FORCE
 	cp -rL keys $(RK)
 	mv $(RK)/release.manifest $(RK)/cache.manifest
 	for js in $$(cat keys/index.html keys/synthworker.js | \
-			grep -o 'common\/.*\.js');\
+			grep -o 'common\/.*\.\(js\|css\)');\
 		do cp $$js $(RK)/; \
 	done
 	sed -i 's/\.\.\/common\///g' $(RK)/*.html $(RK)/*.js $(RK)/cache.manifest
