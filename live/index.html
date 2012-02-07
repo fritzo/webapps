@@ -275,13 +275,13 @@ ui.hideToolbar = function (speed) {
 
 var su = function () {
   // turn on the ugly stuff
-  $('#importExport, #su, #suReload').show();
+  $('#importExport, #su').show();
   localStorage.setItem('su', Date.now());
 };
 
 var nosu = function () {
   // turn off the ugly stuff
-  $('#importExport, #su, #suReload').hide();
+  $('#importExport, #su').hide();
   localStorage.removeItem('su');
 };
 
@@ -374,7 +374,6 @@ $(function() {
 
   if ('su' in localStorage) su();
   $('#su').click(nosu).attr('title', 'leave superuser mode');
-  $('#suReload').click(function(){ window.location.reload(); });
 
   $('#showHelp').click(function(){
         $('#about').hide();
@@ -622,8 +621,7 @@ button.flatFlat {
   padding-right: 0.5em;
 }
 
-#su,
-#suReload {
+#su {
   display: none;
 }
 
@@ -728,8 +726,7 @@ canvas { z-index: 0; }
 
 <div class='toolbar' id='showToolbar'> <button>+</button> </div>
 <div class='toolbar' id='toolbar'>
-  <button class='roundFlat' id='su'>su</button><!--
-  --><button class='flatRound' id='suReload'>reload</button>
+  <button class='roundRound' id='su'>su</button>
   &nbsp;
   <button class='roundFlat' id='showHelp' title='shortcut = F1'>help</button><!--
   --><button class='flatRound' id='showAbout'>about</button>
