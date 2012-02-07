@@ -14,25 +14,27 @@ once {
   live.startVoice = function (rate) {
 
     var voice = {
-      rate: rate || (1/60),
+      rate: rate || (1/120),
       mass: random(),
+      syncopate: random(),
       delayParam: randomStd(),
       freqParam: randomStd(),
-      syncopate: random(),
-      bandwidth: 0.01
+      bandParam: randomStd()
     };
 
     var advance = function () {
       var r = voice.rate * exp(voice.delayParam);
 
       voice.mass = bound(0, 1, voice.mass + randomStd() * r);
+      voice.syncopate = (1 + voice.syncopate + randomStd() * r) % 1;
       voice.delayParam = driftStd(voice.delayParam, r);
       voice.freqParam = driftStd(voice.freqParam, r);
-      voice.syncopate = (1 + voice.syncopate + randomStd() * r) % 1;
+      voice.bandParam = driftStd(voice.bandParam, r);
 
       voice.delay = 1000 * exp(2 * voice.delayParam);
-      voice.duration = 0.3 * voice.delay;
-      voice.frequency = 300 * exp(2 * voice.freqParam - voice.delayParam);
+      voice.duration = 0.5 * voice.delay;
+      voice.frequency = 100 * exp(voice.freqParam - voice.delayParam);
+      voice.bandwidth = 0.005 * exp(voice.bandParam);
       voice.gain = sqrt(voice.mass) / 7;
 
       sync(voice, advance);
@@ -41,9 +43,12 @@ once {
 
     advance();
   };
+
+  for (var i = 0; i < 7; ++i) live.startVoice();
 }
 
-once for (var i = 0; i < 7; ++i) live.startVoice();
+nonce sync.clear();
+nonce live.startVoice();
 
 //==============================================================================
 // 1326994044727.js
