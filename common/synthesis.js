@@ -1,6 +1,10 @@
 /**
  * Basic additive audio synthesis.
  *
+ * requires:
+ * safety.js
+ * randomtools.js
+ *
  * Copyright (c) 2012, Fritz Obermeyer
  * Dual licensed under the MIT or GPL Version 2 licenses.
  * http://www.opensource.org/licenses/MIT
@@ -8,26 +12,23 @@
  */
 
 /** @constructor */
-var Synthesizer = function (wavEncoder) {
+var Synthesizer = function () {
 
-  this.wavEncoder = wavEncoder;
   var numSamples = this.numSamples = wavEncoder.numSamples;
-  this.sampleRateHz = wavEncoder.sampleRateHz;
+  this.sampleRateHz = WavEncoder.defaults.sampleRateHz;
 
-  var whiteNoise1 = this.whiteNoise = this.whiteNoise1 = new Array(numSamples);
-  var whiteNoise2 = this.whiteNoise2 = new Array(numSamples);
-  var random = Math.random;
-  var whiteNoise = function () {
-    return 2 * (random() + random() + random()) - 3; // approximately white
-  };
-  for (var t = 0; t < numSamples; ++t) {
-    whiteNoise1[t] = whiteNoise();
-    whiteNoise2[t] = whiteNoise();
-  }
+  this.samples = [];
+  this.whiteNoise1 = [];
+  this.whiteNoise2 = [];
 };
 
 Synthesizer.prototype = {
-  noiseBand: function (freqHz, relBandwidth, samples) {
+  noiseBand: function (param) {
+    var freqHz = param.freqHz;
+    var relBandwidth = param.freqHz || 0;
+    var samples = ;
+    samples.numSamples
+
     assert(freqHz > 0, 'bad freqHz: ' + freqHz);
     assert(relBandwidth > 0, 'bad relBandwidth: ' + relBandwidth);
     assertLength(samples, this.numSamples, 'samples');
@@ -39,14 +40,13 @@ Synthesizer.prototype = {
     var transReal = decay * cosOmega;
     var transImag = decay * sinOmega;
     var normalize = 1 - decay; // yielding unit variance
+    gain *= normalize / numSamples;
 
     var xRandom = this.whiteNoise1;
     var yRandom = this.whiteNoise2;
     var x = 0;
     var y = 0;
-
-    TODO('set samples[0]');
-    for (var t = 1, T = numSamples; t < T; ++t) {
+    for (var t = 0, T = numSamples; t < T; ++t) {
       var x0 = x;
       var y0 = y;
       x = transReal * x0 - transImag * y0 + xRandom[t];
@@ -55,25 +55,4 @@ Synthesizer.prototype = {
     }
   }
 };
-
-test('Synthesizer.whiteNoise (statistical)', function () {
-  var numSamples = 1e4;
-  var wavEncoder = new WavEncoder(numSamples);
-  var synthesizer = new Synthesizer(wavEncoder);
-
-  var sum_x = 0;
-  var sum_xx = 0;
-  var whiteNoise = synthesizer.whiteNoise;
-  for (var t = 0; t < numSamples; ++t) {
-    var x = whiteNoise[t];
-    sum_x += x;
-    sum_xx += x * x;
-  }
-  var mean = sum_x / numSamples;
-  var variance = sum_xx / numSamples - mean * mean;
-  var tol = 5 / Math.sqrt(numSamples);
-  assert(-tol < mean && mean < tol, 'white noise mean is nonzero: ' + mean);
-  assert(1 - tol < variance && variance < 1 + tol,
-    'white noise variance is not unity: ' + variance);
-});
 

@@ -196,7 +196,7 @@ var WavEncoder = (function(){
      */
     _encodeWords: function () {
       var words = this.words;
-      var pairTable = WavEncoder.pairTable;
+      var pairTable = WavEncoder._pairTable;
 
       var result = new Array(1 + words.length * 4/3);
       var r = 0;
@@ -240,7 +240,7 @@ var WavEncoder = (function(){
       pairTable[ij] = charTable[ij >> 6] + charTable[ij & 63];
     }
 
-    WavEncoder.pairTable = pairTable;
+    WavEncoder._pairTable = pairTable;
   })();
 
   WavEncoder.Exception = WavEncoderException;

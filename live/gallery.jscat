@@ -1,5 +1,51 @@
 
 //==============================================================================
+// 1328587224268.js
+
+// drifting rhythm
+
+once {
+  clear();
+
+  var driftStd = function (start, rate) {
+    return start * (1 - rate) + randomStd() * rate;
+  };
+
+  live.startVoice = function (rate) {
+
+    var voice = {
+      rate: rate || (1/60),
+      mass: random(),
+      delayParam: randomStd(),
+      freqParam: randomStd(),
+      syncopate: random(),
+      bandwidth: 0.01
+    };
+
+    var advance = function () {
+      var r = voice.rate * exp(voice.delayParam);
+
+      voice.mass = bound(0, 1, voice.mass + randomStd() * r);
+      voice.delayParam = driftStd(voice.delayParam, r);
+      voice.freqParam = driftStd(voice.freqParam, r);
+      voice.syncopate = (1 + voice.syncopate + randomStd() * r) % 1;
+
+      voice.delay = 1000 * exp(2 * voice.delayParam);
+      voice.duration = 0.3 * voice.delay;
+      voice.frequency = 300 * exp(2 * voice.freqParam - voice.delayParam);
+      voice.gain = sqrt(voice.mass) / 7;
+
+      sync(voice, advance);
+      play(noise.band(voice));
+    };
+
+    advance();
+  };
+}
+
+once for (var i = 0; i < 7; ++i) live.startVoice();
+
+//==============================================================================
 // 1326994044727.js
 
 // devil's staircase scale

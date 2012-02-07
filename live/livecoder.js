@@ -591,12 +591,12 @@ var windowW = 0, windowH = 0; // window inner width,height in pixels
 var mouseX = 0, mouseY = 0;   // mouse coords in pixels
 var draw2d;                   // clears & returns the 2d canvas context
 
-// Audio TODO get play,tone,noise working
+// Audio
 var sampleRate = 22.05; // in kHz
 var middleC = 0.261625565; // in kHz
 var play;//(seq:Uint8Array) plays an audio sequence (mono 8bit 22050Hz)
 var tone;//(freqkHz, durationMs) returns a sequence for a single tone
-var noise; // TODO
+var noise;
 
 // math functions & constants
 var pow   = Math.pow;      var e       = Math.E;
@@ -619,7 +619,10 @@ var sin2pi = function (t) { return sin(2*pi*t) };
 var cos2pi = function (t) { return cos(2*pi*t) };
 var tan2pi = function (t) { return tan(2*pi*t) };
 
-var random  = Math.random;
+var random = Math.random;
+var randomStd = function () {
+  return 2 * (random() + random() + random()) - 3;
+};
 
 //------------------------------------------------------------------------------
 // Audio (mono 16bit 22050 Hz -- hey, it's just a browser)
@@ -656,33 +659,33 @@ noise.band = function (param) {
   var duration = param.duration;
   var gain = param.gain;
 
+  var numSamples = floor(duration * sampleRate);
   var omega = 2 * pi * frequency / sampleRate;
-  var cos_omega = cos(omega);
-  var sin_omega = sin(omega);
-  var oldPart = exp(-bandwidth * frequency / sampleRate);
-  var newPart = 1 - oldPart;
+  var cosOmega = cos(omega);
+  var sinOmega = sin(omega);
+  var decay = exp(-bandwidth * frequency / sampleRate);
+  var transReal = decay * cosOmega;
+  var transImag = decay * sinOmega;
+  var normalize = 1 - decay;
+  gain *= normalize / numSamples;
 
   var clip = function (x) {
     var scaled = gain * x / bandwidth;
     return scaled / sqrt(1 + scaled * scaled);
   };
 
-  var x0 = 0;
-  var y0 = 0;
-  var data = [];
-  for (var i = 0, I = duration * sampleRate; i < I; ++i) {
-
-    var x1 = newPart * (2 * random() - 1)
-           + oldPart * (cos_omega * x0 - sin_omega * y0);
-    var y1 = newPart * (2 * random() - 1)
-           + oldPart * (cos_omega * y0 + sin_omega * x0);
-    x0 = x1;
-    y0 = y1;
-
-    var env = (I - i) / I;
-    data[i] = clip(x0 * env);
+  var x = 0;
+  var y = 0;
+  var samples = [];
+  for (var t = 0; t < numSamples; ++t) {
+    var x0 = x;
+    var y0 = y;
+    x = transReal * x0 - transImag * y0 + randomStd();
+    y = transReal * y0 + transImag * x0 + randomStd();
+    var s = x * gain * (numSamples - t);
+    samples[t] = s / sqrt(1 + s * s); // soft clip to [-1,1]
   }
-  return WavEncoder.encode(data);
+  return WavEncoder.encode(samples);
 };
 
 play = function (sound, volume) {
