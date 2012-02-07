@@ -63,14 +63,15 @@ var WavEncoder = (function(){
 
     switch (bytesPerSample) {
       case 1:
-        this.encode = this.encode8;
+        this.encode = this._encode8;
         break;
 
       case 2:
-        this.encode = this.encode16;
+        this.encode = this._encode16;
         break;
 
-      default: throw 'unsupported bytesPerSample: ' + bytesPerSample;
+      default: throw new WavEncoderException(
+            'unsupported bytesPerSample: ' + bytesPerSample);
     }
 
     // we encode using 16-bit words
@@ -98,14 +99,14 @@ var WavEncoder = (function(){
 
     var bytesPerWord = 2;
     var dataWords = dataBytes / bytesPerWord;
-    words.length = this.headerWords + dataWords;
+    words.length = this._headerWords + dataWords;
     while (words.length % 3) words.push(0);
   };
 
   WavEncoder.prototype = {
 
-    headerBytes: 44,
-    headerWords: 22,
+    _headerBytes: 44,
+    _headerWords: 22, // for 16-bit words
 
     /**
      * @param {string}
@@ -144,13 +145,13 @@ var WavEncoder = (function(){
      * @param {number[]}
      * @returns {string}
      */
-    encode8: function (samples) {
+    _encode8: function (samples) {
       // this is hard-coded for 8-bit mono
 
       assertEqual(samples.length, this.numSamples, 'Wrong number of samples');
 
       var words = this.words;
-      var h = this.headerWords;
+      var h = this._headerWords;
       for (var t = 0, T = this.numSamples - 1; t < T; t += 2) {
         var x1 = samples[t + 0];
         var x2 = samples[t + 1];
@@ -172,13 +173,13 @@ var WavEncoder = (function(){
      * @param {number[]}
      * @returns {string}
      */
-    encode16: function (samples) {
+    _encode16: function (samples) {
       // this is hard-coded for 16-bit mono
 
       assertEqual(samples.length, this.numSamples, 'Wrong number of samples');
 
       var words = this.words;
-      var h = this.headerWords;
+      var h = this._headerWords;
       for (var t = 0, T = this.numSamples; t < T; ++t) {
         var x = samples[t];
         // 16-bit samples are signed
@@ -242,9 +243,11 @@ var WavEncoder = (function(){
     WavEncoder.pairTable = pairTable;
   })();
 
+  WavEncoder.Exception = WavEncoderException;
+
   /**
    * WavEncoder is optimized to encode many data sequences of the same length,
-   * but we provide a one-off function for convenience.
+   * but we provide this one-off function for convenience.
    *
    * @param {number[]}
    * @returns {string}
@@ -253,8 +256,6 @@ var WavEncoder = (function(){
     var encoder = new WavEncoder(data.length);
     return encoder.encode(data);
   };
-
-  WavEncoder.Exception = WavEncoderException;
 
   return WavEncoder;
 
