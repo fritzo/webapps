@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <!--
   livecoder: version (2012-01-10)
   http://fritzo.org/live
@@ -9,14 +9,21 @@
 -->
 <html>
 <head>
+
 <title>Live Coder</title>
-<!----------------------------------------------------------------------------->
+<link rel="icon" href="favicon.ico" type="image/x-icon" />
+
+<!---------------------------------------------------------------------------->
 
 <!-- MIT,GPL2 -->
 <script type='text/javascript' src='../common/jquery.min.js'></script>
 
 <!-- MIT -->
 <script type='text/javascript' src='../common/jquery.timeago.js'></script>
+
+<!-- MIT -->
+<script src='../extern/codemirror/lib/codemirror.js'></script>
+<script src='../extern/codemirror/mode/javascript/javascript.js'></script>
 
 <!-- MIT,BSD -->
 <script type='text/javascript' src='../common/modernizr.js'></script>
@@ -30,6 +37,7 @@
 <script type='text/javascript' src='livecoder.js'></script>
 
 <!-- public domain (data) -->
+<!-- TODO import as text/x-concatenated-javascript & parse -->
 <script type='text/javascript' src='gallery.js'></script>
 
 <!-- MIT -->
@@ -351,6 +359,23 @@ $(function() {
     return;
   }
 
+  // initialize CodeMirror
+
+  if(0){ // TODO
+
+  var editor = CodeMirror.fromTextArea(document.getElementById('source'), {
+    lineNumbers: false,
+    matchBrackets: true,
+    theme: 'live'
+  });
+
+  var scroller = editor.getScrollerElement();
+  scroller.style.height = '100%';
+  scroller.style.width = '100%';
+  editor.refresh();
+
+  } // TODO
+
   // build editor
 
   $('#source,#log').on('focus', function(){
@@ -424,6 +449,8 @@ $(function() {
 <!---------------------------------------------------------------------------->
 
 <link rel='stylesheet' href='../common/toolbar.css' />
+<link rel='stylesheet' href='live.css' />
+<link rel='stylesheet' href='../extern/codemirror/lib/codemirror.css' />
 <style>
 
 body,
@@ -569,56 +596,6 @@ dt {
 dd {
   margin: 0 0 0 110px;
   padding: 0.5em;
-}
-
-.toolbar {
-  margin: 2px;
-  position: fixed;
-  bottom: 0px;
-  right: 0px;
-  opacity: 1;
-}
-
-button {
-  margin: 0px;
-  border: solid 2px black;
-  border-radius: 12px;
-  background-color: #444444;
-}
-button:hover {
-  background-color: #666666;
-}
-button.roundRound {
-  border-top-left-radius:     12px;
-  border-bottom-left-radius:  12px;
-  border-top-right-radius:    12px;
-  border-bottom-right-radius: 12px;
-  padding-left:  0.7em;
-  padding-right: 0.7em;
-}
-button.roundFlat {
-  border-top-left-radius:     12px;
-  border-bottom-left-radius:  12px;
-  border-top-right-radius:    4px;
-  border-bottom-right-radius: 4px;
-  padding-left:  0.7em;
-  padding-right: 0.5em;
-}
-button.flatRound {
-  border-top-left-radius:     4px;
-  border-bottom-left-radius:  4px;
-  border-top-right-radius:    12px;
-  border-bottom-right-radius: 12px;
-  padding-left:  0.5em;
-  padding-right: 0.7em;
-}
-button.flatFlat {
-  border-top-left-radius:     4px;
-  border-bottom-left-radius:  4px;
-  border-top-right-radius:    4px;
-  border-bottom-right-radius: 4px;
-  padding-left:  0.5em;
-  padding-right: 0.5em;
 }
 
 #su {

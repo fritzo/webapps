@@ -1,0 +1,27 @@
+
+/* 'live' is a fork of the 'night' theme */
+
+.cm-s-live { background: 'rgba(0,0,0,0)'; color: white; }
+.cm-s-live div.CodeMirror-selected { background: #a8f !important; }
+.cm-s-live .CodeMirror-gutter { background: #0a001f; border-right: 1px solid #aaa; }
+.cm-s-live .CodeMirror-gutter-text { color: #f8f8f8; }
+.cm-s-live .CodeMirror-cursor { border-left: 3px solid white !important; }
+
+.cm-s-live span.cm-comment { color: #6900a1; }
+.cm-s-live span.cm-atom { color: #845dc4; }
+.cm-s-live span.cm-number,
+.cm-s-live span.cm-attribute { color: #ffd500; }
+.cm-s-live span.cm-keyword { color: #599eff; }
+.cm-s-live span.cm-string { color: #37f14a; }
+.cm-s-live span.cm-meta { color: #7678e2; }
+.cm-s-live span.cm-variable-2,
+.cm-s-live span.cm-tag { color: #99b2ff; }
+.cm-s-live span.cm-variable-3,
+.cm-s-live span.cm-def { color: white; }
+.cm-s-live span.cm-error { color: #9d1e15; }
+.cm-s-live span.cm-bracket { color: #8da6ce; }
+.cm-s-live span.cm-comment { color: #6900a1; }
+.cm-s-live span.cm-builtin,
+.cm-s-live span.cm-special { color: #ff9e59; }
+.cm-s-live span.cm-link { color: #845dc4; }
+
