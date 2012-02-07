@@ -9,14 +9,11 @@
  */
 
 importScripts('../common/safety.js');
+importScripts('../common/randomtools.js');
 importScripts('../common/wavencoder.js');
 
 var whiteNoise1 = [];
 var whiteNoise2 = [];
-var whiteNoise = function () {
-  var random = Math.random;
-  return 2 * (random() + random() + random()) - 3;
-};
 
 var sampleRateKhz = 1000 * WavEncoder.defaults.sampleRateHz;
 var samples = [];
@@ -36,8 +33,8 @@ var synthesize = function (data) {
 
   // generate & cache white noise as needed
   for (var i = whiteNoise1.length; i < numSamples; ++i) {
-    whiteNoise1[i] = whiteNoise();
-    whiteNoise2[i] = whiteNoise();
+    whiteNoise1[i] = Math.randomStd();
+    whiteNoise2[i] = Math.randomStd();
   }
 
   var omega = 2 * Math.PI * freqKhz / sampleRateKhz;

@@ -11,12 +11,9 @@
 var config = {
   numVoices: 7,
 
-  none: undefined
-};
+  tempoRadius: Math.sqrt(12*12 + 1*1 + 1e-4), // barely including 1/12 t + 0/1
 
-Math.randomStd = function () {
-  var random = Math.random;
-  return 2 * (random() + random() + random()) - 3;
+  none: undefined
 };
 
 //------------------------------------------------------------------------------
@@ -57,11 +54,10 @@ var Voice = function (clock) {
 
 Voice.prototype = {
 
-  initRandom: function () {
-
+  initRandom: function (gridProbs) {
+    // TODO start at steady-state distribution
     this.gain = Math.random();
-    this.offset = Math.random();
-    this.logTempo = Math.randomStd();
+    this.grid = gridProbs.sample();
     this.logPitch = Math.randomStd();
     this.logRelBandwidth = Math.randomStd();
   },
@@ -77,24 +73,29 @@ Voice.prototype = {
 };
 
 //------------------------------------------------------------------------------
-// Population
+// Model
 
-var Population = function (clock) {
+var Model = function (clock) {
 
   this.clock = clock;
+
+  var grids = this.grids = RatGrid.ball(config.tempoRadius);
+  this.commonPeriod = RatGrid.commonPeriod(grids);
+  log('using ' + grids.length + ' grids with common period '
+      + this.commonPeriod);
 
   this.voices = [];
   for (var i = 0; i < config.numVoices; ++i) {
     this.voices[i] = new Voice(clock);
   }
 
-  var population = this;
+  var model = this;
   clock.continuouslyDo(function (timeMs, dtimeMs) {
-        population.advance(dtimeMs);
+        model.advance(dtimeMs);
       });
 };
 
-Population.prototype = {
+Model.prototype = {
 
   advance: function (dtimeMs) {
     assert(dtimeMs >= 0, 'bad dtimeMs: ' + dtimeMs);
@@ -106,38 +107,20 @@ Population.prototype = {
     }
     TODO();
   },
+  },
 
   none: undefined
 };
 
-//----------------------------------------------------------------------------
-// Main
+$(function(){
 
-var clock;
-var population;
+  var clock = new Clock();
+  $(window).keyup(function(e){ if (e.which === 27) clock.toggleRunning(); });
 
-var main = function () {
-
-  clock = new Clock();
-  population = new Population(clock); 
-
-  $(window).on('keydown', function (e) {
-        switch (e.which) {
-          case 27: // escape
-            clock.toggleRunning();
-            break;
-        }
-      });
+  clock.continuouslyDo(function(timeMs, dtimeMs){
+    TODO('update');
+  });
 
   clock.start();
-};
-
-$(function(){
-  if (window.location.hash && window.location.hash.slice(1) === 'test') {
-    document.title = document.title + ' (Unit Test)';
-    test.runAll(main);
-  } else {
-    main();
-  }
 });
 
