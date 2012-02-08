@@ -37,10 +37,6 @@
 <!-- MIT -->
 <script type='text/javascript' src='livecoder.js'></script>
 
-<!-- public domain (data) -->
-<!-- TODO import as text/x-concatenated-javascript & parse -->
-<script type='text/javascript' src='gallery.js'></script>
-
 <!-- MIT -->
 <script type='text/javascript'>
 
@@ -75,8 +71,8 @@ ui.saveScript = function () {
 };
 
 ui.loadScript = function (name) {
+  print('loading ' + name);
   live.setSource(localStorage.getItem(name));
-  print('loaded ' + name);
 };
 
 ui.deleteScript = function (name) {
@@ -211,10 +207,8 @@ ui.importGallery = function (concatenatedScripts) {
       var name = name_script.match(/^[0-9]+\.js\b/)[0];
       var script = name_script.slice(name.length).trim();
 
-      if (!(name in localStorage)) {
-        //console.log(' importing ' + name);
-        localStorage.setItem(name, script);
-      }
+      //console.log(' importing ' + name);
+      localStorage.setItem(name, script);
     } catch (err) { alert(err); }
   }
 
@@ -262,8 +256,7 @@ ui.shareHash = function () {
 ui.showToolbar = function (speed) {
   if (speed == undefined) speed = 100;
   return function (e) {
-    $('#showToolbar').hide();
-    $('#toolbar').fadeIn(speed);
+    $('#toolbar').fadeIn(speed, function(){ $('#showToolbar').hide(); });
     $('#hideToolbar').focus();
     if (e) e.preventDefault();
   };
@@ -272,8 +265,8 @@ ui.showToolbar = function (speed) {
 ui.hideToolbar = function (speed) {
   if (speed == undefined) speed = 100;
   return function (e) {
-    $('#toolbar').fadeOut(speed);
     $('#showToolbar').show();
+    $('#toolbar').fadeOut(speed);
     $('#showToolbar button').focus();
     if (e) e.preventDefault();
   };
@@ -417,7 +410,7 @@ $(function() {
   // initialize livecoder
 
   var initSource = (ui.popHash() || ui.getAutosave() || '').trim();
-  ui.importGallery(gallery_jscat); // gallery_jscat is defined in gallery.js
+  $.get('gallery.jscat', function(val){ ui.importGallery(val); });
 
   // hide controls if window is an iframe
   if (window.location != window.parent.location) {
@@ -503,7 +496,6 @@ textarea,
 #source,
 .CodeMirror {
   /*
-  opacity: 0.666;
   text-shadow: 1px 1px 0ex black,
                1px -1px 0ex black,
                -1px 1px 0ex black,
@@ -538,7 +530,7 @@ textarea,
 
 
   color: #ffff00;
-  background-color: rgb(0,0,0);
+  background-color: rgba(0,0,0,0.666);
 }
 
 .info {

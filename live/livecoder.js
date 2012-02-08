@@ -1,5 +1,5 @@
 /**
- * LiveCoder.net
+ * livecoder
  *
  * Livecoder is toolset to make browser-based javascript live coding easy.
  * It includes a language extension, a live coding editor, a task scheduler,

@@ -111,8 +111,8 @@ once {
   var times = QQ.map(function(q){
     return Math.exp(-q.norm() / temperature);
   });
-  var total = sum.apply(Math,times);
-  var timeScale = totalTime / total;
+  var sum = times.reduce(function(x,y){ return x+y; });
+  var timeScale = totalTime / sum;
   live.times = times.map(function(t){ return timeScale * t; });
 
   live.starts = [0];
@@ -138,6 +138,7 @@ nonce {
     })();
   }
 }
+nonce play(live.tones[0]);
 
 // Version 2. a chirp
 once {
@@ -170,7 +171,7 @@ var tone = function (freq, duration, gain) {
 
 var T = 500;
 
-nonce { // generate samples
+once { // generate samples
   var note = function(freq) { return tone(freq, T, 0.5); };
   live.scale = [
     note(1/1),
@@ -185,7 +186,7 @@ nonce { // generate samples
   ];
 }
 
-nonce live.n = 0;
+once live.n = 0;
 
 live.S = function () {
   live.n = (live.n + 1) % live.scale.length;
@@ -194,7 +195,7 @@ live.S = function () {
   sync({delay:T,acuity:7}, live.S);
 };
 
-nonce live.S(); // start
+once live.S(); // start
 nonce sync.clear(); // stop
 
 print(live.scale.length)
