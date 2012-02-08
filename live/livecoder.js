@@ -1,15 +1,16 @@
 /**
- * livecoder: version (2012-01-10)
+ * LiveCoder.net
  *
  * Livecoder is toolset to make browser-based javascript live coding easy.
  * It includes a language extension, a live coding editor, a task scheduler,
  * and a few math/graphics/audio tools for live coding of art.
  *
  * Requires:
- * - jquery.js
- * - jquery.caret.js
+ * - jQuery
+ * - CodeMirror2
  * - a textarea for source editing
  * - a textarea for error logging
+ * - a butten for status indication
  * - a canvas for 2d drawing
  *
  * Provides:
@@ -45,7 +46,14 @@ var live = (function(){
       lineNumbers: false,
       matchBrackets: true,
       workTime: 10, // very short
-      workDelay: 300
+      workDelay: 300, // default
+      pollinterval: 300, // long
+      // TODO get hinting working
+      //extraKeys: {
+      //  'Ctrl-N': CodeMirror.javascriptHint,
+      //  'Ctrl-P': CodeMirror.javascriptHint,
+      //}
+      none: undefined
     });
 
     // this is required for full screen
@@ -111,8 +119,8 @@ var live = (function(){
   };
 
   live.setSource = function (val) {
-    _codemirror.setValue(val);
     _clear();
+    _codemirror.setValue(val);
 
     _startCompiling();
     _codemirror.focus();
@@ -147,7 +155,7 @@ var live = (function(){
         return;
       }
 
-      var source = live.getSource();
+      var source = _codemirror.getValue();
       var compiled;
       try {
         compiled = globalEval(
@@ -249,6 +257,18 @@ var live = (function(){
     };
 
   })();
+
+  //----------------------------------------------------------------------------
+  //
+  //  TODO reimplement schedulers, as in common/clock
+  //    * schedule.continuouslyDo()
+  //    * schedule.discretelyDo()
+  //    * schedule.coupledDo()
+  //    * add keyboard pause button to clock
+  //
+  //  TODO add rational.js and ratgrid.js
+  //
+  //----------------------------------------------------------------------------
 
   //----------------------------------------------------------------------------
   // Scheduling drift-free tasks

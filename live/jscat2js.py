@@ -1,5 +1,13 @@
 #!/usr/bin/python
 
+'''
+LiveCoder.net
+
+Copyright (c) 2012, Fritz Obermeyer
+Licensed under the MIT license:
+http://www.opensource.org/licenses/mit-license.php
+'''
+
 import sys
 import json
 

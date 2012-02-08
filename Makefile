@@ -8,12 +8,14 @@ codemirror: FORCE
 	( test -e /tmp/codemirror.zip || \
 	  wget http://codemirror.net/codemirror.zip -O /tmp/codemirror.zip ) && \
 	unzip /tmp/codemirror.zip -d extern/ && \
-	( cd extern; ln -sf CodeMirror-* codemirror )
+	( cd extern; ln -sf CodeMirror-* codemirror ) && \
+	sed -i 's/"finally": B,/"finally": B, "once": B, "nonce": B,/g' \
+	  extern/codemirror/mode/javascript/javascript.js # HACK
 
 audiolibjs: FORCE
 	( test -e extern || mkdir extern ) && \
 	rm -rf extern/*-audiolib.js-* && \
-	( test -e /tmp/audiolibjs.tar.gz || \
+	( test -e /tmp/audiolibjs.zip || \
 	  wget https://github.com/jussi-kalliokoski/audiolib.js/zipball/master \
 	    -O /tmp/audiolibjs.zip ) && \
 	unzip /tmp/audiolibjs.zip -d extern/ && \
