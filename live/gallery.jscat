@@ -328,8 +328,8 @@ for (var t = 0, T = samples.length; t < T; ++t) {
   var envelope = gain * 4 * (t + 1) * (T - t) / (T * T);
   samples[t] = envelope * Math.sin(omega * t);
 }
-var uri = WavEncoder.encode(samples);
-vars.audio = new Audio(uri);
 
-once vars.audio.play();
+var uri = WavEncoder.encode(samples);
+var audio = new Audio(uri);
+audio.play();
 

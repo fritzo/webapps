@@ -360,7 +360,6 @@ var play = function (uri, volume) {
   var audio = new Audio(uri);
   if (volume !== undefined) audio.volume = volume;
   audio.play();
-  return audio;
 };
 
 var tone = function (args) {
