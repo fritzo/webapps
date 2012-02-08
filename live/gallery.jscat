@@ -13,7 +13,7 @@ var driftStd = function (start, rate) {
   return start * (1 - rate) + randomStd() * rate;
 };
 
-live.advance = function (voice) {
+vars.advance = function (voice) {
   return function () {
     var r = voice.driftRate * exp(voice.delayParam);
 
@@ -28,13 +28,13 @@ live.advance = function (voice) {
     voice.bandwidth = 0.005 * exp(voice.bandParam);
     voice.gain = Math.sqrt(voice.mass) / 7;
 
-    setTimeout(live.advance(voice), delay);
+    setTimeout(vars.advance(voice), delay);
     play(noise(voice));
   };
 };
 
-live.startVoice = function () {
-  live.advance({
+vars.startVoice = function () {
+  vars.advance({
     driftRate: 1/120,
     mass: random(),
     delayParam: randomStd(),
@@ -43,10 +43,10 @@ live.startVoice = function () {
   })();
 };
 
-once for (var i = 0; i < 7; ++i) live.startVoice();
+once for (var i = 0; i < 7; ++i) vars.startVoice();
 
 nonce clear(); // erase the 'n' to stop all voices
-nonce live.startVoice(); // erase the 'n' to start another voice
+nonce vars.startVoice(); // erase the 'n' to start another voice
 
 //==============================================================================
 // 1326994044727.js
@@ -99,55 +99,52 @@ Rational.ball = function (radius) {
 var radius = 16;
 var temperature = 3;
 var totalTime = 4000;
-once {
 
-  var QQ = Rational.ball(radius);
-  live.freqs = QQ.map(function(q){
-    return middleC * q.toNumber();
-  });
-  var times = QQ.map(function(q){
-    return Math.exp(-q.norm() / temperature);
-  });
-  var sum = times.reduce(function(x,y){ return x+y; });
-  var timeScale = totalTime / sum;
-  live.times = times.map(function(t){ return timeScale * t; });
+var QQ = Rational.ball(radius);
+vars.freqs = QQ.map(function(q){
+  return middleC * q.toNumber();
+});
+var times = QQ.map(function(q){
+  return Math.exp(-q.norm() / temperature);
+});
+var sum = times.reduce(function(x,y){ return x+y; });
+var timeScale = totalTime / sum;
+vars.times = times.map(function(t){ return timeScale * t; });
 
-  live.starts = [0];
-  live.ends = [live.times[0]];
-  for (var i = 1; i < QQ.length; ++i) {
-    live.starts[i] = live.starts[i-1] + live.times[i-1];
-    live.ends[i] = live.starts[i] + live.times[i];
-  }
-
-  live.tones = [];
-  for (var i = 0; i < QQ.length; ++i) {
-    live.tones[i] = tone({ frequency:live.freqs[i], duration:live.times[i] });
-  }
+vars.starts = [0];
+vars.ends = [vars.times[0]];
+for (var i = 1; i < QQ.length; ++i) {
+  vars.starts[i] = vars.starts[i-1] + vars.times[i-1];
+  vars.ends[i] = vars.starts[i] + vars.times[i];
 }
 
 // Version 1. sequence of notes
 nonce {
+  vars.tones = [];
+  for (var i = 0; i < QQ.length; ++i) {
+    vars.tones[i] = tone({ frequency:vars.freqs[i], duration:vars.times[i] });
+  }
+
   var wait = 50;
-  for (var i = 0; i < live.tones.length; ++i) {
+  for (var i = 0; i < vars.tones.length; ++i) {
     (function(i){ // take care when defining functions in a loop
-      setTimeout(function(){ play(live.tones[i]); }, wait + live.starts[i]);
+      setTimeout(function(){ play(vars.tones[i]); }, wait + vars.starts[i]);
     })(i);
   }
 }
-nonce play(live.tones[0]);
 
 // Version 2. a chirp
 once {
   var samples = new Array(totalTime * sampleRate);
   var phase = 0;
   for (var i = 0, t = 0, T = samples.length; t < T; ++t) {
-    while (t / sampleRate > live.ends[i]) ++i;
+    while (t / sampleRate > vars.ends[i]) ++i;
     samples[t] = Math.sin(2 * Math.PI * phase);
-    phase = (phase + live.freqs[i] / sampleRate) % 1;
+    phase = (phase + vars.freqs[i] / sampleRate) % 1;
   }
-  live.scale = WavEncoder.encode(samples);
+  vars.scale = WavEncoder.encode(samples);
 
-  play(live.scale);
+  play(vars.scale);
 }
 
 //==============================================================================
@@ -161,7 +158,7 @@ once { // generate samples
   var note = function (freq) {
     return tone({ frequency: freq * middleC, duration:T, gain:0.2 });
   };
-  live.scale = [
+  vars.scale = [
     note( 1/1 ),
     note( 5/4 ),
     note( 4/3 ),
@@ -174,16 +171,16 @@ once { // generate samples
   ];
 }
 
-live.S = function () {
-  live.n = (live.n === undefined) ? 0 : (live.n + 1) % live.scale.length;
-  play(live.scale[live.n]);
-  setTimeout(live.S, T);
+vars.S = function () {
+  vars.n = (vars.n === undefined) ? 0 : (vars.n + 1) % vars.scale.length;
+  play(vars.scale[vars.n]);
+  setTimeout(vars.S, T);
 };
 
-once live.S(); // start
+once vars.S(); // start
 nonce clear(); // stop
 
-print(live.scale.length)
+print(vars.scale.length)
 
 //==============================================================================
 // 1323324421097.js
@@ -193,84 +190,47 @@ print(live.scale.length)
 var PERIOD = 3000;
 
 once { // generate samples
-  live.long = noise({ duration:PERIOD/4, gain:0.05 });
-  live.short = noise({ duration:PERIOD/32, gain:0.1 });
+  vars.long = noise({ duration:PERIOD/4, gain:0.05 });
+  vars.short = noise({ duration:PERIOD/32, gain:0.1 });
 }
 
 var show = function (symbol) {
-  var chain = symbol + (live.chain || '');
-  print(live.chain = chain.slice(0,80));
+  var chain = symbol + (vars.chain || '');
+  print(vars.chain = chain.slice(0,80));
 };
 
-live.L1 = function () {
-  play(live.long);
+vars.L1 = function () {
+  play(vars.long);
   show('|');
-  setTimeout(live.L1, PERIOD/2);
+  setTimeout(vars.L1, PERIOD/2);
 };
 
-live.S1 = function () {
-  play(live.short);
+vars.S1 = function () {
+  play(vars.short);
   show('o');
-  setTimeout(Math.random() > 5/12 ? live.S2 : live.S1, PERIOD/5);
+  setTimeout(Math.random() > 5/12 ? vars.S2 : vars.S1, PERIOD/5);
 };
 
-live.S2 = function () {
-  play(live.short);
+vars.S2 = function () {
+  play(vars.short);
   show('-');
-  setTimeout(Math.random() > 5/12 ? live.S2 : live.S1, PERIOD/7);
+  setTimeout(Math.random() > 5/12 ? vars.S2 : vars.S1, PERIOD/7);
 };
 
-once live.L1(); // start one of these
-once live.S1(); // and a few of these
-once live.S1();
-once live.S1();
+once vars.L1(); // start one of these
+once vars.S1(); // and a few of these
+once vars.S1();
+once vars.S1();
 
 nonce sync.clear(); // uncomment to stop
 
 //==============================================================================
 // 1323297175694.js
 
-// simple continuous-time task manager
+// a simple continuous-time task:
 
-live.Task = function (action, delay) { // TODO mass, sharpness, phase
-  this.action = action;
-  this.delay = delay;
-  this.remaining = delay;
-  live.add(this);
-};
+always.blip = function () {
 
-live.Task.updateAll = function () {
-  var tasks = live.tasks;
-  var time = Date.now;
-  var dt = time - live.time;
-  live.time = time;
-
-  for (var i in tasks) {
-    var task = tasks[i];
-    if (task.remaining -= dt < 0) {
-      try { task.action(); }
-      catch (err) { error(err); }
-      delete tasks[i];
-    }
-  }
-
-  setTimeout(live.Task.updateAll, 10);
-};
-
-once live.Task.updateAll(); // start task manager
-
-once {
-  live.counter = 0;
-  live.tasks = {};
-  live.time = Date.now();
-  live.add = function (task) {
-    live.tasks[live.counter++] = task;
-    print(live.counter); // DEBUG
-  };
-}
-
-// an example
-live.blip = function () {
   var W = innerWidth;
   var H = innerHeight;
 
@@ -290,13 +250,10 @@ live.blip = function () {
   context.fillRect(
       Math.min(x0,x1), Math.min(y0,y1),
       Math.abs(x0-x1), Math.abs(y0-y1));
-
-  new live.Task(live.blip, 500);
 };
-once live.blip();
 
-//print(live.counter);
-//print(live.tasks[0]);
+//print(vars.counter);
+//print(vars.tasks[0]);
 
 //==============================================================================
 // 1323226133754.js
@@ -306,22 +263,22 @@ once live.blip();
 var PERIOD = 2000;
 
 once { // generate samples
-  live.long = noise({ duration:PERIOD/2, gain:0.05 });
-  live.short = noise({ duration:PERIOD/64, gain:0.1 });
+  vars.long = noise({ duration:PERIOD/2, gain:0.05 });
+  vars.short = noise({ duration:PERIOD/64, gain:0.1 });
 }
 
-live.loop = function () {
+vars.loop = function () {
 
-  setTimeout(function(){ play(live.long) }, PERIOD * 0/1);
-  setTimeout(function(){ play(live.short) }, PERIOD * 1/4);
-  setTimeout(function(){ play(live.short) }, PERIOD * 2/4);
-  setTimeout(function(){ play(live.short) }, PERIOD * 3/4);
-  setTimeout(function(){ play(live.short) }, PERIOD * 7/8);
+  setTimeout(function(){ play(vars.long) }, PERIOD * 0/1);
+  setTimeout(function(){ play(vars.short) }, PERIOD * 1/4);
+  setTimeout(function(){ play(vars.short) }, PERIOD * 2/4);
+  setTimeout(function(){ play(vars.short) }, PERIOD * 3/4);
+  setTimeout(function(){ play(vars.short) }, PERIOD * 7/8);
 
-  setTimeout(live.loop, PERIOD); // comment out to stop
+  setTimeout(vars.loop, PERIOD); // comment out to stop
 };
 
-once live.loop(); // start a loop
+once vars.loop(); // start a loop
 
 //==============================================================================
 // 1323196209122.js
@@ -332,7 +289,7 @@ var X = function (a) { return (0.5 + Math.sin(2*a) / 3); };
 var Y = function (a) { return (0.5 + Math.sin(3*a) / 3); };
 var Z = function (a) { return (0.5 + Math.sin(8*a) / 2); };
 
-live.juggle = function () {
+always.juggle = function () {
 
   var T = 1000, t = (Date.now() % T) / T;
   context.clearRect(0, 0, innerWidth, innerHeight);
@@ -342,11 +299,7 @@ live.juggle = function () {
     context.fillStyle = 'rgba(255,255,255,' + Z(a) + ')';
     context.fillText('.', innerWidth * X(a), innerHeight * Y(a));
   }
-
-  setTimeout(live.juggle, 10); // comment out to stop
 };
-
-once live.juggle(); // erase the 'n' to start
 
 //==============================================================================
 // 1323134327691.js
@@ -376,7 +329,7 @@ for (var t = 0, T = samples.length; t < T; ++t) {
   samples[t] = envelope * Math.sin(omega * t);
 }
 var uri = WavEncoder.encode(samples);
-live.audio = new Audio(uri);
+vars.audio = new Audio(uri);
 
-once live.audio.play();
+once vars.audio.play();
 

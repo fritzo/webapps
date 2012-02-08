@@ -27,6 +27,9 @@
 
 var live = (function(){
 
+  var alwaysPollMs = 250;
+  var alwaysLoopMs = 1;
+
   var live = {};
 
   var _$log;
@@ -69,6 +72,7 @@ var live = (function(){
     _initGraphics(args.canvas2d);
 
     _startCompiling();
+    _startAlways();
   };
 
   live.logo = [
@@ -76,21 +80,21 @@ var live = (function(){
       "// i am live code",
       "// try changing me",
       "",
-      "context.font = 'bold 64pt Courier';",
+      "context.font = 'bold 80px Courier';",
       "context.fillStyle = '#55aa55';",
       "context.textAlign = 'center';",
       "",
-      "live.hello = function () {",
-      "  context.clearRect(0, 0, innerWidth, innerHeight);",
-      "  context.fillText(",
-      "      'Hello World!',",
-      "      1/8 * mouseX + 3/8 * innerWidth,",
-      "      1/8 * mouseY + 3/8 * innerHeight);",
+      "always.hello = function () {",
       "",
-      "  setTimeout(live.hello, 0); // to stop, comment out",
+      "  var x = 1/8 * mouseX + 3/8 * innerWidth;",
+      "  var y = 1/8 * mouseY + 3/8 * innerHeight;",
+      "",
+      "  x += Math.sin(Date.now() / 500) * 10;",
+      "  y += Math.cos(Date.now() / 500) * 10;",
+      "",
+      "  context.clearRect(0, y-80, innerWidth, 160);",
+      "  context.fillText('Hello World!', x, y);",
       "};",
-      "",
-      "once live.hello(); // to start, erase the 'n'",
       ""
   ].join('\n');
 
@@ -132,11 +136,13 @@ var live = (function(){
   var _startCompiling;
   var _toggleCompiling;
   var _clearWorkspace;
+  var _startAlways;
 
   (function(){
 
     var compiling = false;
-    var workspace = {};
+    var vars = {};
+    var always = {};
 
     var compileHandlers = [];
     live.oncompile = function (handler) {
@@ -152,9 +158,10 @@ var live = (function(){
       var source = _codemirror.getValue();
       var compiled;
       try {
+        // alternatively, use jQuery.globalEval(...)
         compiled = globalEval(
             '"use strict";\n' +
-            '(function(live,clear,print,error,setTimeout,context){\n' +
+            '(function(vars,always,clear,print,error,setTimeout,context){\n' +
                 source
                   .replace(/\bonce\b/g, 'if(1)')
                   .replace(/\bnonce\b/g, 'if(0)') +
@@ -174,7 +181,7 @@ var live = (function(){
       _success();
 
       try {
-        compiled(workspace, _clear, _print, _error, _setTimeout, _context2d);
+        compiled(vars, always, _clear, _print, _error, _setTimeout, _context2d);
       } catch (err) {
         _error(err);
         return;
@@ -202,9 +209,33 @@ var live = (function(){
     };
 
     _clearWorkspace = function () {
-      for (var key in workspace) {
-        delete workspace[key];
+      for (var key in vars) {
+        delete vars[key];
       }
+      for (var key in always) {
+        delete always[key];
+      }
+    };
+
+    var alwaysTask = function () {
+      if ($.isEmptyObject(always)) {
+        setTimeout(alwaysTask, alwaysPollMs);
+      } else {
+        for (var key in always) {
+          try {
+            always[key]();
+          }
+          catch (err) {
+            _error(err);
+          }
+        }
+        setTimeout(alwaysTask, alwaysLoopMs);
+      }
+    };
+
+    _startAlways = function () {
+      _startAlways = function () {};
+      alwaysTask();
     };
 
   })();
@@ -329,6 +360,7 @@ var play = function (uri, volume) {
   var audio = new Audio(uri);
   if (volume !== undefined) audio.volume = volume;
   audio.play();
+  return audio;
 };
 
 var tone = function (args) {
