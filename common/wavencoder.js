@@ -47,6 +47,7 @@ var WavEncoder = (function(){
     var bytesPerSample = options.bytesPerSample || defaults.bytesPerSample;
     var numChannels    = options.numChannels    || defaults.numChannels;
     var sampleRateHz   = options.sampleRateHz   || defaults.sampleRateHz;
+    this.clip          = 'clip' in options ? !!options.clip : defaults.clip;
 
     var PCM_FORMAT = 1;
     var bitsPerSample = bytesPerSample * 8;
@@ -150,19 +151,28 @@ var WavEncoder = (function(){
 
       assertEqual(samples.length, this.numSamples, 'Wrong number of samples');
 
+      var floor = Math.floor;
+      var sqrt = Math.sqrt;
+      var clip = this.clip;
+
       var words = this.words;
       var h = this._headerWords;
       for (var t = 0, T = this.numSamples - 1; t < T; t += 2) {
         var x1 = samples[t + 0];
         var x2 = samples[t + 1];
+        if (clip) {
+          x1 /= sqrt(1 + x1 * x1);
+          x2 /= sqrt(1 + x2 * x2);
+        }
         // 8-bit samples are unsigned
-        var sample1 = Math.floor(128 * (x1 + 1));
-        var sample2 = Math.floor(128 * (x2 + 1));
+        var sample1 = floor(128 * (x1 + 1));
+        var sample2 = floor(128 * (x2 + 1));
         words[h++] = (sample1 << 8) | sample2;
       }
       if (this.numSamples % 2) {
         var x1 = samples[t + 0];
-        var sample1 = Math.floor(128 * (x1 + 1));
+        if (clip) x1 /= sqrt(1 + x1 * x1);
+        var sample1 = floor(128 * (x1 + 1));
         words[h++] = sample1 << 8;
       }
 
@@ -178,12 +188,17 @@ var WavEncoder = (function(){
 
       assertEqual(samples.length, this.numSamples, 'Wrong number of samples');
 
+      var floor = Math.floor;
+      var sqrt = Math.sqrt;
+      var clip = this.clip;
+
       var words = this.words;
       var h = this._headerWords;
       for (var t = 0, T = this.numSamples; t < T; ++t) {
         var x = samples[t];
+        if (clip) x /= sqrt(1 + x * x);
         // 16-bit samples are signed
-        var sample = Math.floor(32768 * x);
+        var sample = floor(32768 * x);
         if (sample < 0) sample += 65536; // 2's compliment
         words[h++] = ((sample >> 8) | (sample << 8)) & 65535;
       }
@@ -227,7 +242,8 @@ var WavEncoder = (function(){
   WavEncoder.defaults = {
     numChannels: 1,      // mono
     sampleRateHz: 22050, // 22050 Hz
-    bytesPerSample: 2    // 16 bit
+    bytesPerSample: 2,   // 16 bit
+    clip: true
   };
 
   (function(){
@@ -250,10 +266,11 @@ var WavEncoder = (function(){
    * but we provide this one-off function for convenience.
    *
    * @param {number[]}
+   * @param {object?}
    * @returns {string}
    */
-  WavEncoder.encode = function (data) {
-    var encoder = new WavEncoder(data.length);
+  WavEncoder.encode = function (data, options) {
+    var encoder = new WavEncoder(data.length, options);
     return encoder.encode(data);
   };
 

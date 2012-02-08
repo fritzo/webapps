@@ -3,7 +3,6 @@
  *
  * 'live' is a fork of the 'night' theme
  *
- *
  * Copyright (c) 2012, Fritz Obermeyer
  * Licensed under the MIT license:
  * http://www.opensource.org/licenses/mit-license.php
@@ -23,8 +22,8 @@
 .cm-s-live span.cm-variable-2,
 .cm-s-live span.cm-variable-3,
 .cm-s-live span.cm-def { color: #bebebe; }
-.cm-s-live span.cm-comment { color: #77cc77; }
-.cm-s-live span.cm-atom { color: #845dc4; }
+.cm-s-live span.cm-comment { color: #33cc77; }
+.cm-s-live span.cm-atom,
 .cm-s-live span.cm-number,
 .cm-s-live span.cm-attribute,
 .cm-s-live span.cm-string { color: #dd7777; }

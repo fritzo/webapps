@@ -21,7 +21,7 @@ var init = function (data) {
   self.F = self.freqs.length;
   self.T = data['numSamples'];
 
-  self.wavEncoder = new WavEncoder(data['numSamples']);
+  self.wavEncoder = new WavEncoder(data['numSamples'], {clip:false});
   self.samples = new Array(self.T);
   self.amps = new Array(self.F);
   self.best = new Array(self.F);

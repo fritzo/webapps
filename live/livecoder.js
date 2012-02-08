@@ -76,22 +76,21 @@ var live = (function(){
       "// i am live code",
       "// try changing me",
       "",
-      "var d = draw2d();",
-      "d.font = 'bold 64pt Courier';",
-      "d.fillStyle = '#55aa55';",
-      "d.textAlign = 'center';",
+      "context.font = 'bold 64pt Courier';",
+      "context.fillStyle = '#55aa55';",
+      "context.textAlign = 'center';",
       "",
       "live.hello = function () {",
-      "  draw2d().fillText(",
+      "  context.clearRect(0, 0, innerWidth, innerHeight);",
+      "  context.fillText(",
       "      'Hello World!',",
-      "      1/8 * mouseX + 3/8 * windowW,",
-      "      1/8 * mouseY + 3/8 * windowH);",
+      "      1/8 * mouseX + 3/8 * innerWidth,",
+      "      1/8 * mouseY + 3/8 * innerHeight);",
       "",
-      "  after(0, live.hello); // to stop, comment out",
+      "  setTimeout(live.hello, 0); // to stop, comment out",
       "};",
       "",
       "once live.hello(); // to start, erase the 'n'",
-      "nonce clear();      // to stop, erase the 'n'",
       ""
   ].join('\n');
 
@@ -112,18 +111,15 @@ var live = (function(){
   };
 
   var _clear = function () {
-    _after.clear();
-    _sync.clear();
+    _clearAllTimeouts();
     _clearWorkspace();
-    _draw2d();
+    _context2d.clearRect(0, 0, innerWidth, innerHeight);
   };
 
   live.setSource = function (val) {
     _clear();
     _codemirror.setValue(val);
-
     _startCompiling();
-    _codemirror.focus();
   };
   live.getSource = function (val) {
     return _codemirror.getValue();
@@ -131,8 +127,6 @@ var live = (function(){
 
   //----------------------------------------------------------------------------
   // Evaluation
-
-  var _evalTime = Date.now();
 
   var _compileSource;
   var _startCompiling;
@@ -160,12 +154,10 @@ var live = (function(){
       try {
         compiled = globalEval(
             '"use strict";\n' +
-            //'with(Math);\n' +
-            '(function(live){\n' +
+            '(function(live,clear,print,error,setTimeout,context){\n' +
                 source
                   .replace(/\bonce\b/g, 'if(1)')
-                  .replace(/\bnonce\b/g, 'if(0)')
-                  .replace(/\bfun\b/g, 'function') +
+                  .replace(/\bnonce\b/g, 'if(0)') +
             '\n/**/})');
       } catch (err) {
         _warn(err);
@@ -182,8 +174,7 @@ var live = (function(){
       _success();
 
       try {
-        _evalTime = Date.now();
-        compiled(workspace);
+        compiled(workspace, _clear, _print, _error, _setTimeout, _context2d);
       } catch (err) {
         _error(err);
         return;
@@ -194,60 +185,20 @@ var live = (function(){
       }
     };
 
-    /* OBSOLETE
-    var _compileIfChanged;
-    _compileIfChanged = function (keyup) {
-      if (!compiling) {
-        _warn('hit escape to compile');
-        return;
-      }
-
-      var delay = false;
-
-      // see eg
-      // http://www.cambiaresearch.com/articles/15
-      switch (keyup.which) {
-
-        // ignore control keys
-        case 16: case 17: case 18: case 19: case 20: case 27: case 33:
-        case 34: case 35: case 36: case 37: case 38: case 39: case 40:
-          return;
-
-        // TODO adapt this cleverness to codemirror
-        // be careful with comment markers // by delaying compile
-        case 191: // slash
-          delay = true;
-          break;
-        case 8: // backspace
-          delay = (_$source.val().charAt(_$source.caret()-1) === '/')
-          break
-        case 46: // delete
-          delay = (_$source.val().charAt(_$source.caret()) === '/')
-          break
-      }
-
-      if (delay) setTimeout(_compileSource, 200);
-      else _compileSource();
-    };
-    */
-
-    _toggleCompiling = function () {
-
-      if (compiling) {
-        compiling = false;
-        _warn('hit escape to compile');
-      }
-      else {
-        compiling = true;
-        _success();
-        _compileSource();
-        _codemirror.focus();
-      }
+    _stopCompiling = function () {
+      compiling = false;
+      _warn('hit escape to compile');
     };
 
     _startCompiling = function () {
-      compiling = false;
-      _toggleCompiling();
+      compiling = true;
+      _success();
+      _compileSource();
+      _codemirror.focus();
+    };
+
+    _toggleCompiling = function () {
+      compiling ? _stopCompiling() : _startCompiling();
     };
 
     _clearWorkspace = function () {
@@ -259,38 +210,21 @@ var live = (function(){
   })();
 
   //----------------------------------------------------------------------------
-  //
-  //  TODO reimplement schedulers, as in common/clock
-  //    * schedule.continuouslyDo()
-  //    * schedule.discretelyDo()
-  //    * schedule.coupledDo()
-  //    * add keyboard pause button to clock
-  //
-  //  TODO add rational.js and ratgrid.js
-  //
-  //----------------------------------------------------------------------------
+  // Scheduling: safe, clearable
 
-  //----------------------------------------------------------------------------
-  // Scheduling drift-free tasks
+  var _setTimeout;
+  var _clearAllTimeouts;
 
-  var _after;
   (function(){
 
     var taskCount = 0;
     var tasks = {};
 
-    _after = function (delay, action) {
+    _setTimeout = function (action, delay) {
 
-      if (!(delay >= 0)) {
-        _error('ignoring task scheduled after ' + delay);
-        return;
-      }
       var id = taskCount++;
-      var actionTime = _evalTime + delay;
-
       var safeAction = function () {
         try {
-          _evalTime = actionTime; // Date.now() would cause drift
           action();
         } catch (err) {
           _error(err);
@@ -298,193 +232,12 @@ var live = (function(){
         delete tasks[id];
       };
 
-      tasks[id] = setTimeout(safeAction, delay + _evalTime - Date.now());
+      tasks[id] = setTimeout(safeAction, delay);
     };
 
-    _after.clear = function () {
+    _clearAllTimeouts = function () {
       for (var i in tasks) {
         clearTimeout(tasks[i]);
-        delete tasks[i];
-      }
-    };
-
-  })();
-
-  //----------------------------------------------------------------------------
-  // Scheduling coupled tasks
-
-  var _sync;
-  (function(){
-
-    //------------------------------------
-    // Math
-
-    var sin = Math.sin;
-    var cos = Math.cos;
-    var pi = Math.PI;
-    var sqrt = Math.sqrt;
-    var max = Math.max;
-    var min = Math.min;
-
-    //------------------------------------
-    // Complex numbers
-
-    var Complex = function (x,y) { this.x = x; this.y = y; };
-
-    Complex.prototype = {
-      scale : function (t) { return new Complex(t*this.x, t*this.y); },
-      iadd : function (other) { this.x += other.x; this.y += other.y; }
-    };
-
-    // cross(u,v) = dot(i u, v)
-    Complex.dot = function(u,v) { return u.x*v.x + u.y*v.y; };
-    Complex.cross = function(u,v) { return u.x*v.y - u.y*v.x; };
-
-    //------------------------------------
-    // Voting
-
-    var Poll = function (mass, force) {
-      if (mass === undefined) {
-        this.mass = 0;
-        this.mass2 = 0;
-        this.force = new Complex(2,2);
-      } else {
-        this.mass = mass;
-        this.mass2 = mass * mass;
-        this.force = force;
-      }
-    };
-
-    Poll.prototype = {
-
-      iadd : function (other) {
-        this.mass += other.mass;
-        this.mass2 += other.mass2;
-        this.force.iadd(other.force);
-      },
-
-      mean : function () {
-        var minMass = 0.01; // hand-tuned
-        var M = max(minMass, this.mass);
-        var M2 = max(minMass*minMass, this.mass2);
-        var BesselsCorrection = max(0, 1 - M2 / (M*M));
-        return this.force.scale(BesselsCorrection / M);
-      }
-    };
-
-    //------------------------------------
-    // Coupled tasks
-    //
-    // TODO replace this Synchronized::Phasor with Synchronized::Geometric
-    //   * this at least has a debuggable energy minimization interpretation
-    //   * it also allows syncopation of two beats separated by pi
-    //   * and the energy interpreatation can fit into larger energy
-    //     minimization frameworks.
-    //   (see kazoo/src/synchronization.h "struct Geometric"
-
-    var taskCount = 0;
-    var tasks = {};
-
-    var Task = function (params, action) {
-
-      var mass = params.mass || 1.0;
-      var acuity = params.acuity || 3.0; // hand-tuned
-      var offset = params.syncopate || 0.0;
-
-      assert(0 < params.delay, 'invalid delay: ' + params.delay);
-      assert(0 < mass, 'invalid mass: ' + mass);
-      assert(0 < acuity, 'invalid acuity: ' + acuity);
-
-      this.time = _evalTime;
-      this.action = action;
-      this.freq = 1 / params.delay;
-      this.mass = mass;
-      this.acuity = acuity;
-      this.offset = offset;
-      this.phase = 0;
-
-      // let f(theta) = max(0, cos(theta) - cos(a))
-      // we compute mean and variance of f
-      var a = pi / acuity;
-      var sin_a = sin(a), cos_a = cos(a);
-      var Ef = (sin_a - a*cos_a) / pi;
-      var Ef2 = (a - 3*sin_a*cos_a + 2*a*cos_a*cos_a) / (2*pi);
-      var Vf = Ef2 - Ef*Ef;
-
-      this.beatFloor = cos_a;
-      this.beatScale = sqrt(2.0 / Vf); // the 2.0 is hand-tuned
-
-      var a = 2*pi*this.phase;
-      this.beat = this.beatScale * max(0, cos(a) - this.beatFloor);
-
-      tasks[this._id = taskCount++] = this;
-      //log('created task ' + taskCount);
-    };
-
-    Task.prototype = {
-
-      poll : function () {
-        var m = this.mass;
-        var mb = m * this.beat;
-        var a = 2 * pi * (this.phase + this.offset);
-        var f = new Complex(mb * cos(a), mb * sin(a));
-        return new Poll(m, f);
-      },
-
-      update : function (force) {
-
-        var dt = bound(1, 1000, _evalTime - this.time);
-        this.time = _evalTime;
-
-        var a = 2 * pi * (this.phase + this.offset); // XXX is this right?
-        var z = new Complex(cos(a), sin(a));
-        var bend = this.beat * Complex.cross(z, force);
-
-        var minDphase = 0.1; // hand-tuned
-        var dphase = this.freq * max(minDphase, 1 + bend) * dt;
-        var phase = this.phase += dphase;
-
-        if (phase < 1) {
-          a = 2 * pi * phase;
-          this.beat = this.beatScale * max(0, cos(a) - this.beatFloor);
-        } else {
-          delete tasks[this._id];
-          try { this.action(); }
-          catch (err) { _error(err); }
-        }
-      }
-    };
-
-    var updateTasks = function () {
-      if (!$.isEmptyObject(tasks)) {
-
-        var poll = new Poll();
-        for (var i in tasks) {
-          poll.iadd(tasks[i].poll());
-        }
-        var force = poll.mean();
-
-        _evalTime = Date.now();
-        for (var i in tasks) {
-          tasks[i].update(force);
-        }
-      }
-
-      setTimeout(updateTasks, 1);
-    };
-
-    var initUpdating = function () {
-      initUpdating = undefined;
-      updateTasks();
-    };
-
-    _sync = function (params, action) {
-      new Task(params, action);
-      if (initUpdating) initUpdating();
-    };
-
-    _sync.clear = function () {
-      for (var i in tasks) {
         delete tasks[i];
       }
     };
@@ -496,12 +249,6 @@ var live = (function(){
 
   var _context2d;
 
-  var _draw2d = function () {
-    var d = _context2d;
-    d.clearRect(0, 0, d.canvas.width, d.canvas.height);
-    return d;
-  };
-
   var _initGraphics = function (canvas2d) {
 
     try {
@@ -509,8 +256,8 @@ var live = (function(){
       assert(_context2d, 'failed to get 2d canvas context');
 
       $(window).resize(function(){
-            windowW = _context2d.canvas.width = window.innerWidth;
-            windowH = _context2d.canvas.height = window.innerHeight;
+            _context2d.canvas.width = innerWidth;
+            _context2d.canvas.height = innerHeight;
           }).resize();
     }
     catch (err) {
@@ -531,28 +278,12 @@ var live = (function(){
   return {
 
     init: live.init,
-    initShadow: live.initShadow,
-    clear: _clear,
 
     setSource: live.setSource,
     getSource: live.getSource,
 
-    print: _print,
-    error: _error,
-
     toggleCompiling: _toggleCompiling,
     oncompile: live.oncompile,
-    clear: _clear,
-
-    now: function () { return _evalTime; },
-
-    // TODO these should have keyword syntax like
-    // after({delay:0.5, action:myFunction});
-    // sync({delay:1.0, syncopate:0.5, action:myFunction})
-    after: _after,
-    sync: _sync,
-
-    draw2d: _draw2d,
 
     none: undefined,
   };
@@ -560,15 +291,6 @@ var live = (function(){
 
 //------------------------------------------------------------------------------
 // Glogal utilities
-
-var print = live.print;
-var error = live.error;
-
-var clear = live.clear;
-
-var now = live.now;
-var after = live.after;
-var sync = live.sync;
 
 var dir = function (o) {
   o = o || window;
@@ -584,131 +306,106 @@ var help = function (o) {
       + o.toString());
 };
 
-var draw2d = live.draw2d;
-
 //------------------------------------------------------------------------------
 // Global tools for livecoding
 
 // Time - units are milliseconds and kHz
 // once{...} evaluates once, then decays to the inert nonce{...}
-// var live; // a place store variables while live coding
-var now;//() time of event evaluation (a little before Date.now())
-var after;//(delay, action); schedule an event
-var sync;//({delay,syncopate=0,mass=1,acuity=3}, action)
-         //  schedule a coupled event
-
-// Utility
-var print;//(message) logs normal message
-var error;//(message) logs error message
-var help;//(object) gets help about object
-var dir;//(object) lists properties of an object
-var clear;//() clears workspace and canvas
+// var live = {}; // a place store variables while live coding
+// var print = function (message) = {/* logs normal message */}
+// var error = function (message) = {/* log error message */}
 
 // Graphics
-var windowW = 0, windowH = 0; // window inner width,height in pixels
-var mouseX = 0, mouseY = 0;   // mouse coords in pixels
-var draw2d;                   // clears & returns the 2d canvas context
-
-// Audio
-var sampleRate = 22.05; // in kHz
-var middleC = 0.261625565; // in kHz
-var play;//(seq:Uint8Array) plays an audio sequence (mono 8bit 22050Hz)
-var tone;//(freqkHz, durationMs) returns a sequence for a single tone
-var noise;
-
-// math functions & constants
-var pow   = Math.pow;      var e       = Math.E;
-var sqrt  = Math.sqrt;     var pi      = Math.PI;
-var exp   = Math.exp;      var sqrt2   = Math.SQRT2;
-var log   = Math.log;      var sqrt1_2 = Math.SQRT1_2;
-var sin   = Math.sin;      var ln2     = Math.LN2;
-var cos   = Math.cos;      var ln10    = Math.LN10;
-var tan   = Math.tan;      var log2e   = Math.LOG2E;
-var asin  = Math.asin;     var log10e  = Math.LOG10E;
-var acos  = Math.acos;     var inf     = 1 / 0;
-var atan  = Math.atan;     var nan     = 0 / 0;
-var atan2 = Math.atan2;    
-var max   = Math.max;      var floor   = Math.floor;
-var min   = Math.min;      var ceil    = Math.ceil; 
-var abs   = Math.abs;      var round   = Math.round;
-
-var bound  = function (lb,ub,x) { return max(lb,min(ub,x)) };
-var sin2pi = function (t) { return sin(2*pi*t) };
-var cos2pi = function (t) { return cos(2*pi*t) };
-var tan2pi = function (t) { return tan(2*pi*t) };
-
-var random = Math.random;
-var randomStd = function () {
-  return 2 * (random() + random() + random()) - 3;
-};
+var mouseX = 0; // mouse coords in pixels
+var mouseY = 0;
 
 //------------------------------------------------------------------------------
 // Audio (mono 16bit 22050 Hz -- hey, it's just a browser)
 
-tone = function (frequency, duration, gain) {
-  if (gain === undefined) gain = 1;
-  var data = []; // just an array
-  for (var i = 0, I = duration * sampleRate; i < I; ++i) {
-    var env = (I - i) / I;
-    var a = 2 * pi * frequency / sampleRate * i;
-    data[i] = sin(a) * gain * env;
-  }
-  return WavEncoder.encode(data);
+var sampleRate = WavEncoder.defaults.sampleRateHz / 1000; // in kHz
+var middleC = 0.261625565; // in kHz
+
+var play = function (uri, volume) {
+  var audio = new Audio(uri);
+  if (volume !== undefined) audio.volume = volume;
+  audio.play();
 };
 
-noise = function (duration, gain) {
-  if (gain === undefined) gain = 1;
-  var data = []; // just an array
-  for (var i = 0, I = duration * sampleRate; i < I; ++i) {
-    var env = (I - i) / I;
-    data[i] = (2 * random() - 1) * gain * env;
-  }
-  return WavEncoder.encode(data);
-};
+var tone = function (args) {
 
-noise.band = function (param) {
-  assert('frequency' in param, 'param.frequency is undefined');
-  assert('bandwidth' in param, 'param.bandwidth is undefined');
-  assert('duration' in param, 'param.duration is undefined');
-  assert('gain' in param, 'param.gain is undefined');
+  var duration = args.duration;
+  var frequency = args.frequency;
+  var gain = args.gain || 1;
+  assert(duration > 0, 'bad args.duration: ' + duration);
+  assert(frequency > 0, 'bad args.frequency: ' + duration);
 
-  var frequency = param.frequency;
-  var bandwidth = param.bandwidth;
-  var duration = param.duration;
-  var gain = param.gain;
+  var numSamples = Math.floor(duration * sampleRate);
+  var samples = new Array(numSamples);
 
-  var numSamples = floor(duration * sampleRate);
-  var omega = 2 * pi * frequency / sampleRate;
-  var cosOmega = cos(omega);
-  var sinOmega = sin(omega);
-  var decay = exp(-bandwidth * frequency / sampleRate);
-  var transReal = decay * cosOmega;
-  var transImag = decay * sinOmega;
-  var normalize = 1 - decay;
-  gain *= normalize / numSamples;
+  gain *= 1 / numSamples;
+  var omega = 2 * Math.PI * frequency / sampleRate;
+  var sin = Math.sin;
+  var sqrt = Math.sqrt;
 
-  var clip = function (x) {
-    var scaled = gain * x / bandwidth;
-    return scaled / sqrt(1 + scaled * scaled);
-  };
-
-  var x = 0;
-  var y = 0;
-  var samples = [];
   for (var t = 0; t < numSamples; ++t) {
-    var x0 = x;
-    var y0 = y;
-    x = transReal * x0 - transImag * y0 + randomStd();
-    y = transReal * y0 + transImag * x0 + randomStd();
-    var s = x * gain * (numSamples - t);
-    samples[t] = s / sqrt(1 + s * s); // soft clip to [-1,1]
+    samples[t] = sin(omega * t) * (numSamples - t) * gain;
   }
+
   return WavEncoder.encode(samples);
 };
 
-play = function (sound, volume) {
-  var audio = new Audio(sound);
-  if (volume !== undefined) audio.volume = volume;
-  audio.play();
+var noise = function (args) {
+
+  var duration = args.duration;
+  var gain = args.gain || 1;
+  assert(duration > 0, 'bad args.duration: ' + duration);
+
+  var numSamples = Math.floor(duration * sampleRate);
+  var samples = new Array(numSamples);
+
+  var sqrt = Math.sqrt;
+  var random = Math.random;
+
+  if (bandwidth in args) { // band-limited noise
+
+    var bandwidth = args.bandwidth;
+    var frequency = args.frequency;
+    assert(frequency > 0, 'bad args.frequency: ' + frequency);
+
+    var numSamples = floor(duration * sampleRate);
+    var omega = 2 * Math.PI * frequency / sampleRate;
+    var cosOmega = cos(omega);
+    var sinOmega = sin(omega);
+    var decay = exp(-bandwidth * frequency / sampleRate);
+    var transReal = decay * cosOmega;
+    var transImag = decay * sinOmega;
+    var normalize = 1 - decay;
+    gain *= normalize / numSamples;
+
+    var random = Math.random;
+    var randomStd = function () {
+      return 2 * (random() + random() + random()) - 3;
+    };
+
+    var x = 0;
+    var y = 0;
+    var samples = [];
+    for (var t = 0; t < numSamples; ++t) {
+      var x0 = x;
+      var y0 = y;
+      x = transReal * x0 - transImag * y0 + randomStd();
+      y = transReal * y0 + transImag * x0 + randomStd();
+      samples[t] = x * gain * (numSamples - t);
+    }
+
+  } else { // broadband noise
+
+    gain *= 1 / numSamples;
+    for (var t = 0; t < numSamples; ++t) {
+      samples[t] = (2 * random() - 1) * (numSamples - t) * gain;
+    }
+  }
+
+  return WavEncoder.encode(samples);
 };
 

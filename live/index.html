@@ -66,19 +66,19 @@ ui.getAutosave = function () {
 ui.saveScript = function () {
   var name = String(Date.now()) + '.js';
   localStorage.setItem(name, live.getSource());
-  print('saved ' + name);
+  log('saved ' + name);
   ui.buildScriptList();
 };
 
 ui.loadScript = function (name) {
-  print('loading ' + name);
+  log('loading ' + name);
   live.setSource(localStorage.getItem(name));
 };
 
 ui.deleteScript = function (name) {
   localStorage.removeItem(name);
   ui.buildScriptList();
-  print('deleted ' + name);
+  log('deleted ' + name);
   $('#gallery td button').first().focus();
 };
 
@@ -435,7 +435,7 @@ $(function() {
 <!---------------------------------------------------------------------------->
 
 <link rel='stylesheet' href='../common/toolbar.css' />
-<link rel='stylesheet' href='live.css' />
+<link rel='stylesheet' href='cm-live.css' />
 <link rel='stylesheet' href='../extern/codemirror/lib/codemirror.css' />
 <style>
 
@@ -773,8 +773,6 @@ canvas { z-index: 0; }
       </dd>
     <dt><a href='http://creationix.com/jack/public/index.html'>Jack</a></dt>
       <dd>another programming language that cleans up and compiles to javascript</dd>
-    <dt><a href='http://codemirror.net'>codemirror.net</a></dt>
-      <dd>a browser-based code editor supporting e.g. javascript and coffeescript</dd>
     <dt><a href='http://code.google.com/p/oflivecoding/'>OFLiveCoding</a></dt>
       <dd>a javascript live-coding framework developed with openframeworks</dd>
     
