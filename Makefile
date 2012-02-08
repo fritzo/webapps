@@ -1,11 +1,25 @@
 
-extern: FORCE
+#-------------------------------------------------------------------------------
+# external libraries
+
+codemirror: FORCE
 	( test -e extern || mkdir extern ) && \
 	rm -rf extern/CodeMirror-* && \
 	( test -e /tmp/codemirror.zip || \
 	  wget http://codemirror.net/codemirror.zip -O /tmp/codemirror.zip ) && \
 	unzip /tmp/codemirror.zip -d extern/ && \
 	( cd extern; ln -sf CodeMirror-* codemirror )
+
+audiolibjs: FORCE
+	( test -e extern || mkdir extern ) && \
+	rm -rf extern/*-audiolib.js-* && \
+	( test -e /tmp/audiolibjs.tar.gz || \
+	  wget https://github.com/jussi-kalliokoski/audiolib.js/zipball/master \
+	    -O /tmp/audiolibjs.zip ) && \
+	unzip /tmp/audiolibjs.zip -d extern/ && \
+	( cd extern; ln -sf *-audiolib.js-* audiolibjs )
+
+extern: codemirror audiolibjs
 
 #-------------------------------------------------------------------------------
 # export to public git repository
@@ -168,7 +182,7 @@ clean: FORCE
 	rm -f keys.tbz2
 
 cleaner: clean FORCE
-	rm -rf compiler linter
+	rm -rf extern compiler linter
 
 FORCE:
 

@@ -24,12 +24,13 @@
 <!-- MIT -->
 <script src='../extern/codemirror/lib/codemirror.js'></script>
 <script src='../extern/codemirror/mode/javascript/javascript.js'></script>
+<script src='../extern/codemirror/lib/util/searchcursor.js'></script>
+<script src='../extern/codemirror/lib/util/javascript-hint'></script>
 
 <!-- MIT,BSD -->
 <script type='text/javascript' src='../common/modernizr.js'></script>
 
 <!-- MIT,GPL2 -->
-<script type='text/javascript' src='../common/jquery.caret.js'></script>
 <script type='text/javascript' src='../common/safety.js'></script>
 <script type='text/javascript' src='../common/wavencoder.js'></script>
 
@@ -359,28 +360,14 @@ $(function() {
     return;
   }
 
-  // initialize CodeMirror
-
-  if(0){ // TODO
-
-  var editor = CodeMirror.fromTextArea(document.getElementById('source'), {
-    lineNumbers: false,
-    matchBrackets: true,
-    theme: 'live'
-  });
-
-  var scroller = editor.getScrollerElement();
-  scroller.style.height = '100%';
-  scroller.style.width = '100%';
-  editor.refresh();
-
-  } // TODO
-
   // build editor
 
-  $('#source,#log').on('focus', function(){
-        $('#gallery,#shareBox,#about,#help').fadeOut('fast');
-      });
+  var hideOverlays = function () {
+    $('#gallery,#shareBox,#about,#help').fadeOut('fast');
+  };
+  $('#log').on('focus', hideOverlays);
+
+  // XXX HACK FIXME
   $('#log')
       .attr('title','resize with arrow keys')
       .keydown(function(event){
@@ -427,10 +414,10 @@ $(function() {
   $('#showToolbar').click(ui.showToolbar());
   $('#hideToolbar').click(ui.hideToolbar());
 
-  // initialize
+  // initialize livecoder
 
   var initSource = (ui.popHash() || ui.getAutosave() || '').trim();
-  ui.importGallery(gallery_jscat);
+  ui.importGallery(gallery_jscat); // gallery_jscat is defined in gallery.js
 
   // hide controls if window is an iframe
   if (window.location != window.parent.location) {
@@ -440,8 +427,14 @@ $(function() {
   }
 
   var canvas2d = document.getElementById('canvas2d');
-  live.init($('#source'), $('#log'), canvas2d, initSource);
-  live.initShadow($('#shadow'));
+  live.init({
+        $source: $('#source'),
+        $log: $('#log'),
+        $status: $('#showToolbar button, #hideToolbar'),
+        canvas2d: canvas2d,
+        initSource: initSource,
+        onFocus: hideOverlays
+      });
 });
 
 </script>
@@ -475,7 +468,10 @@ canvas {
   left: 0px;
 }
 
-pre, code, textarea {
+pre,
+code,
+textarea,
+.CodeMirror {
   font-family:
     /* serif */
     Courier,
@@ -490,10 +486,11 @@ pre, code, textarea {
     monospace;
 }
 
+.CodeMirror,
 #editor textarea {
   position: fixed;
   font-weight: bold;
-  font-size: medium;
+  font-size: small;
   line-height: 1em;
 
   margin: 0px;
@@ -504,9 +501,9 @@ pre, code, textarea {
   overflow: auto; 
 }
 #source,
-#log {
-  opacity: 0.666;
+.CodeMirror {
   /*
+  opacity: 0.666;
   text-shadow: 1px 1px 0ex black,
                1px -1px 0ex black,
                -1px 1px 0ex black,
@@ -520,9 +517,7 @@ pre, code, textarea {
                +2px -1px 0ex black,
                -2px +1px 0ex black,
                -2px -1px 0ex black;
-}
-#source,
-#shadow {
+
   top: 0%;
   height: 100%;
   /*
@@ -533,10 +528,6 @@ pre, code, textarea {
 
   color: #ccffcc;
   background-color: rgba(0,0,0,0);
-}
-#shadow {
-  color: black;
-  opacity: 0.25;
 }
 #log {
   height: 10ex;
@@ -642,6 +633,10 @@ dd {
   font-size: small;
   border-radius: 4px;
 }
+#galleryBox:hover
+{
+  background-color: #666666;
+}
 #galleryBox,
 #export,
 #import {
@@ -679,14 +674,15 @@ dd {
 
 /* back-to-front */
 canvas { z-index: 0; }
-#shadow { z-index: 1; }
-#source { z-index: 2; }
-#log { z-index: 3; } /* in front of source, but usually hidden */
-#gallery { z-index: 5; }
-.toolbar { z-index: 6; }
-#shareBox { z-index: 7; }
-#about { z-index: 8; }
-#help { z-index: 9; }
+
+#source { z-index: 10; }
+#log { z-index: 11; } /* in front of source, but usually hidden */
+
+#gallery { z-index: 19; }
+#toolbar, #showToolbar { z-index: 20; }
+
+#shareBox { z-index: 29; }
+#about, #help { z-index: 30; }
 
 </style>
 </head>
@@ -696,12 +692,11 @@ canvas { z-index: 0; }
 <canvas id='canvas2d'></canvas>
 
 <div id='editor'>
-  <textarea id='shadow' readonly spellcheck='false'></textarea>
-  <textarea id='source' spellcheck='false'></textarea>
+  <div><textarea id='source' name='source' spellcheck='false'></textarea></div>
   <textarea id='log' readonly spellcheck='false'></textarea>
 </div>
 
-<div class='toolbar' id='showToolbar'> <button>+</button> </div>
+<div class='toolbar' id='showToolbar'> <button title='show toolbar'>:)</button> </div>
 <div class='toolbar' id='toolbar'>
   <button class='roundRound' id='su'>su</button>
   &nbsp;
@@ -712,10 +707,10 @@ canvas { z-index: 0; }
   --><button class='flatFlat' id='showGallery' title='shortcut = CTRL+O'>gallery</button><!--
   --><button class='flatRound' id='share'>share</button>
   &nbsp;
-  <button id='hideToolbar' class='roundRound'>hide</button>
+  <button id='hideToolbar' title='hide toolbar'>:)</button>
 </div>
 
-<div id='gallery'>
+<div class='toolbar' id='gallery'>
   <div id='importExport' style='position:relative; text-align: right;'>
   <button class='roundFlat' id='export'>export</button><!--
   --><textarea id='galleryBox' rows=1 cols=7 spellcheck='false'>gallery</textarea><!--

@@ -4,7 +4,6 @@
   right: 0px;
   bottom: 0px;
   margin: 2px;
-  opacity: 0.8;
 }
 
 .toolbar button,
@@ -35,7 +34,11 @@
   margin: 0px;
 }
 
-.toolbar :hover {
+.toolbar a:hover,
+.toolbar button:hover,
+.toolbar select:hover,
+.toolbar option:hover
+{
   background-color: #666666;
 }
 

@@ -28,21 +28,37 @@ var live = (function(){
 
   var live = {};
 
-  var _$source, _$log;
+  var _$log;
+  var _$status;
+  var _codemirror;
 
-  live.init = function ($source, $log, canvas2d, initSource) {
+  live.init = function (args) {
 
-    _$log = $log;
-    _$source = $source;
+    _$log = args.$log;
+    _$status = args.$status;
 
-    $source
-        .val(initSource || live.logo)
-        .css('color', '#aaffaa')
-        .on('keyup', _compileIfChanged)
-        .on('click', _compileSource)
-        .on('change', _compileSource);
+    _codemirror = CodeMirror.fromTextArea(args.$source[0], {
+      undoDepth: 512,
+      onFocus: args.onFocus,
+      onChange: _compileSource,
+      theme: 'live',
+      lineNumbers: false,
+      matchBrackets: true,
+      workTime: 10, // very short
+      workDelay: 300
+    });
 
-    _initGraphics(canvas2d);
+    // this is required for full screen
+    var scroller = _codemirror.getScrollerElement();
+    scroller.style.height = '100%';
+    scroller.style.width = '100%';
+
+    _codemirror.setValue(args.initSource || live.logo);
+
+    _$status.css('background-color', 'green');
+    //css('color', '#aaffaa') // TODO XXX;
+
+    _initGraphics(args.canvas2d);
 
     _startCompiling();
   };
@@ -76,15 +92,15 @@ var live = (function(){
   };
   var _success = function () {
     _$log.val('').hide();
-    _$source.css('color', '#aaffaa');
+    _$status.css('background-color', 'green');
   };
   var _warn = function (message) {
     _$log.val(String(message)).css('color', '#ffff00').show();
-    _$source.css('color', '#dddddd');
+    _$status.css('background-color', 'orange');
   };
   var _error = function (message) {
     _$log.val(String(message)).css('color', '#ff7777').show();
-    _$source.css('color', '#dddddd');
+    _$status.css('background-color', 'red');
   };
 
   var _clear = function () {
@@ -95,35 +111,14 @@ var live = (function(){
   };
 
   live.setSource = function (val) {
-    _$source.val(val);
+    _codemirror.setValue(val);
     _clear();
 
     _startCompiling();
-    _$source.change().focus();
+    _codemirror.focus();
   };
   live.getSource = function (val) {
-    return _$source.val();
-  };
-
-  //----------------------------------------------------------------------------
-  // Shadow
-
-  live.initShadow = function ($shadow) {
-
-    live.updateShadow = function () {
-      $shadow.val(_$source.val().replace(/./g, '\u2588'));
-    };
-
-    _$source
-        .on('keyup', live.updateShadow)
-        .on('keypress', live.updateShadow)
-        .on('click', live.updateShadow)
-        .on('change', live.updateShadow)
-        .on('scroll', function(){
-              $shadow.scrollTop(_$source.scrollTop());
-            })
-        .change()
-        .scroll()
+    return _codemirror.getValue();
   };
 
   //----------------------------------------------------------------------------
@@ -132,7 +127,6 @@ var live = (function(){
   var _evalTime = Date.now();
 
   var _compileSource;
-  var _compileIfChanged;
   var _startCompiling;
   var _toggleCompiling;
   var _clearWorkspace;
@@ -153,7 +147,7 @@ var live = (function(){
         return;
       }
 
-      var source = _$source.val();
+      var source = live.getSource();
       var compiled;
       try {
         compiled = globalEval(
@@ -171,8 +165,10 @@ var live = (function(){
       }
 
       if (source.match(/\bonce\b/)) {
-        var pos = _$source.caret() + 1;
-        _$source.val(source.replace(/\bonce\b/g, 'nonce')).caret(pos);
+        var cursor = _codemirror.getSearchCursor(/\bonce\b/g);
+        do {
+          cursor.replace('nonce');
+        } while (cursor.findNext());
       }
 
       _success();
@@ -190,6 +186,8 @@ var live = (function(){
       }
     };
 
+    /* OBSOLETE
+    var _compileIfChanged;
     _compileIfChanged = function (keyup) {
       if (!compiling) {
         _warn('hit escape to compile');
@@ -207,6 +205,7 @@ var live = (function(){
         case 34: case 35: case 36: case 37: case 38: case 39: case 40:
           return;
 
+        // TODO adapt this cleverness to codemirror
         // be careful with comment markers // by delaying compile
         case 191: // slash
           delay = true;
@@ -217,14 +216,12 @@ var live = (function(){
         case 46: // delete
           delay = (_$source.val().charAt(_$source.caret()) === '/')
           break
-
-        // TODO insert matching delimiters (),{},[],',"
-        // TODO allow block indent and outdent
       }
 
       if (delay) setTimeout(_compileSource, 200);
       else _compileSource();
     };
+    */
 
     _toggleCompiling = function () {
 
@@ -235,7 +232,8 @@ var live = (function(){
       else {
         compiling = true;
         _success();
-        _$source.change();
+        _compileSource();
+        _codemirror.focus();
       }
     };
 
