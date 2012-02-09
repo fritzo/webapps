@@ -26,6 +26,13 @@ extern: codemirror audiolibjs
 #-------------------------------------------------------------------------------
 # export to public git repository
 
+LV = ~/livecoder.net/live
+livecoder.net: FORCE
+	rm -rf $(LV)
+	cp -rL live $(LV)
+	mv $(LV)/release.manifest $(LV)/cache.manifest
+	rm -rf $(LV)/temp*
+
 RK = ~/rationalkeyboard/keys
 rationalkeyboard: FORCE
 	rm -rf $(RK)
@@ -92,6 +99,10 @@ LINT = java -jar linter/*/*.jar --indent 2
 lint: FORCE
 	$(lint) common
 
+common/codemirror.min.js: codemirror
+	$(COMPILE1) \
+	  --js=extern/codemirror/lib/codemirror.js \
+	  --js_output_file=common/codemirror.min.js
 
 #-------------------------------------------------------------------------------
 # live
