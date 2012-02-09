@@ -7,14 +7,14 @@ CACHE:
 index.html
 cm-live.css
 livecoder.js
-../common/toolbar.css
-../common/jquery.min.js
-../common/jquery.timeago.js
-../common/safety.js
-../common/wavencoder.js
-../extern/codemirror/lib/codemirror.js
-../extern/codemirror/lib/codemirror.css
-../extern/codemirror/mode/javascript/javascript.js
+toolbar.css
+jquery.min.js
+jquery.timeago.js
+safety.js
+wavencoder.js
+codemirror.js
+codemirror.css
+cm-live.js
 
 # Images
 favicon.ico

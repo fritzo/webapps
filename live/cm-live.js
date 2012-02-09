@@ -1,0 +1,1 @@
+../extern/codemirror/mode/javascript/javascript.js

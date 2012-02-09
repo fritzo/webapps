@@ -18,27 +18,19 @@
 <!---------------------------------------------------------------------------->
 
 <!-- MIT,GPL2 -->
-<!-- local only
-<script type='text/javascript' src='../common/jquery.min.js'></script>
--->
-<!-- remote first -->
 <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js'></script>
-<script>!window.jQuery && document.write("<script src='../common/jquery.min.js'><\/script>")</script>
+<script>!window.jQuery && document.write("<script src='jquery.min.js'><\/script>")</script>
 
 <!-- MIT -->
-<script type='text/javascript' src='../common/jquery.timeago.js'></script>
+<script type='text/javascript' src='jquery.timeago.js'></script>
 
 <!-- MIT -->
-<script src='../extern/codemirror/lib/codemirror.js'></script>
-<script src='../extern/codemirror/mode/javascript/javascript.js'></script>
-<!-- TODO hook these up
-<script src='../extern/codemirror/lib/util/searchcursor.js'></script>
-<script src='../extern/codemirror/lib/util/javascript-hint'></script>
--->
+<script src='codemirror.js'></script>
+<script src='cm-live.js'></script>
 
 <!-- MIT,GPL2 -->
-<script type='text/javascript' src='../common/safety.js'></script>
-<script type='text/javascript' src='../common/wavencoder.js'></script>
+<script type='text/javascript' src='safety.js'></script>
+<script type='text/javascript' src='wavencoder.js'></script>
 
 <!-- MIT -->
 <script type='text/javascript' src='livecoder.js'></script>
@@ -414,9 +406,9 @@ $(function() {
 
 <!---------------------------------------------------------------------------->
 
-<link rel='stylesheet' href='../common/toolbar.css' />
+<link rel='stylesheet' href='toolbar.css' />
 <link rel='stylesheet' href='cm-live.css' />
-<link rel='stylesheet' href='../extern/codemirror/lib/codemirror.css' />
+<link rel='stylesheet' href='codemirror.css' />
 <style>
 
 body,
