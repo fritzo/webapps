@@ -1,26 +1,29 @@
 <!doctype html>
 <!--
   LiveCoder.net
-  version (2012-02-07)
+  http://livecoder.net
+  http://github.com/fritzo/livecoder.net
 
   Copyright (c) 2012, Fritz Obermeyer
   Licensed under the MIT license:
   http://www.opensource.org/licenses/mit-license.php
 -->
-<html>
+<html manifest='cache.manifest'>
 <head>
-
+<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
 <title>LiveCoder.net</title>
-<link rel="icon" href="favicon.ico" type="image/x-icon" />
+<meta name='description' content='A simple browser environment for coding live javascript.' />
+<link rel='icon' href='favicon.ico' type='image/x-icon' />
 
 <!---------------------------------------------------------------------------->
 
 <!-- MIT,GPL2 -->
+<!-- local only
 <script type='text/javascript' src='../common/jquery.min.js'></script>
-<!-- TODO
-<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
-<script>!window.jQuery && document.write('<script src="../common/jquery.min.js"><\/script>')</script>
 -->
+<!-- remote first -->
+<script src='http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js'></script>
+<script>!window.jQuery && document.write("<script src='../common/jquery.min.js'><\/script>")</script>
 
 <!-- MIT -->
 <script type='text/javascript' src='../common/jquery.timeago.js'></script>
@@ -28,11 +31,10 @@
 <!-- MIT -->
 <script src='../extern/codemirror/lib/codemirror.js'></script>
 <script src='../extern/codemirror/mode/javascript/javascript.js'></script>
+<!-- TODO hook these up
 <script src='../extern/codemirror/lib/util/searchcursor.js'></script>
 <script src='../extern/codemirror/lib/util/javascript-hint'></script>
-
-<!-- MIT,BSD -->
-<script type='text/javascript' src='../common/modernizr.js'></script>
+-->
 
 <!-- MIT,GPL2 -->
 <script type='text/javascript' src='../common/safety.js'></script>
@@ -338,24 +340,6 @@ $(window).keydown(function (event) {
 
 $(function() {
 
-  try {
-    var have = Modernizr;
-    assert(have.canvas, 'Browser does not support canvas element');
-    assert(have.opacity, 'Browser does not support opacity');
-    assert(have.rgba, 'Browser does not support rgba() color attributes');
-    assert(have.localstorage, 'Browser does not support localStorage');
-    assert(have.audio, 'Browser does not support audio element');
-    //assert(has.webworkers, 'Browser does not support Web Workers');
-    //assert(has.svg, 'Browser does not support svg');
-  }
-  catch (e) {
-    var message = $(document.createElement('h1'))
-      .html(String(e))
-      .attr('class','warning');
-    $(document.body).empty().html(message);
-    return;
-  }
-
   // build editor
 
   var hideOverlays = function () {
@@ -448,8 +432,6 @@ body {
   height: 100%;
   margin: 0px;
 }
-
-.warning { color: red; }
 
 canvas {
   position: fixed; 
@@ -837,5 +819,21 @@ canvas { z-index: 0; }
 </div>
 
 </body>
+
+<!-- Google Analytics -->
+<script type="text/javascript">
+if (location.hostname === 'livecoder.net') {
+var _gaq = [['_setAccount', 'UA-29051281-1'], ['_trackPageview']];
+(function() {
+  var ga = document.createElement('script');
+  ga.type = 'text/javascript';
+  ga.async = true;
+  ga.src = 'http://www.google-analytics.com/ga.js';
+  var s = document.getElementsByTagName('script')[0];
+  s.parentNode.insertBefore(ga, s);
+})();
+} // livecoder.net
+</script>
+
 </html>
 

@@ -1,0 +1,25 @@
+CACHE MANIFEST
+# version 2011-02-07
+
+CACHE:
+
+# Code
+index.html
+cm-live.css
+livecoder.js
+../common/toolbar.css
+../common/jquery.min.js
+../common/jquery.timeago.js
+../common/safety.js
+../common/wavencoder.js
+../extern/codemirror/lib/codemirror.js
+../extern/codemirror/lib/codemirror.css
+../extern/codemirror/mode/javascript/javascript.js
+
+# Images
+favicon.ico
+
+# External
+http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js
+http://www.google-analytics.com/ga.js
+

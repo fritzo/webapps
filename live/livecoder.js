@@ -1,5 +1,7 @@
 /**
- * livecoder
+ * LiveCoder.net
+ * http://livecoder.net
+ * http://github.com/fritzo/livecoder.net
  *
  * Livecoder is toolset to make browser-based javascript live coding easy.
  * It includes a language extension, a live coding editor, a task scheduler,
@@ -14,8 +16,8 @@
  * - a canvas for 2d drawing
  *
  * Provides:
- * - an object 'livecoder'
- * - a mess of global variables useful for live coding
+ * - an object 'live'
+ * - a few global variables useful for live coding
  *
  * Copyright (c) 2012, Fritz Obermeyer
  * Licensed under the MIT license:
