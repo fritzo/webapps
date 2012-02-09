@@ -1,54 +1,5 @@
 
 //==============================================================================
-// 1328587224268.js
-
-// drifting uncoupled rhythm
-
-var exp = Math.exp;
-var random = Math.random;
-var randomStd = function () {
-  return 2 * (random() + random() + random()) - 3;
-};
-var driftStd = function (start, rate) {
-  return start * (1 - rate) + randomStd() * rate;
-};
-
-vars.advance = function (voice) {
-  return function () {
-    var r = voice.driftRate * exp(voice.delayParam);
-
-    voice.mass = Math.max(0, Math.min(1, voice.mass + randomStd() * r));
-    voice.delayParam = driftStd(voice.delayParam, r);
-    voice.freqParam = driftStd(voice.freqParam, r);
-    voice.bandParam = driftStd(voice.bandParam, r);
-
-    var delay = 1000 * exp(2 * voice.delayParam);
-    voice.duration = 0.5 * delay;
-    voice.frequency = 100 * exp(voice.freqParam - voice.delayParam);
-    voice.bandwidth = 0.005 * exp(voice.bandParam);
-    voice.gain = Math.sqrt(voice.mass) / 7;
-
-    setTimeout(vars.advance(voice), delay);
-    play(noise(voice));
-  };
-};
-
-vars.startVoice = function () {
-  vars.advance({
-    driftRate: 1/120,
-    mass: random(),
-    delayParam: randomStd(),
-    freqParam: randomStd(),
-    bandParam: randomStd()
-  })();
-};
-
-once for (var i = 0; i < 7; ++i) vars.startVoice();
-
-nonce clear(); // erase the 'n' to stop all voices
-nonce vars.startVoice(); // erase the 'n' to start another voice
-
-//==============================================================================
 // 1326994044727.js
 
 // devil's staircase scale
@@ -152,24 +103,32 @@ once {
 
 // faray tone scale (by hand):
 
-var T = 500;
+var faray = function (depth) {
+  if (depth === 0) return [[0,1],[1,0]];
+  var prev = faray(depth - 1);
+  var result = [prev[0]];
+  for (var i = 1; i < prev.length; ++i) {
+    var lhs = prev[i-1];
+    var rhs = prev[i]
+    result[2*i-1] = [lhs[0]+rhs[0],lhs[1]+rhs[1]];
+    result[2*i] = rhs;
+  }
+  return result;
+};
 
-once { // generate samples
-  var note = function (freq) {
-    return tone({ frequency: freq * middleC, duration:T, gain:0.2 });
-  };
-  vars.scale = [
-    note( 1/1 ),
-    note( 5/4 ),
-    note( 4/3 ),
-    note( 7/5 ),
-    note( 3/2 ),
-    note( 8/5 ),
-    note( 5/3 ),
-    note( 7/4 ),
-    note( 2/1 )
-  ];
-}
+var points = faray(4);
+points = points.slice(1,points.length-2);
+//print(JSON.stringify(points));
+print(points.map(function(q){return q[0]+'/'+q[1]}).join(' '));
+
+var T = 300;
+var note = function (freq) {
+  return tone({ frequency: freq * middleC, duration:T, gain:0.2 });
+};
+
+vars.scale = vars.scale || points.map(function(q){
+  return note(q[0]/q[1]);
+});
 
 vars.S = function () {
   vars.n = (vars.n === undefined) ? 0 : (vars.n + 1) % vars.scale.length;
@@ -180,41 +139,48 @@ vars.S = function () {
 once vars.S(); // start
 nonce clear(); // stop
 
-print(vars.scale.length)
-
 //==============================================================================
 // 1323324421097.js
 
 // markov chain rhythm
 
 var PERIOD = 3000;
+var TATUM = PERIOD / 32;
 
-once { // generate samples
-  vars.long = noise({ duration:PERIOD/4, gain:0.05 });
-  vars.short = noise({ duration:PERIOD/32, gain:0.1 });
-}
+// generate samples
+vars.short = vars.short || noise({ duration:TATUM, gain:0.1 });
+vars.long = vars.long || tone({
+  frequency: middleC/4,
+  duration: PERIOD/4,
+  gain: 0.2
+});
 
 var show = function (symbol) {
-  var chain = symbol + (vars.chain || '');
-  print(vars.chain = chain.slice(0,80));
+  vars.chain = (symbol + (vars.chain || '')).slice(0,80);
+  print(vars.chain);
+};
+
+var clampTimeout = function (callback, delay) {
+  var clamped = Math.round((Date.now() + delay) / TATUM) * TATUM;
+  setTimeout(callback, clamped - Date.now());
 };
 
 vars.L1 = function () {
-  play(vars.long);
+  play(vars.long, Math.sqrt(Math.random()));
   show('|');
-  setTimeout(vars.L1, PERIOD/2);
+  clampTimeout(vars.L1, PERIOD/2);
 };
 
 vars.S1 = function () {
   play(vars.short);
   show('o');
-  setTimeout(Math.random() > 5/12 ? vars.S2 : vars.S1, PERIOD/5);
+  clampTimeout(Math.random() > 5/12 ? vars.S2 : vars.S1, PERIOD/5);
 };
 
 vars.S2 = function () {
   play(vars.short);
   show('-');
-  setTimeout(Math.random() > 5/12 ? vars.S2 : vars.S1, PERIOD/7);
+  clampTimeout(Math.random() > 5/12 ? vars.S2 : vars.S1, PERIOD/7);
 };
 
 once vars.L1(); // start one of these
@@ -222,38 +188,7 @@ once vars.S1(); // and a few of these
 once vars.S1();
 once vars.S1();
 
-nonce sync.clear(); // uncomment to stop
-
-//==============================================================================
-// 1323297175694.js
-
-// a simple continuous-time task:
-
-always.blip = function () {
-
-  var W = innerWidth;
-  var H = innerHeight;
-
-  context.fillStyle = 'rgba(0,0,0,0.05)';
-  context.fillRect(0,0,W,H);
-
-  var random = Math.random;
-  var random255 = function () { return Math.floor(256 * Math.random()); };
-
-  context.fillStyle = 'rgba(R,G,B,0.5)'
-    .replace('R', random255())
-    .replace('G', random255())
-    .replace('B', random255());
-
-  var x0 = W * random(), x1 = W * random();
-  var y0 = W * random(), y1 = W * random();
-  context.fillRect(
-      Math.min(x0,x1), Math.min(y0,y1),
-      Math.abs(x0-x1), Math.abs(y0-y1));
-};
-
-//print(vars.counter);
-//print(vars.tasks[0]);
+nonce clear(); // uncomment to stop
 
 //==============================================================================
 // 1323226133754.js
@@ -262,23 +197,38 @@ always.blip = function () {
 
 var PERIOD = 2000;
 
-once { // generate samples
-  vars.long = noise({ duration:PERIOD/2, gain:0.05 });
-  vars.short = noise({ duration:PERIOD/64, gain:0.1 });
-}
+vars.long = vars.long || noise({ duration:PERIOD/2, gain:0.05 });
+vars.short = vars.short || noise({ duration:PERIOD/64, gain:0.1 });
+
+var bass = function (f) {
+  return tone({ duration:PERIOD/8, frequency:middleC*f, gain:0.2 });
+};
+vars.hi = vars.hi || bass(1/4);
+vars.low = vars.low || bass(1/6);
+
+var player = function (name) {
+  return function () { play(vars[name]); };
+};
 
 vars.loop = function () {
 
-  setTimeout(function(){ play(vars.long) }, PERIOD * 0/1);
-  setTimeout(function(){ play(vars.short) }, PERIOD * 1/4);
-  setTimeout(function(){ play(vars.short) }, PERIOD * 2/4);
-  setTimeout(function(){ play(vars.short) }, PERIOD * 3/4);
-  setTimeout(function(){ play(vars.short) }, PERIOD * 7/8);
+  setTimeout(player('long'), PERIOD * 0/1);
+  setTimeout(player('short'), PERIOD * 1/4);
+  setTimeout(player('short'), PERIOD * 2/4);
+  setTimeout(player('short'), PERIOD * 3/4);
+  setTimeout(player('short'), PERIOD * 7/8);
 
-  setTimeout(vars.loop, PERIOD); // comment out to stop
+  var r = Math.random;
+  var lowTime = Math.round(1 + r() + r() + r() + r()) / 8;
+  var hiTime = lowTime + Math.round(r() + r() + r()) / 8;
+  setTimeout(player('low'), lowTime * PERIOD);
+  setTimeout(player('hi'), hiTime * PERIOD);
+
+  setTimeout(vars.loop, PERIOD);
 };
 
 once vars.loop(); // start a loop
+nonce clear(); // stop
 
 //==============================================================================
 // 1323196209122.js
@@ -331,5 +281,6 @@ for (var t = 0, T = samples.length; t < T; ++t) {
 
 var uri = encodeWav(samples);
 var audio = new Audio(uri);
-audio.play();
+
+once audio.play();
 

@@ -17,6 +17,10 @@
 
 <!-- MIT,GPL2 -->
 <script type='text/javascript' src='../common/jquery.min.js'></script>
+<!-- TODO
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+<script>!window.jQuery && document.write('<script src="../common/jquery.min.js"><\/script>')</script>
+-->
 
 <!-- MIT -->
 <script type='text/javascript' src='../common/jquery.timeago.js'></script>
@@ -165,7 +169,7 @@ ui.buildScriptList = function () {
 
   var keys = ui.listScripts();
 
-  $('#showGallery').html('load (' + keys.length + ')');
+  $('#showGallery').html('gallery (' + keys.length + ')');
 
   var menu = $('#gallery table').empty();
   for (var i = 0; i < keys.length; ++i) {
@@ -702,7 +706,7 @@ canvas { z-index: 0; }
   --><button class='flatRound' id='showAbout'>about</button>
   &nbsp;
   <button class='roundFlat' id='save' title='shortcut = CTRL+S'>save</button><!--
-  --><button class='flatFlat' id='showGallery' title='shortcut = CTRL+O'>load</button><!--
+  --><button class='flatFlat' id='showGallery' title='shortcut = CTRL+O'>gallery</button><!--
   --><button class='flatRound' id='share'>share</button>
   &nbsp;
   <button id='hideToolbar' title='hide toolbar'>:)</button>
@@ -749,8 +753,17 @@ canvas { z-index: 0; }
                 (this feature partially replaces a REPL + history)
 
   clear()       Clears everything: vars, always, setTimout tasks, canvas
+<!--
+  using(url)    Loads &amp; caches a remote script (useful for libraries)
+-->
+<b>Coding Tools</b>
 
-  help(...)     Provides help for an object/function (as in Python)
+  help(-)       Looks inside any object/function (useful for hacking :)
+
+  print(-),     Prints messages to log area
+  error(-)
+
+  assert(-,-)   assert(condition, message) throws if 'condition' is false
 
 <b>Audio (using HTML5 audio elements)</b>
 

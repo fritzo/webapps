@@ -161,7 +161,7 @@ var live = (function(){
         // alternatively, use jQuery.globalEval(...)
         compiled = globalEval(
             '"use strict";\n' +
-            '(function(vars,always,clear,help,print,error,setTimeout,context){\n' +
+            '(function(vars,always,clear,setTimeout,help,print,error,context){\n' +
                 source
                   .replace(/\bonce\b/g, 'if(1)')
                   .replace(/\bnonce\b/g, 'if(0)') +
@@ -181,7 +181,7 @@ var live = (function(){
       _success();
 
       try {
-        compiled(vars, always, _clear, _help, _print, _error, _setTimeout, _context2d);
+        compiled(vars, always, _clear, _setTimeout, _help, _print, _error, _context2d);
       } catch (err) {
         _error(err);
         return;
@@ -275,6 +275,61 @@ var live = (function(){
 
   })();
 
+  //--------------------------------------------------------------------------
+  // Help
+
+  var _dir = function (o) {
+    o = o || window;
+    var a = [], i = 0;
+    for (a[i++] in o);
+    return a;
+  };
+
+  var _help = function (o) {
+    if (o === undefined) {
+      _print('try help(someFunction), or see the help window');
+    } else {
+      o = o || help;
+      _print(('help' in o ? o.help + '\n\n' : '')
+          + _dir(o) + '\n\n'
+          + o.toString());
+    }
+  };
+
+  //--------------------------------------------------------------------------
+  // Using external scripts
+
+  // XXX TODO this is not working yet
+
+  var _using;
+
+  (function(){
+
+    var cached = {};
+
+    _using = function (url) {
+
+      if (url in cached) return;
+
+      // see http://stackoverflow.com/questions/2723140
+      assert(/^(http|https|ftp):\/\/[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$/ix.test(url),
+        'invalid url: ' + url);
+
+      assert(/\.js$/.test(url), 'url extension is not .js: ' + url);
+
+      $.ajax({ url:url, dataType:'script', cache:true })
+        .done(function (script, textStatus) {
+              cached[url] = true;
+              _print(textStatus);
+            })
+        .fail(function(jqxhr, settings, exception) {
+              cached[url] = false;
+              _print('Ajax error: ' + exception);
+            });
+    };
+
+  })();
+
   //----------------------------------------------------------------------------
   // Graphics
 
@@ -301,27 +356,6 @@ var live = (function(){
           window.mouseX = e.pageX;
           window.mouseY = e.pageY;
         });
-  };
-
-  //--------------------------------------------------------------------------
-  // Help
-
-  var _dir = function (o) {
-    o = o || window;
-    var a = [], i = 0;
-    for (a[i++] in o);
-    return a;
-  };
-
-  var _help = function (o) {
-    if (o === undefined) {
-      _print('try help(someFunction), or see the help window');
-    } else {
-      o = o || help;
-      _print(('help' in o ? o.help + '\n\n' : '')
-          + _dir(o) + '\n\n'
-          + o.toString());
-    }
   };
 
   //----------------------------------------------------------------------------
