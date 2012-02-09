@@ -2,12 +2,10 @@
 //==============================================================================
 // 1326994044727.js
 
-// devil's staircase scale
+// devil's staircase scale:
 
-var gcd = function (a,b)
-{
+var gcd = function (a,b) {
   if (b > a) { var temp = a; a = b; b = temp; }
-
   while (true) {
     a %= b;  if (a === 0) return b;
     b %= a;  if (b === 0) return a;
@@ -49,7 +47,7 @@ Rational.ball = function (radius) {
 
 var radius = 16;
 var temperature = 3;
-var totalTime = 4000;
+var totalTime = 6000;
 
 var QQ = Rational.ball(radius);
 vars.freqs = QQ.map(function(q){
@@ -69,23 +67,7 @@ for (var i = 1; i < QQ.length; ++i) {
   vars.ends[i] = vars.starts[i] + vars.times[i];
 }
 
-// Version 1. sequence of notes
-nonce {
-  vars.tones = [];
-  for (var i = 0; i < QQ.length; ++i) {
-    vars.tones[i] = tone({ frequency:vars.freqs[i], duration:vars.times[i] });
-  }
-
-  var wait = 50;
-  for (var i = 0; i < vars.tones.length; ++i) {
-    (function(i){ // take care when defining functions in a loop
-      setTimeout(function(){ play(vars.tones[i]); }, wait + vars.starts[i]);
-    })(i);
-  }
-}
-
-// Version 2. a chirp
-once {
+if (vars.scale === undefined) {
   var samples = new Array(totalTime * sampleRate);
   var phase = 0;
   for (var i = 0, t = 0, T = samples.length; t < T; ++t) {
@@ -94,14 +76,15 @@ once {
     phase = (phase + vars.freqs[i] / sampleRate) % 1;
   }
   vars.scale = encodeWav(samples);
-
-  play(vars.scale);
 }
+
+once play(vars.scale); // erase the 'n' to play again
+
 
 //==============================================================================
 // 1324384763822.js
 
-// faray tone scale (by hand):
+// faray tone scale:
 
 var faray = function (depth) {
   if (depth === 0) return [[0,1],[1,0]];
@@ -131,18 +114,20 @@ vars.scale = vars.scale || points.map(function(q){
 });
 
 vars.S = function () {
-  vars.n = (vars.n === undefined) ? 0 : (vars.n + 1) % vars.scale.length;
-  play(vars.scale[vars.n]);
-  setTimeout(vars.S, T);
+  setTimeout(vars.S, T); // recurse before possible errors
+
+  var n = vars.n || 0;
+  play(vars.scale[n]);
+  vars.n = (n + 1) % vars.scale.length;
 };
 
-once vars.S(); // start
-nonce clear(); // stop
+once vars.S(); // erase the 'n' to start
+nonce clear(); // erase the 'n' to stop
 
 //==============================================================================
 // 1323324421097.js
 
-// markov chain rhythm
+// markov chain rhythm:
 
 var PERIOD = 3000;
 var TATUM = PERIOD / 32;
@@ -160,27 +145,28 @@ var show = function (symbol) {
   print(vars.chain);
 };
 
+// avoid temporal drift
 var clampTimeout = function (callback, delay) {
   var clamped = Math.round((Date.now() + delay) / TATUM) * TATUM;
   setTimeout(callback, clamped - Date.now());
 };
 
 vars.L1 = function () {
+  clampTimeout(vars.L1, PERIOD/2);
   play(vars.long, Math.sqrt(Math.random()));
   show('|');
-  clampTimeout(vars.L1, PERIOD/2);
 };
 
 vars.S1 = function () {
+  clampTimeout(Math.random() > 5/12 ? vars.S2 : vars.S1, PERIOD/5);
   play(vars.short);
   show('o');
-  clampTimeout(Math.random() > 5/12 ? vars.S2 : vars.S1, PERIOD/5);
 };
 
 vars.S2 = function () {
+  clampTimeout(Math.random() > 5/12 ? vars.S2 : vars.S1, PERIOD/7);
   play(vars.short);
   show('-');
-  clampTimeout(Math.random() > 5/12 ? vars.S2 : vars.S1, PERIOD/7);
 };
 
 once vars.L1(); // start one of these
@@ -188,7 +174,7 @@ once vars.S1(); // and a few of these
 once vars.S1();
 once vars.S1();
 
-nonce clear(); // uncomment to stop
+nonce clear(); // erase the 'n' to stop
 
 //==============================================================================
 // 1323226133754.js
@@ -197,11 +183,12 @@ nonce clear(); // uncomment to stop
 
 var PERIOD = 2000;
 
-vars.long = vars.long || noise({ duration:PERIOD/2, gain:0.05 });
+// use || operator to avoid generating samples if already defined
+vars.long = vars.long || noise({ duration:PERIOD/2, gain:0.03 });
 vars.short = vars.short || noise({ duration:PERIOD/64, gain:0.1 });
 
 var bass = function (f) {
-  return tone({ duration:PERIOD/8, frequency:middleC*f, gain:0.2 });
+  return tone({ duration:PERIOD/8, frequency:middleC*f, gain:0.4 });
 };
 vars.hi = vars.hi || bass(1/4);
 vars.low = vars.low || bass(1/6);
@@ -211,7 +198,8 @@ var player = function (name) {
 };
 
 vars.loop = function () {
-
+  setTimeout(vars.loop, PERIOD); // recurse before possible errors
+  
   setTimeout(player('long'), PERIOD * 0/1);
   setTimeout(player('short'), PERIOD * 1/4);
   setTimeout(player('short'), PERIOD * 2/4);
@@ -223,12 +211,10 @@ vars.loop = function () {
   var hiTime = lowTime + Math.round(r() + r() + r()) / 8;
   setTimeout(player('low'), lowTime * PERIOD);
   setTimeout(player('hi'), hiTime * PERIOD);
-
-  setTimeout(vars.loop, PERIOD);
 };
 
-once vars.loop(); // start a loop
-nonce clear(); // stop
+once vars.loop(); // erase the 'n' to start a loop
+nonce clear(); // erase the 'n' to stop
 
 //==============================================================================
 // 1323196209122.js
@@ -240,8 +226,8 @@ var Y = function (a) { return (0.5 + Math.sin(3*a) / 3); };
 var Z = function (a) { return (0.5 + Math.sin(8*a) / 2); };
 
 always.juggle = function () {
-
   var T = 1000, t = (Date.now() % T) / T;
+
   context.clearRect(0, 0, innerWidth, innerHeight);
   context.font = 'bold 64pt Courier';
   for (var i = 0, N = 79; i < N; ++i) {
@@ -260,27 +246,29 @@ var N = 20;
 var W = innerWidth;
 var H = innerHeight;
 
+// use the 2D canvas context
 context.fillStyle = '#aaaaaa';
 context.fillRect(W / N, H / N, W * (1 - 2 / N), H * (1 - 2 / N));
 
 //==============================================================================
 // 1323050746049.js
 
-// simple am sine wave:
+// simple audio synthesis:
 
-var duration = 1000;
+var duration = 1000; // all time units in ms
+var freq = middleC; // all freq units in kHz
 var gain = 0.2;
-var freq = middleC;
 var omega = 2 * Math.PI * freq / sampleRate;
 var samples = new Array(Math.round(duration * sampleRate));
 
 for (var t = 0, T = samples.length; t < T; ++t) {
+  // generate samples in [-1,1]
   var envelope = gain * 4 * (t + 1) * (T - t) / (T * T);
   samples[t] = envelope * Math.sin(omega * t);
 }
 
-var uri = encodeWav(samples);
+var uri = encodeWav(samples); // encode to a data uri
 var audio = new Audio(uri);
 
-once audio.play();
+once audio.play(); // equivalent to play(uri)
 

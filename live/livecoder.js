@@ -393,10 +393,12 @@ var sampleRate = WavEncoder.defaults.sampleRateHz / 1000; // in kHz
 var middleC = 0.261625565; // in kHz
 
 var encodeWav = function (samples) {
+  assert(samples instanceof Array, 'bad samples in encodeWav(-)');
   return WavEncoder.encode(samples);
 };
 
 var play = function (uri, volume) {
+  assert(typeof uri === 'string', 'bad data uri in play(-)');
   var audio = new Audio(uri);
   if (volume !== undefined) audio.volume = volume;
   audio.play();
