@@ -161,7 +161,7 @@ var live = (function(){
         // alternatively, use jQuery.globalEval(...)
         compiled = globalEval(
             '"use strict";\n' +
-            '(function(vars,always,clear,print,error,setTimeout,context){\n' +
+            '(function(vars,always,clear,help,print,error,setTimeout,context){\n' +
                 source
                   .replace(/\bonce\b/g, 'if(1)')
                   .replace(/\bnonce\b/g, 'if(0)') +
@@ -181,7 +181,7 @@ var live = (function(){
       _success();
 
       try {
-        compiled(vars, always, _clear, _print, _error, _setTimeout, _context2d);
+        compiled(vars, always, _clear, _help, _print, _error, _setTimeout, _context2d);
       } catch (err) {
         _error(err);
         return;
@@ -303,6 +303,27 @@ var live = (function(){
         });
   };
 
+  //--------------------------------------------------------------------------
+  // Help
+
+  var _dir = function (o) {
+    o = o || window;
+    var a = [], i = 0;
+    for (a[i++] in o);
+    return a;
+  };
+
+  var _help = function (o) {
+    if (o === undefined) {
+      _print('try help(someFunction), or see the help window');
+    } else {
+      o = o || help;
+      _print(('help' in o ? o.help + '\n\n' : '')
+          + _dir(o) + '\n\n'
+          + o.toString());
+    }
+  };
+
   //----------------------------------------------------------------------------
   // Module interface
 
@@ -321,30 +342,11 @@ var live = (function(){
 })();
 
 //------------------------------------------------------------------------------
-// Glogal utilities
-
-var dir = function (o) {
-  o = o || window;
-  var a = [], i = 0;
-  for (a[i++] in o);
-  return a;
-};
-
-var help = function (o) {
-  o = o || help;
-  print((help in o ? o.help + '\n\n' : '')
-      + dir(o) + '\n\n'
-      + o.toString());
-};
-
-//------------------------------------------------------------------------------
 // Global tools for livecoding
 
 // Time - units are milliseconds and kHz
 // once{...} evaluates once, then decays to the inert nonce{...}
 // var live = {}; // a place store variables while live coding
-// var print = function (message) = {/* logs normal message */}
-// var error = function (message) = {/* log error message */}
 
 // Graphics
 var mouseX = 0; // mouse coords in pixels
@@ -355,6 +357,10 @@ var mouseY = 0;
 
 var sampleRate = WavEncoder.defaults.sampleRateHz / 1000; // in kHz
 var middleC = 0.261625565; // in kHz
+
+var encodeWav = function (samples) {
+  return WavEncoder.encode(samples);
+};
 
 var play = function (uri, volume) {
   var audio = new Audio(uri);
@@ -382,8 +388,15 @@ var tone = function (args) {
     samples[t] = sin(omega * t) * (numSamples - t) * gain;
   }
 
-  return WavEncoder.encode(samples);
+  return encodeWav(samples);
 };
+
+tone.help = [
+"// Generate and encode a linearly-ramped sine wave:",
+"uri = tone({,      // returns a wave data uri",
+"    frequency:_,   // frequency in kHz",
+"    duration:_,    // duration in ms",
+"    [gain:_,]})    // optional gain in [0,1]"].join('\n');
 
 var noise = function (args) {
 
@@ -437,6 +450,14 @@ var noise = function (args) {
     }
   }
 
-  return WavEncoder.encode(samples);
+  return encodeWav(samples);
 };
+
+noise.help = [
+"// Generate and encode linearly-ramped broad/narrow band noise:",
+"uri = noise({,       // returns a wave data uri",
+"    duration:_,      // duration in ms",
+"    [gain:_,]        // optional gain in [0,1]",
+"    [frequency:_,    // optional band center frequency in kHz",
+"     bandwidth:_,]}) //      and relative bandwidth in [0,1]"].join('\n');
 

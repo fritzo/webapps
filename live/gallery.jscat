@@ -142,7 +142,7 @@ once {
     samples[t] = Math.sin(2 * Math.PI * phase);
     phase = (phase + vars.freqs[i] / sampleRate) % 1;
   }
-  vars.scale = WavEncoder.encode(samples);
+  vars.scale = encodeWav(samples);
 
   play(vars.scale);
 }
@@ -329,7 +329,7 @@ for (var t = 0, T = samples.length; t < T; ++t) {
   samples[t] = envelope * Math.sin(omega * t);
 }
 
-var uri = WavEncoder.encode(samples);
+var uri = encodeWav(samples);
 var audio = new Audio(uri);
 audio.play();
 
