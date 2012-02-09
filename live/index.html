@@ -330,7 +330,6 @@ $(window).keydown(function (event) {
     // F1 = show help
     case 112:
       ui.blink($('#showHelp'));
-      $('#about').hide();
       $('#help').toggle();
       event.preventDefault();
       break;
@@ -360,7 +359,7 @@ $(function() {
   // build editor
 
   var hideOverlays = function () {
-    $('#gallery,#shareBox,#about,#help').fadeOut('fast');
+    $('#gallery,#shareBox,#help').fadeOut('fast');
   };
   $('#log').on('focus', hideOverlays);
 
@@ -384,15 +383,8 @@ $(function() {
   if ('su' in localStorage) su();
   $('#su').click(nosu).attr('title', 'leave superuser mode');
 
-  $('#showHelp').click(function(){
-        $('#about').hide();
-        $('#help').fadeToggle(100);
-      });
+  $('#showHelp').click(function(){ $('#help').fadeToggle(100); });
   $('#help').click(function(){ $('#help').fadeToggle(100); });
-  $('#showAbout').click(function(){
-        $('#help').hide();
-        $('#about').fadeToggle(100);
-      });
 
   $('#save').click(ui.saveScript);
   $('#showGallery').click(function(){
@@ -585,11 +577,6 @@ dt {
   background-color: black;
   */
 }
-#about dt { width: 14em; }
-dd {
-  margin: 0 0 0 110px;
-  padding: 0.5em;
-}
 
 #su {
   display: none;
@@ -684,7 +671,7 @@ canvas { z-index: 0; }
 #toolbar, #showToolbar { z-index: 20; }
 
 #shareBox { z-index: 29; }
-#about, #help { z-index: 30; }
+#help { z-index: 30; }
 
 </style>
 </head>
@@ -702,8 +689,7 @@ canvas { z-index: 0; }
 <div class='toolbar' id='toolbar'>
   <button class='roundRound' id='su'>su</button>
   &nbsp;
-  <button class='roundFlat' id='showHelp' title='shortcut = F1'>help</button><!--
-  --><button class='flatRound' id='showAbout'>about</button>
+  <button class='roundRound' id='showHelp' title='shortcut = F1'>help</button>
   &nbsp;
   <button class='roundFlat' id='save' title='shortcut = CTRL+S'>save</button><!--
   --><button class='flatFlat' id='showGallery' title='shortcut = CTRL+O'>gallery</button><!--
@@ -738,7 +724,7 @@ canvas { z-index: 0; }
 <!---------------------------------------------------------------------------->
 <div class='info' id='help'>
 <pre>
-<b>LiveCoder.net</b>  =  A simple browser environment
+<b>LiveCoder.net</b>  =  A simple browser environment         <a href='http://github.com/fritzo/livecoder.net'>(fork me on github)</a>
                   for coding live javascript
 
 <b>Language Extensions</b>
@@ -796,51 +782,58 @@ canvas { z-index: 0; }
   CTRL+O        show list of local scripts
 
   F1            show/hide help (this message)
-</pre>
-</div>
 
-<!---------------------------------------------------------------------------->
-<div class='info' id='about'>
-  <h1>Inspiration &amp; Related Projects</h1>
-  <dl>
-    <!--
-    <dt><a href=''></a></dt>
-      <dd></dd>
-    -->
-    <dt><a href='http://www.toplap.org'>TOPLAP</a></dt>
-      <dd>an organization dedicated to live coding of art</dd>
-    <dt><a href='http://impromptu.moso.com.au'>Impromptu</a></dt>
-      <dd>a live coding IDE for video and audio</dd>
-    <dt><a href='http://www.lively-kernel.org'>Lively Kernel</a></dt>
-      <dd>an early experiment in browser-as-platform</dd>
-    <dt><a href='http://www.sexyvisuals.com/'>SexyVisuals</a></dt>
-      <dd>a band of visual live coders who converted some of their material to webgl</dd>
-    <dt><a href='http://mrdoob.com/projects/voxels'>mrdoob's voxels</a></dt>
-      <dd>a WebGL demo of MineCraft-style block building</dd>
-    <dt><a href='http://coffeescript.org'>coffeescript</a></dt>
-      <dd>
-        a programming langauge with javascript semantics but cleaner syntax
-        (compiles to javascript in a browser)
-      </dd>
-    <dt><a href='http://creationix.com/jack/public/index.html'>Jack</a></dt>
-      <dd>another programming language that cleans up and compiles to javascript</dd>
-    <dt><a href='http://code.google.com/p/oflivecoding/'>OFLiveCoding</a></dt>
-      <dd>a javascript live-coding framework developed with openframeworks</dd>
-    
-    <dt><a href='http://livecoder.sugyan.com'>Livecoder</a></dt>
-      <dd>a browser-based broadcast code editor using Eclipse Orion (also called livecoder)</dd>
-    <dt><a href='http://paperjs.org'>paper.js</a></dt>
-      <dd>a vector graphics library with a sexy demo</dd>
-    <dt><a href='https://github.com/christopherdebeer/speak.js'>speak.js</a></dt>
-      <dd>a voice synthesizer running in javascript (even on chrome)</dd>
-    <dt><a href='http://jsbeautifier.org'>jsbeautifier.org</a></dt>
-      <dd>a javascript style beautifier (including lexer)</dd>
-    <dt><a href='http://playground.html5rocks.com'>playground.html5rocks</a></dt>
-      <dd>a browser-based playground for learning HTML5 and javascript</dd>
-    <dt><a href='http://www.htmlfivewow.com/demos/terminal/terminal.html'>html5wow terminal</a></dt>
-      <dd>a browser-based terminal emulator</dd>
-  </dl>
-  ...and many others...
+-------------------------------------------------------------------------
+
+<b>Related Projects</b>
+
+  <a href='http://www.toplap.org'>TOPLAP</a>
+    an organization dedicated to live coding of art
+
+  <a href='http://impromptu.moso.com.au'>Impromptu</a>
+    a live coding IDE for video and audio
+
+  <a href='http://www.lively-kernel.org'>Lively Kernel</a>
+    an early experiment in browser-as-platform
+
+  <a href='http://www.sexyvisuals.com/'>SexyVisuals</a>
+    a band of visual live coders
+    who converted some of their material to webgl
+
+  <a href='http://mrdoob.com/projects/voxels'>mrdoob's voxels</a>
+    a WebGL demo of MineCraft-style block building
+
+  <a href='http://coffeescript.org'>coffeescript</a>
+    a programming langauge with javascript semantics but cleaner syntax
+    (compiles to javascript in a browser)
+
+  <a href='http://creationix.com/jack/public/index.html'>Jack</a>
+    a programming language that cleans up and compiles to javascript
+
+  <a href='http://code.google.com/p/oflivecoding/'>OFLiveCoding</a>
+    a javascript live-coding framework developed with openframeworks
+
+  <a href='http://livecoder.sugyan.com'>Livecoder</a>
+    a browser-based broadcast code editor using Eclipse Orion
+    (also called livecoder)
+
+  <a href='http://paperjs.org'>paper.js</a>
+    a vector graphics library with a sexy demo
+
+  <a href='https://github.com/christopherdebeer/speak.js'>speak.js</a>
+    a voice synthesizer running in javascript (even on chrome)
+
+  <a href='http://jsbeautifier.org'>jsbeautifier.org</a>
+    a javascript style beautifier (including lexer)
+
+  <a href='http://playground.html5rocks.com'>playground.html5rocks</a>
+    a browser-based playground for learning HTML5 and javascript
+
+  <a href='http://www.htmlfivewow.com/demos/terminal/terminal.html'>html5wow terminal</a>
+    a browser-based terminal emulator
+
+  ...many others...
+</pre>
 </div>
 
 </body>
