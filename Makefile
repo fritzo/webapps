@@ -105,25 +105,6 @@ common/codemirror.min.js: codemirror
 	  --js_output_file=common/codemirror.min.js
 
 #-------------------------------------------------------------------------------
-# live
-
-build/live.min.js: build FORCE
-	@echo 'TODO add exports to live.min to support ui javascript'
-	@echo '  (or just clean up live/index.html)'
-	@# $(COMPILE2) \
-	  --js=common/jquery.js \
-	  --js=common/jquery.timeago.js \
-	  --js=common/jquery.caret.js \
-	  --js=common/modernizr.js \
-	  --js=common/safety.js \
-	  --js=common/wavencoder.js \
-	  --js=live/live.js \
-	  --js_output_file=build/live.min.js
-
-live.min: FORCE
-	build/live.min.js
-
-#-------------------------------------------------------------------------------
 # keys
 
 keys-lint:
