@@ -636,10 +636,16 @@ dt {
 }
 #shareBox button {
   color: white;
+  border: solid 1px #aaaaaa;
   border-radius: 1ex;
   background-color: #777777;
-  padding: 0.5ex;
+  padding: 0.4ex;
+  padding-left: 1ex;
+  padding-right: 1ex;
   font-size: x-large;
+}
+#shareBox a {
+  text-decoration: none;
 }
 
 /* back-to-front */
@@ -704,7 +710,7 @@ canvas { z-index: 0; }
   <span id='shareBoxCopied'>Copied to clipboard!</span>
   </p>
   <p>
-  <a id='shareSubmit' href=''><button>Submit to gallery</button></a>
+  <a id='shareSubmit' href=''><button>Submit small demo to gallery</button></a>
   <a id='shareTemplate' href='mailto:fritz.obermeyer@gmail.com?subject=%5BSUBMIT%20livecoder.net%5D&body=Please%20consider%20adding%20this%20awesome%20demo%20to%20the%20gallery%3A%0A%0A' style='display:none'></a>
   </p>
 </div>
