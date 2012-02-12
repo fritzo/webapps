@@ -139,7 +139,7 @@ RatGrid.relative = function (lhs, rhs) {
  * @param {RatGrid}
  * @returns {number}
  */
-RatGrid.distance = function (lhs, rhs) {
+RatGrid.dissonance = function (lhs, rhs) {
   return RatGrid.relative(lhs, rhs).norm();
 };
 
@@ -277,7 +277,7 @@ test('RatGrid(5/2, 1/15).norm()', function(){
       'bad grid.norm\n    grid = ' + grid);
 });
 
-test('RatGrid.distance symmetry', function(){
+test('RatGrid.dissonance symmetry', function(){
 
   var vars = [
       new RatGrid(new Rational(1,1), new Rational(0,1)),
@@ -292,8 +292,8 @@ test('RatGrid.distance symmetry', function(){
     for (var j = 0; j < vars.length; ++j) {
       var v = vars[j];
 
-      assertEqual(RatGrid.distance(u,v), RatGrid.distance(v,u),
-          'distance is asymmetric');
+      assertEqual(RatGrid.dissonance(u,v), RatGrid.dissonance(v,u),
+          'dissonance is asymmetric');
     }
   }
 });
@@ -380,7 +380,7 @@ test('RatGrid trajectory plot', function ($log) {
     .appendTo($log);
 });
 
-test('RatGrid interference plot', function ($log) {
+test('RatGrid interference (statistical)', function ($log) {
 
   var numSamples = 10000;
   var maxTime = 1000;

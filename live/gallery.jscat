@@ -1,13 +1,43 @@
 
 //==============================================================================
+// 1328845920624.js
+
+// simple drawing program:
+
+// set brush parameters here
+var airbrush = true; // style flag
+var radius = 8; // brush radius
+context.fillStyle = 'rgba(255,255,255,0.02)'; // brush color
+context.strokeStyle = 'green'; // line color
+
+always.draw = airbrush ? (function () {
+
+  context.beginPath();
+  context.arc(mouseX, mouseY, radius, 2 * Math.PI, false);
+  context.fill();
+  
+}) : (function () {
+  
+  if (vars.lastX) {
+    context.beginPath();
+    context.moveTo(vars.lastX, vars.lastY);
+    context.lineTo(mouseX, mouseY);
+    context.stroke();
+  }
+  vars.lastX = mouseX;
+  vars.lastY = mouseY;
+
+});
+
+nonce clear(); // erase the 'n' to clear canvas
+
+//==============================================================================
 // 1326994044727.js
 
-// devil's staircase scale
+// devil's staircase scale:
 
-var gcd = function (a,b)
-{
+var gcd = function (a,b) {
   if (b > a) { var temp = a; a = b; b = temp; }
-
   while (true) {
     a %= b;  if (a === 0) return b;
     b %= a;  if (b === 0) return a;
@@ -24,8 +54,7 @@ Rational.prototype = {
     return this.numer / this.denom;
   },
   norm: function(){
-    return Math.sqrt( this.numer * this.numer
-                    + this.denom * this.denom );
+    return Math.sqrt(this.numer * this.numer + this.denom * this.denom);
   }
 };
 
@@ -50,433 +79,228 @@ Rational.ball = function (radius) {
 
 var radius = 16;
 var temperature = 3;
-var totalTime = 4000;
-once {
+var totalTime = 6000;
 
-  var QQ = Rational.ball(radius);
-  live.freqs = QQ.map(function(q){
-    return middleC * q.toNumber();
-  });
-  var times = QQ.map(function(q){
-    return Math.exp(-q.norm() / temperature);
-  });
-  var total = sum.apply(Math,times);
-  var timeScale = totalTime / total;
-  live.times = times.map(function(t){ return timeScale * t; });
+var QQ = Rational.ball(radius);
+vars.freqs = QQ.map(function(q){
+  return middleC * q.toNumber();
+});
+var times = QQ.map(function(q){
+  return Math.exp(-q.norm() / temperature);
+});
+var sum = times.reduce(function(x,y){ return x+y; });
+var timeScale = totalTime / sum;
+vars.times = times.map(function(t){ return timeScale * t; });
 
-  live.starts = [0];
-  live.ends = [live.times[0]];
-  for (var i = 1; i < QQ.length; ++i) {
-    live.starts[i] = live.starts[i-1] + live.times[i-1];
-    live.ends[i] = live.starts[i] + live.times[i];
-  }
-
-  live.tones = [];
-  for (var i = 0; i < QQ.length; ++i) {
-    live.tones[i] = tone(live.freqs[i], live.times[i]);
-  }
+vars.starts = [0];
+vars.ends = [vars.times[0]];
+for (var i = 1; i < QQ.length; ++i) {
+  vars.starts[i] = vars.starts[i-1] + vars.times[i-1];
+  vars.ends[i] = vars.starts[i] + vars.times[i];
 }
 
-// Version 1. sequence of notes
-nonce {
-  var wait = 50;
-  for (var i = 0; i < live.tones.length; ++i) {
-    (function(){
-      var tone = live.tones[i];
-      after(wait + live.starts[i], function(){ play(tone); });
-    })();
-  }
-}
-
-// Version 2. a chirp
-once {
+if (vars.scale === undefined) {
   var samples = new Array(totalTime * sampleRate);
   var phase = 0;
   for (var i = 0, t = 0, T = samples.length; t < T; ++t) {
-    while (t / sampleRate > live.ends[i]) ++i;
-    samples[t] = sin2pi(phase);
-    phase = (phase + live.freqs[i] / sampleRate) % 1;
+    while (t / sampleRate > vars.ends[i]) ++i;
+    samples[t] = Math.sin(2 * Math.PI * phase);
+    phase = (phase + vars.freqs[i] / sampleRate) % 1;
   }
-  live.scale = WavEncoder.encode(samples);
-
-  play(live.scale);
+  vars.scale = encodeWav(samples);
 }
+
+once play(vars.scale); // erase the 'n' to play again
+
 
 //==============================================================================
 // 1324384763822.js
 
-// faray tone scale (by hand)
+// faray tone scale:
 
-var tone = function (freq, duration, gain) {
-  var data = []; // just an array
-  for (var i=0, I=duration*sampleRate; i < I; ++i) {
-    var env = (I - i) / I;
-    var a = 2 * pi * freq / sampleRate * i;
-    data[i] = sin(a) * gain * env;
+var faray = function (depth) {
+  if (depth === 0) return [[0,1],[1,0]];
+  var prev = faray(depth - 1);
+  var result = [prev[0]];
+  for (var i = 1; i < prev.length; ++i) {
+    var lhs = prev[i-1];
+    var rhs = prev[i]
+    result[2*i-1] = [lhs[0]+rhs[0],lhs[1]+rhs[1]];
+    result[2*i] = rhs;
   }
-  return WavEncoder.encode(data);
-}
-
-var T = 500;
-
-nonce { // generate samples
-  var note = function(freq) { return tone(freq, T, 0.5); };
-  live.scale = [
-    note(1/1),
-    note(5/4),
-    note(4/3),
-    note(7/5),
-    note(3/2),
-    note(8/5),
-    note(5/3),
-    note(7/4),
-    note(2/1)
-  ];
-}
-
-nonce live.n = 0;
-
-live.S = function () {
-  live.n = (live.n + 1) % live.scale.length;
-  play(live.scale[live.n]);
-  print(now());
-  sync({delay:T,acuity:7}, live.S);
+  return result;
 };
 
-nonce live.S(); // start
-nonce sync.clear(); // stop
+var points = faray(4);
+points = points.slice(1,points.length-2);
+//print(JSON.stringify(points));
+print(points.map(function(q){return q[0]+'/'+q[1]}).join(' '));
 
-print(live.scale.length)
-
-//==============================================================================
-// 1323367681157.js
-
-// Hello World
-// i am live code
-// try changing me
-
-var d = draw2d();
-d.font = 'bold 64pt Courier';
-d.fillStyle = '#55aa55';
-d.textAlign = 'center';
-
-live.hello = function () {
-  draw2d().fillText(
-      'Hello World!',
-      1/8 * mouseX + 3/8 * windowW,
-      1/8 * mouseY + 3/8 * windowH);
-
-  after(0, live.hello); // to stop, comment out
+var T = 300;
+var note = function (freq) {
+  return tone({ frequency: freq * middleC, duration:T, gain:0.2 });
 };
 
-once live.hello(); // to start, erase the 'n'
-nonce clear();      // to stop, erase the 'n'
+vars.scale = vars.scale || points.map(function(q){
+  return note(q[0]/q[1]);
+});
+
+vars.S = function () {
+  setTimeout(vars.S, T); // recurse before possible errors
+
+  var n = vars.n || 0;
+  play(vars.scale[n]);
+  vars.n = (n + 1) % vars.scale.length;
+};
+
+once vars.S(); // erase the 'n' to start
+nonce clear(); // erase the 'n' to stop
 
 //==============================================================================
 // 1323324421097.js
 
-// petri net rhythm
+// markov chain rhythm:
 
-var noise = function (duration, gain) {
-  var data = []; // just an array
-  for (var i=0, I=duration*sampleRate; i < I; ++i) {
-    var env = (I - i) / I;
-    data[i] = (2*random()-1) * gain * env;
-  }
-  return WavEncoder.encode(data);
-}
+var PERIOD = 3000;
+var TATUM = PERIOD / 32;
 
-var play = function (sound) {
-  (new Audio(sound)).play();
-};
-
-var T = 3000;
-
-once { // generate samples
-  window.long = noise(T/4, 0.05);
-  window.short = noise(T/32, 0.1);
-}
+// generate samples
+vars.short = vars.short || noise({ duration:TATUM, gain:0.1 });
+vars.long = vars.long || tone({
+  frequency: middleC/4,
+  duration: PERIOD/4,
+  gain: 0.2
+});
 
 var show = function (symbol) {
-  var chain = symbol + (live.chain || '');
-  print(live.chain = chain.slice(0,80));
+  vars.chain = (symbol + (vars.chain || '')).slice(0,80);
+  print(vars.chain);
 };
 
-live.L1 = function () {
-  play(window.long);
+// avoid temporal drift
+var clampTimeout = function (callback, delay) {
+  var clamped = Math.round((Date.now() + delay) / TATUM) * TATUM;
+  setTimeout(callback, clamped - Date.now());
+};
+
+vars.L1 = function () {
+  clampTimeout(vars.L1, PERIOD/2);
+  play(vars.long, Math.sqrt(Math.random()));
   show('|');
-  sync({delay:T/2,acuity:7}, live.L1);
 };
 
-live.S1 = function () {
-  play(window.short);
+vars.S1 = function () {
+  clampTimeout(Math.random() > 5/12 ? vars.S2 : vars.S1, PERIOD/5);
+  play(vars.short);
   show('o');
-  sync({delay:T/5}, random() > 5/12 ? live.S2 : live.S1);
 };
 
-live.S2 = function () {
-  play(window.short);
+vars.S2 = function () {
+  clampTimeout(Math.random() > 5/12 ? vars.S2 : vars.S1, PERIOD/7);
+  play(vars.short);
   show('-');
-  sync({delay:T/7}, random() > 5/12 ? live.S2 : live.S1);
 };
 
-once live.L1(); // start one of these
-once live.S1(); // and a few of these
+once vars.L1(); // start one of these
+once vars.S1(); // and a few of these
+once vars.S1();
+once vars.S1();
 
-nonce sync.clear(); // uncomment to stop
-
-//==============================================================================
-// 1323319581185.js
-
-/* TODO list ---------------------------------------
-   ( X = resolved, W = won't fix )
- * remove/show trailing whitespace
- * ignore compile after whitespace expansion
- * $source.focus(setCaretToPreviousPosition)
- * line numbers in error messages (how?)
- * two-pane editor view for wide screens
- * search & replace
- * make leading whitespace visible
- * auto matching paren
- * auto indent
- * tab to indent (somehow...)
- W make caret more visible
- W autosave with multiple windows
- X move focus when deleting scripts
- X make error messages more visible (bg)
- X move focus to buttons when hide-cycling
- X add window reload button in su mode
- X allow error message window to resize to 1.5 lines
- */
-
-//==============================================================================
-// 1323319306053.js
-
-// syncopated rhythm
-
-var noise = function (duration, gain) {
-  var data = []; // just an array
-  for (var i=0, I=duration*sampleRate; i < I; ++i) {
-    var env = (I - i) / I;
-    data[i] = (2 * random() - 1) * gain * env;
-  }
-  return WavEncoder.encode(data);
-}
-
-var play = function (sound) {
-  (new Audio(sound)).play();
-};
-
-var T = 3000;
-
-once { // generate samples
-  window.long = noise(T/2, 0.05);
-  window.short = noise(T/64, 0.1);
-}
-
-live.running = 10;
-
-live.L1 = function () {
-  if (!live.running) return;
-  play(window.long);
-  console.log('L1');
-  sync({delay:T/2,syncopate:-1/12}, live.L1);
-};
-
-live.S1 = function () {
-  if (!live.running) return;
-  play(window.short);
-  console.log('S1');
-  sync({delay:T/3}, live.S1);
-};
-
-live.S2 = function () {
-  if (!live.running) return;
-  play(window.short);
-  console.log('S2');
-  sync({delay:T/6}, live.S2);
-};
-
-once live.L1();
-once live.S1();
-once live.S2();
-
-//==============================================================================
-// 1323297175694.js
-
-// simple continuous-time task manager
-
-live.Task = function (action, delay) { // TODO mass, sharpness, phase
-  this.action = action;
-  this.delay = delay;
-  this.remaining = delay;
-  live.add(this);
-};
-live.Task.updateAll = function () {
-  var tasks = live.tasks;
-  var dt = now() - live.time;
-  live.time = now();
-
-  for (var i in tasks) {
-    var task = tasks[i];
-    if (task.remaining -= dt < 0) {
-      try { task.action(); }
-      catch (err) { print(err); } // XXX should be live.error(err)
-      delete tasks[i];
-    }
-  }
-
-  after(20, live.Task.updateAll);
-};
-once live.Task.updateAll(); // start
-
-once {
-  live.counter = 0;
-  live.tasks = {};
-  live.time = now();
-  live.add = function (task) {
-    live.tasks[live.counter++] = task;
-    print(live.counter); // DEBUG
-  };
-}
-
-// an example
-live.blip = function () {
-  var d = draw2d();
-  d.fillStyle = '#222';
-  d.fillRect(
-    0,0,
-    windowW * random(),
-    windowH * random());
-
-  //after(100, live.blip);
-  new live.Task(live.blip, 500);
-};
-once live.blip();
-
-//print(live.counter);
-//print(live.tasks[0]);
+nonce clear(); // erase the 'n' to stop
 
 //==============================================================================
 // 1323226133754.js
 
-// simple rhythm
+// simple rhythm:
 
-var noise = function (duration, gain) {
-  var data = []; // just an array
-  for (var i=0, I=duration*sampleRate; i < I; ++i) {
-    var env = (I - i) / I;
-    data[i] = (2 * random() - 1) * gain * env;
-  }
-  return WavEncoder.encode(data);
-}
+var PERIOD = 2000;
 
-var play = function (sound) {
-  return function(){ (new Audio(sound)).play(); };
+// use || operator to avoid generating samples if already defined
+vars.long = vars.long || noise({ duration:PERIOD/2, gain:0.03 });
+vars.short = vars.short || noise({ duration:PERIOD/64, gain:0.1 });
+
+var bass = function (f) {
+  return tone({ duration:PERIOD/8, frequency:middleC*f, gain:0.4 });
+};
+vars.hi = vars.hi || bass(1/4);
+vars.low = vars.low || bass(1/6);
+
+var playLater = function (name, delay) {
+  setTimeout(function(){ play(vars[name]); }, delay);
 };
 
-var T = 2000;
+vars.loop = function () {
+  setTimeout(vars.loop, PERIOD); // recurse before possible errors
+  
+  playLater('long', PERIOD * 0/1);
+  playLater('short', PERIOD * 1/4);
+  playLater('short', PERIOD * 2/4);
+  playLater('short', PERIOD * 3/4);
+  playLater('short', PERIOD * 7/8);
 
-once { // generate samples
-  window.long = noise(T/2, 0.05);
-  window.short = noise(T/64, 0.1);
-}
-
-live.loop = function () {
-
-  after(0, play(window.long));
-  after(1/4*T, play(window.short));
-  after(2/4*T, play(window.short));
-  after(3/4*T, play(window.short));
-  after(7/8*T, play(window.short));
-
-  after(T, live.loop); // comment out to stop
+  var r = Math.random;
+  var lowTime = Math.round(1 + r() + r() + r() + r()) / 8;
+  var hiTime = lowTime + Math.round(r() + r() + r()) / 8;
+  playLater('low', lowTime * PERIOD);
+  playLater('hi', hiTime * PERIOD);
 };
-once live.loop(); // start a loop
+
+once vars.loop(); // erase the 'n' to start a loop
+nonce clear(); // erase the 'n' to stop
 
 //==============================================================================
 // 1323196209122.js
 
 // juggling dots:
 
-live.running = 10;
+var X = function (a) { return (0.5 + Math.sin(2*a) / 3); };
+var Y = function (a) { return (0.5 + Math.sin(3*a) / 3); };
+var Z = function (a) { return (0.5 + Math.sin(8*a) / 2); };
 
-var X = function(a){return (0.5 + sin(2*a)/3)};
-var Y = function(a){return (0.5 + sin(3*a)/3)};
-var Z = function(a){return (0.5 + sin(8*a)/2)};
-
-var d = draw2d();
-d.font = 'bold 64pt Courier';
-
-live.juggle = function () {
-  if (!live.running) return;
-
+always.juggle = function () {
   var T = 1000, t = (Date.now() % T) / T;
-  var d = draw2d();
-  for (var i=0, N=79; i < N; ++i) {
-    var a = 2 * pi * (i + t) / N;
-    d.fillStyle = 'rgba(255,255,255,' + Z(a) + ')';
-    d.fillText('.', innerWidth*X(a), innerHeight*Y(a));
+
+  context.clearRect(0, 0, innerWidth, innerHeight);
+  context.font = 'bold 64pt Courier';
+  for (var i = 0, N = 79; i < N; ++i) {
+    var a = 2 * Math.PI * (i + t) / N;
+    context.fillStyle = 'rgba(255,255,255,' + Z(a) + ')';
+    context.fillText('.', innerWidth * X(a), innerHeight * Y(a));
   }
-
-  after(1, live.juggle);
 };
-
-once live.juggle();
 
 //==============================================================================
 // 1323134327691.js
 
-// test for text-shadow
-
-var d = draw2d();
+// test for text-shadow:
 
 var N = 20;
+var W = innerWidth;
+var H = innerHeight;
 
-d.fillStyle = '#aaaaaa';
-d.fillRect(windowW/N, windowH/N, windowW*(1-2/N), windowH*(1-2/N));
+// use the 2D canvas context
+context.fillStyle = '#aaaaaa';
+context.fillRect(W / N, H / N, W * (1 - 2 / N), H * (1 - 2 / N));
 
 //==============================================================================
 // 1323050746049.js
 
-// sine wave (broken)
+// simple audio synthesis:
 
-var T = 2000, t = (time % T) / T, dt = dtime / T;
-if (t < dt) { // is true once per second
-  var I = 5000;
-  var data = new Array(I); // just an array
-  for (i=0; i<I; ++i) {
-    //e = 4/(I*I) * i * (I-i);
-    data[i] = bound(0, 255, 255/2 * (1 + sin(i / 500)));
-  }
-  var audio = new Audio(WavEncoder.encode(data));
-  audio.play();
+var duration = 1000; // all time units in ms
+var freq = middleC; // all freq units in kHz
+var gain = 0.2;
+var omega = 2 * Math.PI * freq / sampleRate;
+var samples = new Array(Math.round(duration * sampleRate));
+
+for (var t = 0, T = samples.length; t < T; ++t) {
+  // generate samples in [-1,1]
+  var envelope = gain * 4 * (t + 1) * (T - t) / (T * T);
+  samples[t] = envelope * Math.sin(omega * t);
 }
 
-//==============================================================================
-// 1323050721692.js
+var uri = encodeWav(samples); // encode to a data uri
+var audio = new Audio(uri);
 
-// noise in a loop (broken)
-
-var T = 1000, t = (time % T) / T, dt = dtime / T;
-if (t < dt) { // is true once per second
-  var data = []; // just an array
-  for (var i=0; i<1000; i++) data[i] = 2 * random() - 1;
-  var audio = new Audio(WavEncoder.encode(data));
-  audio.play();
-}
-
-//==============================================================================
-// 1322626006373.js
-
-var range = function (n) {
-  n = Number(n);
-  var result = new Array(n);
-  for (var i = 0; i < n; ++i) {
-    result[i] = i;
-  }
-  return result;
-};
-
-range(10);
+once audio.play(); // equivalent to play(uri)
 

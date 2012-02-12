@@ -68,15 +68,21 @@ Clock.prototype = {
   },
 
   /** 
-   * behavior: callback(elapsedTime) no more often than minDelay.
+   * behavior: callback(elapsedTime, timestep) no more often than minDelay.
+   * @param {function} callback
+   * @param {number} period
    */
   continuouslyDo: function (callback, minDelay) {
     minDelay = minDelay || 0;
 
+    var lastTime = 0;
     var clock = this;
     var task = function () {
       if (clock.running) {
-        callback(Date.now() - clock.beginTime);
+        var time = Date.now() - clock.beginTime;
+        var dtime = time - lastTime;
+        lastTime = time;
+        callback(time, dtime);
         task.scheduled = setTimeout(task, minDelay);
       } else {
         task.scheduled = undefined;
@@ -87,15 +93,28 @@ Clock.prototype = {
   },
 
   /** 
-   * behavior: callback(cycle number) once per cycle, ignoring dropped cycles.
+   * behavior: callback(cycle number) once per cycle.
+   * @param {function} callback
+   * @param {number} period
+   * @param {function} [ondropped=warning]
    */
-  discretelyDo: function (callback, period) {
+  discretelyDo: function (callback, period, ondropped) {
     assert(period > 0, 'bad period: ' + period);
+    ondropped = ondropped || function (cycle) {
+        log('WARNING: dropped cycle ' + cycle);
+    };
 
+    var lastCycle = undefined;
     var clock = this;
     var task = function () {
       if (clock.running) {
         var cycle = Math.round((Date.now() - clock.beginTime) / period);
+        if (lastCycle !== undefined) {
+          for (var i = 1 + lastCycle; i < cycle; ++i) {
+            ondropped(i);
+          }
+        }
+        lastCycle = cycle;
         callback(cycle);
         var nextTime = task.nextTime = clock.beginTime + period * (cycle + 1);
         task.scheduled = setTimeout(task, nextTime - Date.now());

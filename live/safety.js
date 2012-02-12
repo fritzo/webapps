@@ -1,0 +1,1 @@
+../common/safety.js

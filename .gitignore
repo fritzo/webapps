@@ -1,10 +1,10 @@
 temp*
+extern
 compiler
 linter
 build
 release
 *.tbz2
-live/gallery.js
 core
 core.*
 

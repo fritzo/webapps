@@ -8,7 +8,6 @@
  * http://www.opensource.org/licenses/GPL-2.0
  */
 
-importScripts('../common/workerlogger.js');
 importScripts('../common/safety.js');
 importScripts('../common/notesting.js');
 importScripts('../common/rational.js');
@@ -26,9 +25,11 @@ var G;
 var FG;
 
 var energy;
+var massF;
 var massG;
 var massFG;
 var interMassFG;
+var pitchEnergyF;
 var tempoEnergyG;
 var pitchEnergyFG;
 
@@ -62,9 +63,11 @@ var init = function (data) {
   FG = F * G;
 
   energy = new Array(FG);
+  massF = new Array(F);
   massG = new Array(G);
   massFG = new Array(F);
   interMassFG = new Array(F);
+  pitchEnergyF = new Array(F);
   tempoEnergyG = new Array(G);
   pitchEnergyFG = new Array(F);
   for (var f = 0; f < F; ++f) {
@@ -77,7 +80,7 @@ var init = function (data) {
   for (var f1 = 0; f1 < F; ++f1) {
     var distanceRow = distanceFF[f1] = new Array(F);
     for (var f2 = 0; f2 < F; ++f2) {
-      distanceRow[f2] = Rational.distance(freqs[f1], freqs[f2]) / pitchAcuity;
+      distanceRow[f2] = Rational.dissonance(freqs[f1], freqs[f2]) / pitchAcuity;
     }
   }
   interferenceGG = new Array(G);
@@ -86,7 +89,7 @@ var init = function (data) {
     var distanceRow = distanceGG[g1] = new Array(G);
     var interRow = interferenceGG[g1] = new Array(G);
     for (var g2 = 0; g2 < G; ++g2) {
-      distanceRow[g2] = RatGrid.distance(grids[g1], grids[g2]) / tempoAcuity;
+      distanceRow[g2] = RatGrid.dissonance(grids[g1], grids[g2]) / tempoAcuity;
       interRow[g2] = RatGrid.interference2(grids[g1], grids[g2], sharpness);
     }
   }
@@ -95,14 +98,83 @@ var init = function (data) {
   log('initialized in ' + ((Date.now() - profileStart) / 1000) + ' sec');
 };
 
-var computeEnergy = function (mass) {
+// Version 1. Any two voices have compatible rhythm and pitch.
+//
+// E(f,g) = sum g'. distance(g,g'). sum f. mass(f,g')
+//        + sum f'. distance(f,f'). sum g'. inter(g,g') mass(f,g')
+var computeEnergy1 = function (mass) {
 
   assertLength(mass, FG, 'mass');
 
   var f,f1,f2,g,g1,g2,fg;
 
-  // mass vector --> normalized mass matrix,
-  //                 normalized projected mass vector
+  // normalize mass;
+  // marginalize sum f. mass(f,g);
+  // marginalize sum g. mass(f,g)
+  var total = 0;
+  for (fg = 0; fg < FG; ++fg) {
+    total += mass[fg];
+  }
+  assert(total > 0.5, 'unexpectedly low mass: ' + total);
+  var normalize = 1 / total;
+  for (g = 0; g < G; ++g) {
+    massG[g] = 0;
+  }
+  for (f = 0; f < F; ++f) {
+    var massRow = massFG[f];
+    var sum = 0;
+    for (g = 0; g < G; ++g) {
+      var term = massRow[g] = normalize * mass[G * f + g];
+      massG[g] += term;
+      sum += term;
+    }
+    massF[f] = term;
+  }
+
+  // E_tempo(g) = sum g'. distance(g,g'). sum f. mass(f,g')
+  for (g1 = 0; g1 < G; ++g1) {
+    var distanceRow = distanceGG[g1];
+    var sum = 0;
+    for (g2 = 0; g2 < G; ++g2) {
+      sum += massG[g2] * distanceRow[g2];
+    }
+    tempoEnergyG[g1] = sum;
+  }
+
+  // E_pitch(f,g) = sum f'. distance(f,f'). interMass(f',g)
+  for (f1 = 0; f1 < F; ++f1) {
+    var distanceRow = distanceFF[f1];
+    var sum = 0;
+    for (f2 = 0; f2 < F; ++f2) {
+      sum += massF[f2] * distanceRow[f2];
+    }
+    pitchEnergyF[f1] = sum;
+  }
+
+  // E(f,g) = E_tempo(g) + E_pitch(f)
+  for (f = 0; f < F; ++f) {
+    var pitchEnergy = pitchEnergyF[f];
+    for (g = 0; g < G; ++g) {
+      energy[G * f + g] = tempoEnergyG[g] + pitchEnergy;
+    }
+  }
+
+  return energy;
+};
+
+// Version 2. Any two voices have compatible rhythm, and
+//   any two simultaneously occuring voices have compatible pitch.
+//
+// E(f,g) = sum g'. distance(g,g'). sum f. mass(f,g')
+//        + sum f'. distance(f,f'). sum g'. inter(g,g') mass(f,g')
+var computeEnergy2 = function (mass) {
+
+  assertLength(mass, FG, 'mass');
+
+  var f,f1,f2,g,g1,g2,fg;
+
+  // normalize mass;
+  // marginalize sum f. mass(f,g)
   var total = 0;
   for (fg = 0; fg < FG; ++fg) {
     total += mass[fg];
@@ -119,7 +191,7 @@ var computeEnergy = function (mass) {
     }
   }
 
-  // E_tempo(g) = sum g'. (sum f. mass(f,g')) distance(g,g')
+  // E_tempo(g) = sum g'. distance(g,g'). sum f. mass(f,g')
   for (g1 = 0; g1 < G; ++g1) {
     var distanceRow = distanceGG[g1];
     var sum = 0;
@@ -188,7 +260,7 @@ var computeEnergy = function (mass) {
 };
 
 var computePrior = function (amps) {
-  var energy = computeEnergy(amps);
+  var energy = computeEnergy1(amps);
   var temperature = 1; // pitchAcuity,tempoAcuity already control temperature
   return MassVector.boltzmann(energy, temperature);
 };

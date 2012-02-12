@@ -34,7 +34,6 @@
 <script type='text/javascript' src='modernizr.custom.js'></script>
 
 <!-- MIT,GPL2 -->
-<script type='text/javascript' src='../common/logger.js'></script>
 <script type='text/javascript' src='../common/safety.js'></script>
 <script type='text/javascript' src='../common/testing.js'></script>
 <script type='text/javascript' src='../common/rational.js'></script>
@@ -69,6 +68,7 @@ $(function(){
 
 <!---------------------------------------------------------------------------->
 
+<link rel='stylesheet' href='../common/toolbar.css' />
 <style>
 body {
   background-color: black;
@@ -91,70 +91,7 @@ canvas {
 }
 
 .toolbar {
-  position: fixed;
-  right: 0px;
-  bottom: 0px;
   opacity: 0.8;
-}
-.toolbar button,
-.toolbar a,
-.toolbar a:hover,
-.toolbar select,
-.toolbar option {
-  background-color: #444444;
-  color: white;
-  text-decoration: none;
-  font-family: helvetica, verdana, sans;
-  font-size: 16px;
-}
-.toolbar button,
-.toolbar select {
-  margin: 0px;
-  border: solid 2px black;
-  border-radius: 16px;
-  padding-left:  0.7ex;
-  padding-right: 0.7ex;
-  padding-top: 0ex;
-  padding-bottom: 0ex;
-}
-.toolbar option {
-  padding: 0px;
-  margin: 0px;
-}
-.toolbar :hover {
-  background-color: #666666;
-}
-.toolbar .roundRound {
-  border-top-left-radius:     12px;
-  border-bottom-left-radius:  12px;
-  border-top-right-radius:    12px;
-  border-bottom-right-radius: 12px;
-  padding-left:  0.7em;
-  padding-right: 0.7em;
-}
-.toolbar .roundFlat {
-  border-top-left-radius:     12px;
-  border-bottom-left-radius:  12px;
-  border-top-right-radius:    4px;
-  border-bottom-right-radius: 4px;
-  padding-left:  0.7em;
-  padding-right: 0.5em;
-}
-.toolbar .flatRound {
-  border-top-left-radius:     4px;
-  border-bottom-left-radius:  4px;
-  border-top-right-radius:    12px;
-  border-bottom-right-radius: 12px;
-  padding-left:  0.5em;
-  padding-right: 0.7em;
-}
-.toolbar .flatFlat {
-  border-top-left-radius:     4px;
-  border-bottom-left-radius:  4px;
-  border-top-right-radius:    4px;
-  border-bottom-right-radius: 4px;
-  padding-left:  0.5em;
-  padding-right: 0.5em;
 }
 
 #about {
@@ -215,6 +152,13 @@ canvas {
   border-color: #462;
 }
 
+/*
+.fb-comments,
+.fb-comments iframe[style] {
+  width: 100% !important;
+}
+*/
+
 #canvas { z-index: 0; }
 #showToolbar { z-index: 1; }
 #toolbar { z-index: 2; }
@@ -224,7 +168,22 @@ canvas {
 </head>
 <!----------------------------------------------------------------------------->
 <body>
+
+<!--
+<div id="fb-root"></div>
+<script>
+(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) return;
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));
+</script>
+-->
+
 <canvas id='canvas'></canvas>
+
 <div class='toolbar' id='toolbar'>
   <button id='showAbout' class='roundFlat' title='about The Rational Keyboard'><b>?</b></button></a><!--
   --><a class="a2a_dd" href="http://www.addtoany.com/share_save?linkurl=http%3A%2F%2Ffritzo.org%2Fkeys&amp;linkname=The%20Rational%20Keyboard" title='share'><button class='flatFlat'><b>+</b></button></a><!--
@@ -244,14 +203,22 @@ canvas {
 <div id='about'>
   <div id='aboutShadow'></div>
   <div id='aboutText'>
+
     <p>
     The Rational Keyboard is a browser app to play with harmony on the rational number line.
     Imagine a piano with infinitely many keys, one for each rational number, and the keys move around and resize based on what sounds good.
     </p>
+
     <p>
-    Audio is synthesized in background Web Workers and played with HTML5 Audio objects,
+    Audio is synthesizes audio in background Web Workers and played with HTML5 Audio objects,
     and the interactive visualizations use a 2D HTML5 Canvas.
-    Audio seems to work best in recent Firefox and Chrome releases.
+    Check out the source at <a href="http://github.com/fritzo/rationalkeyboard">github</a>, or just grab the <a href="http://github.com/fritzo/wavencoderjs">audio encoder</a> for your own apps.
+    </p>
+
+    <p>
+    Audio seems to work best in recent Firefox and Chrome releases,
+    but HTML5 audio is still a young technology.
+    Sometimes pausing helps to unglitch audio.
     </p>
 
     <p>
@@ -262,6 +229,10 @@ canvas {
 <img src="http://api.flattr.com/button/flattr-badge-large.png" alt="Flattr this" title="Flattr this" border="0" /></a>
       -->
     </p>
+
+    <!--
+    <div class="fb-comments" data-href="http://fritzo.org/keys" data-num-posts="5" data-width="470"></div>
+    -->
   </div>
 </div>
 

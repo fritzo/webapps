@@ -7,7 +7,6 @@
  * http://www.opensource.org/licenses/mit-license.php
  */
 
-importScripts('../common/workerlogger.js');
 importScripts('../common/safety.js');
 importScripts('../common/wavencoder.js');
 
@@ -20,7 +19,7 @@ var init = function (data) {
   self.centerFreq = self.freqs[(self.freqs.length - 1) / 2];
   self.T = data['numSamples'];
 
-  self.wavEncoder = new WavEncoder(data['numSamples']);
+  self.wavEncoder = new WavEncoder(data['numSamples'], {clip:false});
   self.samples = new Array(self.T);
 
   var tasks = data['tasks'];

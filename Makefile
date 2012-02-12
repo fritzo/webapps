@@ -1,21 +1,56 @@
 
 #-------------------------------------------------------------------------------
+# external libraries
+
+codemirror: FORCE
+	( test -e extern || mkdir extern ) && \
+	rm -rf extern/CodeMirror-* && \
+	( test -e /tmp/codemirror.zip || \
+	  wget http://codemirror.net/codemirror.zip -O /tmp/codemirror.zip ) && \
+	unzip /tmp/codemirror.zip -d extern/ && \
+	( cd extern; ln -sf CodeMirror-* codemirror ) && \
+	sed -i 's/"finally": B,/"finally": B, "once": B, "nonce": B,/g' \
+	  extern/codemirror/mode/javascript/javascript.js # HACK
+
+audiolibjs: FORCE
+	( test -e extern || mkdir extern ) && \
+	rm -rf extern/*-audiolib.js-* && \
+	( test -e /tmp/audiolibjs.zip || \
+	  wget https://github.com/jussi-kalliokoski/audiolib.js/zipball/master \
+	    -O /tmp/audiolibjs.zip ) && \
+	unzip /tmp/audiolibjs.zip -d extern/ && \
+	( cd extern; ln -sf *-audiolib.js-* audiolibjs )
+
+extern: codemirror audiolibjs
+
+#-------------------------------------------------------------------------------
 # export to public git repository
 
-R = ~/rationalkeyboard/keys
+LV = ~/livecoder.net/live
+livecoder.net: FORCE
+	rm -rf $(LV)
+	cp -rL live $(LV)
+	mv $(LV)/release.manifest $(LV)/cache.manifest
+	rm -rf $(LV)/temp*
+
+RK = ~/rationalkeyboard/keys
 rationalkeyboard: FORCE
-	rm -rf $R
-	cp -rL keys $R
-	mv $R/release.manifest $R/cache.manifest
+	rm -rf $(RK)
+	cp -rL keys $(RK)
+	mv $(RK)/release.manifest $(RK)/cache.manifest
 	for js in $$(cat keys/index.html keys/synthworker.js | \
-			grep -o 'common\/.*\.js');\
-		do cp $$js $R/; \
+			grep -o 'common\/.*\.\(js\|css\)');\
+		do cp $$js $(RK)/; \
 	done
-	sed -i 's/\.\.\/common\///g' $R/*.html $R/*.js $R/cache.manifest
-	sed -i 's/http:\/\/fritzo\.org\/keys/http:\/\/fritzo\.org\/keys\n * http:\/\/github.com\/fritzo\/rationalkeyboard/g' $R/*.js
-	sed -i 's/ http:\/\/fritzo\.org\/keys/ http:\/\/fritzo\.org\/keys\n  http:\/\/github.com\/fritzo\/rationalkeyboard/g' $R/*.html
-	rm -rf $R/temp*
-	sed -i 's/NETWORK: #DEBUG/CACHE:/g' $R/cache.manifest
+	sed -i 's/\.\.\/common\///g' $(RK)/*.html $(RK)/*.js $(RK)/cache.manifest
+	sed -i 's/http:\/\/fritzo\.org\/keys/http:\/\/fritzo\.org\/keys\n * http:\/\/github.com\/fritzo\/rationalkeyboard/g' $(RK)/*.js
+	sed -i 's/ http:\/\/fritzo\.org\/keys/ http:\/\/fritzo\.org\/keys\n  http:\/\/github.com\/fritzo\/rationalkeyboard/g' $(RK)/*.html
+	rm -rf $(RK)/temp*
+	sed -i 's/NETWORK: #DEBUG/CACHE:/g' $(RK)/cache.manifest
+
+WE = ~/wavencoderjs.git
+wavencoder:
+	cp common/wavencoder.js $(WE)/
 
 #-------------------------------------------------------------------------------
 # build & release tools
@@ -64,25 +99,10 @@ LINT = java -jar linter/*/*.jar --indent 2
 lint: FORCE
 	$(lint) common
 
-
-#-------------------------------------------------------------------------------
-# live
-
-build/live.min.js: build FORCE
-	@echo 'TODO add exports to live.min to support ui javascript'
-	@echo '  (or just clean up live/index.html)'
-	@# $(COMPILE2) \
-	  --js=common/jquery.js \
-	  --js=common/jquery.timeago.js \
-	  --js=common/jquery.caret.js \
-	  --js=common/modernizr.js \
-	  --js=common/safety.js \
-	  --js=common/wavencoder.js \
-	  --js=live/live.js \
-	  --js_output_file=build/live.min.js
-
-live.min: FORCE
-	build/live.min.js
+common/codemirror.min.js: codemirror
+	$(COMPILE1) \
+	  --js=extern/codemirror/lib/codemirror.js \
+	  --js_output_file=common/codemirror.min.js
 
 #-------------------------------------------------------------------------------
 # keys
@@ -156,7 +176,7 @@ clean: FORCE
 	rm -f keys.tbz2
 
 cleaner: clean FORCE
-	rm -rf compiler linter
+	rm -rf extern compiler linter
 
 FORCE:
 

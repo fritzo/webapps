@@ -8,7 +8,6 @@
  * http://www.opensource.org/licenses/GPL-2.0
  */
 
-importScripts('../common/workerlogger.js');
 importScripts('../common/safety.js');
 importScripts('../common/wavencoder.js');
 

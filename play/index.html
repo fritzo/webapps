@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
-  Splitband - a musical instrument.
-  http://fritzo.org/splitband
+  Whence Music?
+  http://whencemusic.net
 
   Copyright (c) 2012, Fritz Obermeyer
   Dual licensed under the MIT or GPL Version 2 licenses.
@@ -10,7 +10,7 @@
 -->
 <html>
 <head>
-<title>Splitband</title>
+<title>Whence Music?</title>
 
 <!-- MIT,GPL2 -->
 <script type='text/javascript' src='../common/jquery.min.js'></script>
@@ -24,32 +24,27 @@
 <script type='text/javascript' src='../common/arraytools.js'></script>
 <script type='text/javascript' src='../common/massvector.js'></script>
 <script type='text/javascript' src='../common/wavencoder.js'></script>
-<script type='text/javascript' src='splitband.js'></script>
+<!--
+<script type='text/javascript' src='../common/synthesis.js'></script>
+-->
+<script type='text/javascript' src='play.js'></script>
 
 <style>
 
 body { background-color: black; }
 
-#tonePlot {
+#canvas {
   position: fixed;
   width: 100%;
+  height: 100%;
   left: 0%;
-  height: 50%;
   top: 0%;
-}
-#phasePlot {
-  position: fixed;
-  width: 100%;
-  left: 0%;
-  height: 50%;
-  top: 50%;
 }
 
 </style>
 </head>
 <body>
-<canvas id='tonePlot'></canvas>
-<canvas id='phasePlot'></canvas>
+<canvas id='canvas'></canvas>
 </body>
 </html>
 
