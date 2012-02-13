@@ -425,6 +425,10 @@ body {
   font-family: helvetica, verdana, sans;
 }
 
+.CodeMirror-completions select {
+  color: #fff;
+  background: #333;
+}
 body {
   width:  100%;
   height: 100%;
@@ -440,7 +444,9 @@ canvas {
 pre,
 code,
 textarea,
-.CodeMirror {
+.CodeMirror,
+.CodeMirror-dialog input,
+.CodeMirror-completions select {
   font-family:
     /* serif */
     Courier,
@@ -659,8 +665,12 @@ dt {
 /* back-to-front */
 canvas { z-index: 0; }
 
+/* .CodeMirror { z-index: 10; } */
+/* .CodeMirror-completions { z-index: 10; } */
 #source { z-index: 10; }
 #log { z-index: 11; } /* in front of source, but usually hidden */
+
+/* .CodeMirror-dialog { z-index: 15; } */
 
 #gallery { z-index: 19; }
 #toolbar, #showToolbar { z-index: 20; }
