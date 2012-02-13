@@ -744,12 +744,11 @@ canvas { z-index: 0; }
 
   vars._        A place to put persistent data
 
-  run._      A place to put functions that run continuously
+  run._         A place to put functions that run continuously
 
-  once {...},   Once-wrapped code is evaluated only on the first compile.
-  nonce {...}   Thereafter, 'once' degenerates to 'nonce'.
-                Switch 'nonce' -&gt; 'once' to compile again.
-                (this feature partially replaces a REPL + history)
+  once {...},   'once f()' evaluates f() once, then degenerates to 'nonce f()'
+  nonce {...}   To evaluate again, switch 'nonce' back to 'once'
+                (this feature partially replaces a <a href='http://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop'>REPL + history</a>)
 
   clear()       Clears everything: vars, run, setTimout tasks, canvas
 <!--
@@ -757,13 +756,24 @@ canvas { z-index: 0; }
 -->
 <b>Coding Tools</b>
 
-  help(-)       Looks inside any object/function (useful for hacking :)
+  help(-)       Looks inside any object/function (great for hacking :)
 
-  print(-),     Prints messages to log area
+  print(-),     Print messages to log area
   error(-)
 
-  assert(-,-)   assert(condition, message) throws if 'condition' is false
-  TODO(-)       TODO(message) is a placeholder for unfinished code
+  TODO(-)       TODO(optionalMessage) is a placeholder for unfinished code
+
+  assert,       Assertions throw errors unless some condition is met
+  assertEval,   (see help(-) for details)
+  assertEqual,
+  assertLength
+
+<b>Graphics (using <a href='https://developer.mozilla.org/en/HTML/Canvas'>HTML5 canvas</a>)</b>
+
+  context       A <a href='https://developer.mozilla.org/en/Canvas_tutorial'>2D canvas context</a>
+
+  mouseX,       Current mouse coordinates in pixels
+  mouseY
 
 <b>Audio (using <a href='https://developer.mozilla.org/En/HTML/Element/Audio'>HTML5 audio</a>)</b>
 
@@ -775,17 +785,10 @@ canvas { z-index: 0; }
                 (see examples or try help(tone) for details)
 
   noise(-)      Generates and encodes broad or narrow band noise
-                (see examples or try help(tone) for details)
+                (see examples or try help(noise) for details)
 
   sampleRate,   Constants in kHz (all time units are ms or kHz)
   middleC
-
-<b>Graphics (using <a href='https://developer.mozilla.org/en/HTML/Canvas'>HTML5 canvas</a>)</b>
-
-  context       A <a href='https://developer.mozilla.org/en/Canvas_tutorial'>2D canvas context</a>
-
-  mouseX,       Current mouse coordinates in pixels
-  mouseY
 
 <b>Keyboard Shortcuts</b>
 
