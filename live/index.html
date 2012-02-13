@@ -335,6 +335,11 @@ $(window).keydown(function (event) {
 
 $(function() {
 
+  if (document.location.hostname.toLowerCase() !== 'livecoder.net') {
+    document.title = ( document.location.hostname
+                     + document.location.pathname ).replace(/\/$/,'');
+  }
+
   // build editor
 
   var hideOverlays = function () {
