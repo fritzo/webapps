@@ -1,7 +1,3 @@
-
-// this was forked from codemirror-2.2.1/mode/javascript/javascript.js
-// TODO highlight livecoder-only keywords & variables
-
 CodeMirror.defineMode("javascript", function(config, parserConfig) {
   var indentUnit = config.indentUnit;
   var jsonMode = parserConfig.json;
@@ -13,7 +9,7 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
     var A = kw("keyword a"), B = kw("keyword b"), C = kw("keyword c");
     var operator = kw("operator"), atom = {type: "atom", style: "atom"};
     return {
-      "if": A, "while": A, "with": A, "else": B, "do": B, "try": B, "finally": B, "once": B, "nonce": B,
+      "if": A, "while": A, "with": A, "else": B, "do": B, "try": B, "finally": B,
       "return": C, "break": C, "continue": C, "new": C, "delete": C, "throw": C,
       "var": kw("var"), "const": kw("var"), "let": kw("var"),
       "function": kw("function"), "catch": kw("catch"),

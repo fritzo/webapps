@@ -10,7 +10,7 @@ var radius = 8; // brush radius
 context.fillStyle = 'rgba(255,255,255,0.02)'; // brush color
 context.strokeStyle = 'green'; // line color
 
-always.draw = airbrush ? (function () {
+run.draw = airbrush ? (function () {
 
   context.beginPath();
   context.arc(mouseX, mouseY, radius, 2 * Math.PI, false);
@@ -257,7 +257,7 @@ var X = function (a) { return (0.5 + Math.sin(2*a) / 3); };
 var Y = function (a) { return (0.5 + Math.sin(3*a) / 3); };
 var Z = function (a) { return (0.5 + Math.sin(8*a) / 2); };
 
-always.juggle = function () {
+run.juggle = function () {
   var T = 1000, t = (Date.now() % T) / T;
 
   context.clearRect(0, 0, innerWidth, innerHeight);

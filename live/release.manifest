@@ -1,11 +1,10 @@
 CACHE MANIFEST
-# version 2011-02-09-20
+# version 2011-02-13
 
 CACHE:
 
 # Code
 index.html
-cm-live.css
 livecoder.js
 toolbar.css
 jquery.min.js
@@ -13,9 +12,9 @@ jquery.timeago.js
 safety.js
 wavencoder.js
 codemirror.min.js
-searchcursor.js
 codemirror.css
 cm-live.js
+cm-live.css
 
 # Images
 favicon.ico

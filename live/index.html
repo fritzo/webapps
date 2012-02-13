@@ -26,7 +26,6 @@
 
 <!-- MIT -->
 <script src='codemirror.min.js'></script>
-<script src='searchcursor.js'></script>
 <script src='cm-live.js'></script>
 
 <!-- MIT,GPL2 -->
@@ -98,7 +97,7 @@ ui.listScripts = function () {
 ui.buildScriptLink = function (key) {
 
   var create = function (tag) { return $(document.createElement(tag)); };
-  
+
   var tr = create('tr');
 
   var fullSource = $.trim(localStorage.getItem(key));
@@ -415,8 +414,8 @@ $(function() {
 <!---------------------------------------------------------------------------->
 
 <link rel='stylesheet' href='toolbar.css' />
-<link rel='stylesheet' href='cm-live.css' />
 <link rel='stylesheet' href='codemirror.css' />
+<link rel='stylesheet' href='cm-live.css' />
 <style>
 
 body {
@@ -433,7 +432,7 @@ body {
 }
 
 canvas {
-  position: fixed; 
+  position: fixed;
   top: 0px;
   left: 0px;
 }
@@ -468,7 +467,7 @@ textarea,
   border: 0px;
   outline: none;
   resize: none;
-  overflow: auto; 
+  overflow: auto;
 }
 #source,
 .CodeMirror {
@@ -497,6 +496,10 @@ textarea,
 
   color: #ccffcc;
   background-color: rgba(0,0,0,0);
+}
+.CodeMirror-dialog,
+.CodeMirror-completions {
+  text-shadow: none;
 }
 #log {
   height: 10ex;
@@ -631,7 +634,7 @@ dt {
   opacity: 1;
   display: none; /* initially */
 }
-#shareBox textarea {  
+#shareBox textarea {
   overflow: hidden;
   height: 5.2ex;
 
@@ -728,16 +731,16 @@ canvas { z-index: 0; }
 
 <b>Language Extensions</b>
 
-  vars...       A place to put persistent data
+  vars._        A place to put persistent data
 
-  always...     A place to put functions to be continuously called
+  run._      A place to put functions that run continuously
 
   once {...},   Once-wrapped code is evaluated only on the first compile.
   nonce {...}   Thereafter, 'once' degenerates to 'nonce'.
                 Switch 'nonce' -&gt; 'once' to compile again.
                 (this feature partially replaces a REPL + history)
 
-  clear()       Clears everything: vars, always, setTimout tasks, canvas
+  clear()       Clears everything: vars, run, setTimout tasks, canvas
 <!--
   using(url)    Loads &amp; caches a remote script (useful for libraries)
 -->
@@ -749,8 +752,9 @@ canvas { z-index: 0; }
   error(-)
 
   assert(-,-)   assert(condition, message) throws if 'condition' is false
+  TODO(-)       TODO(message) is a placeholder for unfinished code
 
-<b>Audio (using HTML5 audio elements)</b>
+<b>Audio (using <a href='https://developer.mozilla.org/En/HTML/Element/Audio'>HTML5 audio</a>)</b>
 
   encodeWav(-)  Encodes an array of [-1,1]-valued samples -&gt; wav data uri
 
@@ -765,22 +769,30 @@ canvas { z-index: 0; }
   sampleRate,   Constants in kHz (all time units are ms or kHz)
   middleC
 
-<b>Graphics (using HTML5 canvas)</b>
+<b>Graphics (using <a href='https://developer.mozilla.org/en/HTML/Canvas'>HTML5 canvas</a>)</b>
 
-  context       A 2D canvas context
+  context       A <a href='https://developer.mozilla.org/en/Canvas_tutorial'>2D canvas context</a>
 
   mouseX,       Current mouse coordinates in pixels
   mouseY
 
 <b>Keyboard Shortcuts</b>
 
-  ESCAPE        pause/continue compiling code
-                (useful for atomic modifications)
-
-  CTRL+S        save code locally
-  CTRL+O        show list of local scripts
-
   F1            show/hide help (this message)
+
+  ESCAPE        pause/continue compiling code
+                (useful for atomic edits)
+
+  CTRL-S        save code locally                 = CMD-S
+  CTRL-O        open local gallery of codes       = CMD-O
+
+  CTRL-SPACE    Autocomplete                      = CMD-SPACE
+
+  CTRL-F        Start searching                   = CMD-F
+  CTRL-G        Find next                         = CMD-G
+  SHIFT-CTRL-G  Find previous                     = SHIFT-CMD-G
+  SHIFT-CTRL-F  Replace                           = CMD-OPTION-F
+  SHIFT-CTRL-R  Replace all                       = SHIFT-CMD-OPTION-F
 
 -------------------------------------------------------------------------
 

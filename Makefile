@@ -1,38 +1,5 @@
 
 #-------------------------------------------------------------------------------
-# external libraries
-
-codemirror: FORCE
-	( test -e extern || mkdir extern ) && \
-	rm -rf extern/CodeMirror-* && \
-	( test -e /tmp/codemirror.zip || \
-	  wget http://codemirror.net/codemirror.zip -O /tmp/codemirror.zip ) && \
-	unzip /tmp/codemirror.zip -d extern/ && \
-	( cd extern; ln -sf CodeMirror-* codemirror ) && \
-	sed -i 's/"finally": B,/"finally": B, "once": B, "nonce": B,/g' \
-	  extern/codemirror/mode/javascript/javascript.js # HACK
-
-audiolibjs: FORCE
-	( test -e extern || mkdir extern ) && \
-	rm -rf extern/*-audiolib.js-* && \
-	( test -e /tmp/audiolibjs.zip || \
-	  wget https://github.com/jussi-kalliokoski/audiolib.js/zipball/master \
-	    -O /tmp/audiolibjs.zip ) && \
-	unzip /tmp/audiolibjs.zip -d extern/ && \
-	( cd extern; ln -sf *-audiolib.js-* audiolibjs )
-
-diff_match_patch: FORCE
-	( test -e extern || mkdir extern ) && \
-	rm -rf extern/diff_match_patch* && \
-	( test -e /tmp/diff_match_patch.zip || \
-	  wget http://google-diff-match-patch.googlecode.com/files/diff_match_patch_20120106.zip \
-	    -O /tmp/diff_match_patch.zip ) && \
-	unzip /tmp/diff_match_patch.zip -d extern/ && \
-	( cd extern; ln -sf diff_match_patch_*/javascript/diff_match_patch.js )
-
-extern: codemirror audiolibjs diff_match_patch
-
-#-------------------------------------------------------------------------------
 # export to public git repository
 
 LV = ~/livecoder.net/live
@@ -60,6 +27,37 @@ rationalkeyboard: FORCE
 WE = ~/wavencoderjs.git
 wavencoder:
 	cp common/wavencoder.js $(WE)/
+
+#-------------------------------------------------------------------------------
+# external libraries
+
+codemirror: FORCE
+	( test -e extern || mkdir extern ) && \
+	rm -rf extern/CodeMirror-* && \
+	( test -e /tmp/codemirror.zip || \
+	  wget http://codemirror.net/codemirror.zip -O /tmp/codemirror.zip ) && \
+	unzip /tmp/codemirror.zip -d extern/ && \
+	( cd extern; ln -sf CodeMirror-* codemirror )
+
+audiolibjs: FORCE
+	( test -e extern || mkdir extern ) && \
+	rm -rf extern/*-audiolib.js-* && \
+	( test -e /tmp/audiolibjs.zip || \
+	  wget https://github.com/jussi-kalliokoski/audiolib.js/zipball/master \
+	    -O /tmp/audiolibjs.zip ) && \
+	unzip /tmp/audiolibjs.zip -d extern/ && \
+	( cd extern; ln -sf *-audiolib.js-* audiolibjs )
+
+diff_match_patch: FORCE
+	( test -e extern || mkdir extern ) && \
+	rm -rf extern/diff_match_patch* && \
+	( test -e /tmp/diff_match_patch.zip || \
+	  wget http://google-diff-match-patch.googlecode.com/files/diff_match_patch_20120106.zip \
+	    -O /tmp/diff_match_patch.zip ) && \
+	unzip /tmp/diff_match_patch.zip -d extern/ && \
+	( cd extern; ln -sf diff_match_patch_*/javascript/diff_match_patch.js )
+
+extern: codemirror audiolibjs diff_match_patch
 
 #-------------------------------------------------------------------------------
 # build & release tools
@@ -108,10 +106,24 @@ LINT = java -jar linter/*/*.jar --indent 2
 lint: FORCE
 	$(lint) common
 
-common/codemirror.min.js: codemirror
+#-------------------------------------------------------------------------------
+# livecoder
+
+live-min: codemirror compiler FORCE
+	cat extern/codemirror/lib/codemirror.css \
+	    extern/codemirror/lib/util/dialog.css \
+	    extern/codemirror/lib/util/simple-hint.css \
+	  > live/codemirror.css
+	cp extern/codemirror/mode/javascript/javascript.js \
+	   live/cm-javascript.js # just for reference; we fork as cm-live.js
 	$(COMPILE1) \
 	  --js=extern/codemirror/lib/codemirror.js \
-	  --js_output_file=common/codemirror.min.js
+	  --js=extern/codemirror/lib/util/dialog.js \
+	  --js=extern/codemirror/lib/util/searchcursor.js \
+	  --js=extern/codemirror/lib/util/search.js \
+	  --js=extern/codemirror/lib/util/simple-hint.js \
+	  --js=extern/codemirror/lib/util/javascript-hint.js \
+	  --js_output_file=live/codemirror.min.js
 
 #-------------------------------------------------------------------------------
 # keys

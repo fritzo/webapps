@@ -9,15 +9,25 @@
  *
  * Requires:
  * - jQuery
- * - CodeMirror2
  * - a textarea for source editing
- * - a textarea for error logging
- * - a butten for status indication
+ * - a textarea for print/warn/error logging
+ * - a button for status indication
  * - a canvas for 2d drawing
+ * - CodeMirror2 (see compression api http://codemirror.net/doc/compress.html)
+ *   - lib/util/simple-hint.js
+ *   - lib/util/javascript-hint.js
+ *   - lib/util/searchcursor.js
+ *   - lib/util/search.js
+ *   - lib/util/dialog.js
+ *   - lib/util/dialog.css
+ *   - lib/util/simple-hint.css
+ *   - lib/codemirror.js
+ *   - mode/javascript/javascript.js (modified for live coder)
  *
  * Provides:
  * - an object 'live'
  * - a few global variables useful for live coding
+ *   TODO remove all globals
  *
  * Copyright (c) 2012, Fritz Obermeyer
  * Licensed under the MIT license:
@@ -29,8 +39,8 @@
 
 var live = (function(){
 
-  var alwaysPollMs = 250;
-  var alwaysLoopMs = 1;
+  var runPollMs = 250;
+  var runLoopMs = 1;
 
   var live = {};
 
@@ -53,12 +63,11 @@ var live = (function(){
       workTime: 10, // very short
       workDelay: 300, // default
       pollinterval: 300, // long
-      // TODO get hinting working
-      //extraKeys: {
-      //  'Ctrl-N': CodeMirror.javascriptHint,
-      //  'Ctrl-P': CodeMirror.javascriptHint,
-      //}
-      none: undefined
+      extraKeys: {
+        'Ctrl-Space': function (cm) {
+          CodeMirror.simpleHint(cm, CodeMirror.javascriptHint);
+        }
+      }
     });
 
     // this is required for full screen
@@ -86,7 +95,7 @@ var live = (function(){
       "context.fillStyle = '#55aa55';",
       "context.textAlign = 'center';",
       "",
-      "always.hello = function () {",
+      "run.hello = function () {",
       "",
       "  var x = 1/8 * mouseX + 3/8 * innerWidth;",
       "  var y = 1/8 * mouseY + 3/8 * innerHeight;",
@@ -144,7 +153,7 @@ var live = (function(){
 
     var compiling = false;
     var vars = {};
-    var always = {};
+    var run = {};
 
     var compileHandlers = [];
     live.oncompile = function (handler) {
@@ -163,7 +172,7 @@ var live = (function(){
         // alternatively, use jQuery.globalEval(...)
         compiled = globalEval(
             '"use strict";\n' +
-            '(function(vars,always,clear,setTimeout,help,print,error,context){\n' +
+            '(function(vars,run,clear,setTimeout,help,print,error,context){\n' +
                 source
                   .replace(/\bonce\b/g, 'if(1)')
                   .replace(/\bnonce\b/g, 'if(0)') +
@@ -184,7 +193,7 @@ var live = (function(){
       _success();
 
       try {
-        compiled(vars, always, _clear, _setTimeout, _help, _print, _error, _context2d);
+        compiled(vars, run, _clear, _setTimeout, _help, _print, _error, _context2d);
       } catch (err) {
         _error(err);
         return;
@@ -215,30 +224,30 @@ var live = (function(){
       for (var key in vars) {
         delete vars[key];
       }
-      for (var key in always) {
-        delete always[key];
+      for (var key in run) {
+        delete run[key];
       }
     };
 
-    var alwaysTask = function () {
-      if ($.isEmptyObject(always)) {
-        setTimeout(alwaysTask, alwaysPollMs);
+    var runTask = function () {
+      if ($.isEmptyObject(run)) {
+        setTimeout(runTask, runPollMs);
       } else {
-        for (var key in always) {
+        for (var key in run) {
           try {
-            always[key]();
+            run[key]();
           }
           catch (err) {
             _error(err);
           }
         }
-        setTimeout(alwaysTask, alwaysLoopMs);
+        setTimeout(runTask, runLoopMs);
       }
     };
 
     _startAlways = function () {
       _startAlways = function () {};
-      alwaysTask();
+      runTask();
     };
 
   })();
@@ -356,6 +365,7 @@ var live = (function(){
       _context2d = undefined;
     }
 
+    // TODO restrict to canvas, allowing for multiple editors
     $(document).mousemove(function(e){
           window.mouseX = e.pageX;
           window.mouseY = e.pageY;
@@ -386,6 +396,7 @@ var live = (function(){
 // once{...} evaluates once, then decays to the inert nonce{...}
 // var live = {}; // a place store variables while live coding
 
+// TODO restrict to canvas, allowing for multiple editors
 // Graphics
 var mouseX = 0; // mouse coords in pixels
 var mouseY = 0;
