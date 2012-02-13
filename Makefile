@@ -21,7 +21,16 @@ audiolibjs: FORCE
 	unzip /tmp/audiolibjs.zip -d extern/ && \
 	( cd extern; ln -sf *-audiolib.js-* audiolibjs )
 
-extern: codemirror audiolibjs
+diff_match_patch: FORCE
+	( test -e extern || mkdir extern ) && \
+	rm -rf extern/diff_match_patch* && \
+	( test -e /tmp/diff_match_patch.zip || \
+	  wget http://google-diff-match-patch.googlecode.com/files/diff_match_patch_20120106.zip \
+	    -O /tmp/diff_match_patch.zip ) && \
+	unzip /tmp/diff_match_patch.zip -d extern/ && \
+	( cd extern; ln -sf diff_match_patch_*/javascript/diff_match_patch.js )
+
+extern: codemirror audiolibjs diff_match_patch
 
 #-------------------------------------------------------------------------------
 # export to public git repository
