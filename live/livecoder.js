@@ -4,15 +4,14 @@
  * http://github.com/fritzo/livecoder.net
  *
  * Livecoder is toolset to make browser-based javascript live coding easy.
- * It includes a language extension, a live coding editor, a task scheduler,
- * and a few math/graphics/audio tools for live coding of art.
+ * It includes a language extension, and a live coding editor.
  *
  * Requires:
- * - jQuery
  * - a textarea for source editing
  * - a textarea for print/warn/error logging
  * - a button for status indication
  * - a canvas for 2d drawing
+ * - jQuery
  * - CodeMirror2 (see compression api http://codemirror.net/doc/compress.html)
  *   - lib/util/simple-hint.js
  *   - lib/util/javascript-hint.js
@@ -22,20 +21,15 @@
  *   - lib/util/dialog.css
  *   - lib/util/simple-hint.css
  *   - lib/codemirror.js
- *   - mode/javascript/javascript.js (modified for live coder)
+ *   - mode/javascript/javascript.js (modified for livecoder)
  *
  * Provides:
  * - an object 'live'
- * - a few global variables useful for live coding
- *   TODO remove all globals
  *
  * Copyright (c) 2012, Fritz Obermeyer
  * Licensed under the MIT license:
  * http://www.opensource.org/licenses/mit-license.php
  */
-
-//------------------------------------------------------------------------------
-// Live module
 
 var live = (function(){
 
@@ -78,7 +72,6 @@ var live = (function(){
     _codemirror.setValue(args.initSource || live.logo);
 
     _$status.css('background-color', 'green');
-    //css('color', '#aaffaa') // TODO XXX;
 
     _initGraphics(args.canvas2d);
 
@@ -172,7 +165,10 @@ var live = (function(){
         // alternatively, use jQuery.globalEval(...)
         compiled = globalEval(
             '"use strict";\n' +
-            '(function(vars,run,clear,setTimeout,help,print,error,context){\n' +
+            '(function(' +
+                  'vars, run, clear, setTimeout,' +
+                  'help, print, error, context' +
+                '){\n' +
                 source
                   .replace(/\bonce\b/g, 'if(1)')
                   .replace(/\bnonce\b/g, 'if(0)') +
@@ -193,7 +189,9 @@ var live = (function(){
       _success();
 
       try {
-        compiled(vars, run, _clear, _setTimeout, _help, _print, _error, _context2d);
+        compiled(
+            vars, run, _clear, _setTimeout,
+            _help, _print, _error, _context2d);
       } catch (err) {
         _error(err);
         return;
@@ -298,15 +296,12 @@ var live = (function(){
   };
 
   var _help = function (o) {
-    if (o === undefined) {
-      _print('try help(someFunction), or see the help window');
-    } else {
-      o = o || help;
-      _print(('help' in o ? o.help + '\n\n' : '')
-          + _dir(o) + '\n\n'
-          + o.toString());
-    }
+    o = o || _help;
+    _print(('help' in o ? o.help + '\n\n' : '')
+        + _dir(o) + '\n\n'
+        + o.toString());
   };
+  _help.help = 'try help(someFunction), or see the help window';
 
   //--------------------------------------------------------------------------
   // Using external scripts
@@ -347,6 +342,8 @@ var live = (function(){
   // Graphics
 
   var _context2d;
+  window.mouseX = 0;
+  window.mouseY = 0;
 
   var _initGraphics = function (canvas2d) {
 
@@ -365,7 +362,6 @@ var live = (function(){
       _context2d = undefined;
     }
 
-    // TODO restrict to canvas, allowing for multiple editors
     $(document).mousemove(function(e){
           window.mouseX = e.pageX;
           window.mouseY = e.pageY;
@@ -387,128 +383,6 @@ var live = (function(){
 
     none: undefined,
   };
+
 })();
-
-//------------------------------------------------------------------------------
-// Global tools for livecoding
-
-// Time - units are milliseconds and kHz
-// once{...} evaluates once, then decays to the inert nonce{...}
-// var live = {}; // a place store variables while live coding
-
-// TODO restrict to canvas, allowing for multiple editors
-// Graphics
-var mouseX = 0; // mouse coords in pixels
-var mouseY = 0;
-
-//------------------------------------------------------------------------------
-// Audio (mono 16bit 22050 Hz -- hey, it's just a browser)
-
-var sampleRate = WavEncoder.defaults.sampleRateHz / 1000; // in kHz
-var middleC = 0.261625565; // in kHz
-
-var encodeWav = function (samples) {
-  assert(samples instanceof Array, 'bad samples in encodeWav(-)');
-  return WavEncoder.encode(samples);
-};
-
-var play = function (uri, volume) {
-  assert(typeof uri === 'string', 'bad data uri in play(-)');
-  var audio = new Audio(uri);
-  if (volume !== undefined) audio.volume = volume;
-  audio.play();
-};
-
-var tone = function (args) {
-
-  var duration = args.duration;
-  var frequency = args.frequency;
-  var gain = args.gain || 1;
-  assert(duration > 0, 'bad args.duration: ' + duration);
-  assert(frequency > 0, 'bad args.frequency: ' + duration);
-
-  var numSamples = Math.floor(duration * sampleRate);
-  var samples = new Array(numSamples);
-
-  gain *= 1 / numSamples;
-  var omega = 2 * Math.PI * frequency / sampleRate;
-  var sin = Math.sin;
-  var sqrt = Math.sqrt;
-
-  for (var t = 0; t < numSamples; ++t) {
-    samples[t] = sin(omega * t) * (numSamples - t) * gain;
-  }
-
-  return encodeWav(samples);
-};
-
-tone.help = [
-"// Generate and encode a linearly-ramped sine wave:",
-"uri = tone({,      // returns a wave data uri",
-"    frequency:_,   // frequency in kHz",
-"    duration:_,    // duration in ms",
-"    [gain:_,]})    // optional gain in [0,1]"].join('\n');
-
-var noise = function (args) {
-
-  var duration = args.duration;
-  var gain = args.gain || 1;
-  assert(duration > 0, 'bad args.duration: ' + duration);
-
-  var numSamples = Math.floor(duration * sampleRate);
-  var samples = new Array(numSamples);
-
-  var sqrt = Math.sqrt;
-  var random = Math.random;
-
-  if (bandwidth in args) { // band-limited noise
-
-    var bandwidth = args.bandwidth;
-    var frequency = args.frequency;
-    assert(frequency > 0, 'bad args.frequency: ' + frequency);
-
-    var numSamples = floor(duration * sampleRate);
-    var omega = 2 * Math.PI * frequency / sampleRate;
-    var cosOmega = cos(omega);
-    var sinOmega = sin(omega);
-    var decay = exp(-bandwidth * frequency / sampleRate);
-    var transReal = decay * cosOmega;
-    var transImag = decay * sinOmega;
-    var normalize = 1 - decay;
-    gain *= normalize / numSamples;
-
-    var random = Math.random;
-    var randomStd = function () {
-      return 2 * (random() + random() + random()) - 3;
-    };
-
-    var x = 0;
-    var y = 0;
-    var samples = [];
-    for (var t = 0; t < numSamples; ++t) {
-      var x0 = x;
-      var y0 = y;
-      x = transReal * x0 - transImag * y0 + randomStd();
-      y = transReal * y0 + transImag * x0 + randomStd();
-      samples[t] = x * gain * (numSamples - t);
-    }
-
-  } else { // broadband noise
-
-    gain *= 1 / numSamples;
-    for (var t = 0; t < numSamples; ++t) {
-      samples[t] = (2 * random() - 1) * (numSamples - t) * gain;
-    }
-  }
-
-  return encodeWav(samples);
-};
-
-noise.help = [
-"// Generate and encode linearly-ramped broad/narrow band noise:",
-"uri = noise({,       // returns a wave data uri",
-"    duration:_,      // duration in ms",
-"    [gain:_,]        // optional gain in [0,1]",
-"    [frequency:_,    // optional band center frequency in kHz",
-"     bandwidth:_,]}) //      and relative bandwidth in [0,1]"].join('\n');
 

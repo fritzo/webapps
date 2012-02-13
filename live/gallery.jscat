@@ -77,9 +77,9 @@ Rational.ball = function (radius) {
 };
 //print(Rational.ball(5).map(function(q){ return q.toNumber(); }));
 
-var radius = 16;
-var temperature = 3;
-var totalTime = 6000;
+var radius = 16;      // larger radius -> more steps
+var temperature = 3;  // higher temperature -> more evenly-sized steps
+var totalTime = 6000; // in milliseconds
 
 var QQ = Rational.ball(radius);
 vars.freqs = QQ.map(function(q){
@@ -104,13 +104,14 @@ if (vars.scale === undefined) {
   var phase = 0;
   for (var i = 0, t = 0, T = samples.length; t < T; ++t) {
     while (t / sampleRate > vars.ends[i]) ++i;
-    samples[t] = Math.sin(2 * Math.PI * phase);
+    samples[t] = 4 * Math.min(phase, 1 - phase) - 1; // triangle wave
     phase = (phase + vars.freqs[i] / sampleRate) % 1;
   }
   vars.scale = encodeWav(samples);
 }
 
 once play(vars.scale); // erase the 'n' to play again
+nonce clear(); // erase the 'n' to recompute
 
 
 //==============================================================================
