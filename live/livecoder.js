@@ -398,6 +398,8 @@ var live = (function(){
     toggleCompiling: _toggleCompiling,
     oncompile: live.oncompile,
 
+    focus: function(){ _codemirror.focus(); },
+
     none: undefined,
   };
 

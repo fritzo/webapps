@@ -296,7 +296,14 @@ $(window).keydown(function (event) {
     // F1 = show help
     case 112:
       ui.blink($('#showHelp'));
-      $('#help').toggle();
+      var $help = $('#help');
+      if ($help.is(':hidden')) {
+        $help.show();
+        $('#help a').first().focus();
+      } else {
+        $help.hide();
+        live.focus();
+      }
       event.preventDefault();
       break;
   }
@@ -336,7 +343,16 @@ $(function() {
   if ('su' in localStorage) su();
   $('#su').click(nosu).attr('title', 'leave superuser mode');
 
-  $('#showHelp').click(function(){ $('#help').fadeToggle(100); });
+  $('#showHelp').click(function(){
+        var $help = $('#help');
+        if ($help.is(':hidden')) {
+          $help.fadeIn(100);
+          $('#help a').first().focus();
+        } else {
+          $help.fadeOut(100);
+          live.focus();
+        }
+      });
   //$('#help').click(function(){ $('#help').fadeToggle(100); });
 
   $('#save').click(ui.saveScript);
