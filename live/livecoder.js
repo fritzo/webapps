@@ -12,6 +12,7 @@
  * - a button for status indication
  * - a canvas for 2d drawing
  * - jQuery
+ * - google diff_match_patch
  * - CodeMirror2 (see compression api http://codemirror.net/doc/compress.html)
  *   - lib/util/simple-hint.js
  *   - lib/util/javascript-hint.js
@@ -41,6 +42,7 @@ var live = (function(){
   var _$log;
   var _$status;
   var _codemirror;
+  var _diff_match_patch;
 
   live.init = function (args) {
 
@@ -71,7 +73,7 @@ var live = (function(){
 
     _codemirror.setValue(args.initSource || live.logo);
 
-    _$status.css('background-color', 'green');
+    _diff_match_patch = new diff_match_patch();
 
     _initGraphics(args.canvas2d);
 
@@ -80,7 +82,7 @@ var live = (function(){
   };
 
   live.logo = [
-      "once say('Hello World! i am live code. try changing me');",
+      "once say('Hello World! i am live code. try changing me.');",
       "",
       "context.font = 'bold 80px Courier';",
       "context.fillStyle = '#55aa55';",
@@ -105,15 +107,27 @@ var live = (function(){
   };
   var _success = function () {
     _$log.val('').hide();
-    _$status.css('background-color', 'green');
+    _$status.css({
+          'color': '#7f7',
+          'border-color': '#7f7',
+          'background-color': '#070'
+        }).text(':)');
   };
   var _warn = function (message) {
     _$log.val(String(message)).css('color', '#ffff00').show();
-    _$status.css('background-color', 'orange');
+    _$status.css({
+          'color': '#ff0',
+          'border-color': '#ff0',
+          'background-color': '#730'
+        }).text(':(');
   };
   var _error = function (message) {
     _$log.val(String(message)).css('color', '#ff7777').show();
-    _$status.css('background-color', 'red');
+    _$status.css({
+          'color': '#f77',
+          'border-color': '#f77',
+          'background-color': '#700'
+        }).text(':(');
   };
 
   var _clear = function () {

@@ -31,7 +31,7 @@ wavencoder:
 #-------------------------------------------------------------------------------
 # external libraries
 
-codemirror: FORCE
+extern/codemirror:
 	test -e extern || mkdir extern
 	rm -rf extern/CodeMirror-*
 	( test -e /tmp/codemirror.zip || \
@@ -39,7 +39,7 @@ codemirror: FORCE
 	unzip /tmp/codemirror.zip -d extern/ && \
 	( cd extern ; ln -sf CodeMirror-* codemirror )
 
-audiolibjs: FORCE
+extern/audiolibjs: FORCE
 	test -e extern || mkdir extern
 	rm -rf extern/*-audiolib.js-*
 	( test -e /tmp/audiolibjs.zip || \
@@ -48,7 +48,7 @@ audiolibjs: FORCE
 	unzip /tmp/audiolibjs.zip -d extern/ && \
 	( cd extern ; ln -sf *-audiolib.js-* audiolibjs )
 
-diff_match_patch: FORCE
+extern/diff_match_patch.js: FORCE
 	test -e extern || mkdir extern
 	rm -rf extern/diff_match_patch* && \
 	( test -e /tmp/diff_match_patch.zip || \
@@ -57,14 +57,17 @@ diff_match_patch: FORCE
 	unzip /tmp/diff_match_patch.zip -d extern/ && \
 	( cd extern ; ln -sf diff_match_patch_*/javascript/diff_match_patch.js )
 
-espeak: FORCE
+extern/espeak: FORCE
 	test -e extern || mkdir extern
 	( cd extern ; \
 	  test -e espeak || \
 	  git clone https://github.com/kripken/speak.js.git espeak && \
 	  cd espeak && git pull )
 
-extern: codemirror audiolibjs diff_match_patch
+extern: extern/codemirror \
+	extern/audiolibjs \
+	extern/espeak \
+	extern/diff_match_patch.js
 
 #-------------------------------------------------------------------------------
 # build & release tools
@@ -116,13 +119,15 @@ lint: FORCE
 #-------------------------------------------------------------------------------
 # livecoder
 
-live-codemirror: codemirror compiler FORCE
+live-codemirror: extern/codemirror compiler
+	# concat css
 	cat extern/codemirror/lib/codemirror.css \
 	    extern/codemirror/lib/util/dialog.css \
 	    extern/codemirror/lib/util/simple-hint.css \
 	  > live/codemirror.css
+	# concat + compress javascript
 	cp extern/codemirror/mode/javascript/javascript.js \
-	   live/cm-javascript.js # just for reference; we fork as cm-live.js
+	   live/cm-javascript.js # for reference only; we fork as cm-live.js
 	$(COMPILE1) \
 	  --js=extern/codemirror/lib/codemirror.js \
 	  --js=extern/codemirror/lib/util/dialog.js \
@@ -132,12 +137,16 @@ live-codemirror: codemirror compiler FORCE
 	  --js=extern/codemirror/lib/util/javascript-hint.js \
 	  --js_output_file=live/codemirror.min.js
 
-live-espeak: espeak
+live-espeak: extern/espeak
 	cp extern/espeak/speakClient.js live/
 	cp extern/espeak/speakGenerator.js live/
 	cp extern/espeak/speakWorker.js live/
 
-live: live-codemirror live-espeak FORCE
+live-dmp: extern/diff_match_patch.js
+	cp extern/diff_match_patch.js live/
+	chmod 644 live/diff_match_patch.js
+
+live: live-codemirror live-espeak live-dmp FORCE
 
 #-------------------------------------------------------------------------------
 # keys

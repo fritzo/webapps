@@ -3,23 +3,33 @@ CACHE MANIFEST
 
 CACHE:
 
-# Code
 index.html
-livecoder.js
-toolbar.css
-jquery.min.js
-jquery.timeago.js
-safety.js
-wavencoder.js
-codemirror.min.js
-codemirror.css
-cm-live.js
-cm-live.css
 
-# Images
 favicon.ico
 
-# External
 http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js
+jquery.min.js
+jquery.timeago.js
+
+codemirror.min.js
+cm-live.js
+
+diff_match_patch.js
+
+safety.js
+wavencoder.js
+livecoder.js
+ui.js
+
+speakGenerator.js
+speakWorker.js
+speakClient.js
+audio.js
+
+toolbar.css
+codemirror.css
+cm-live.css
+ui.css
+
 http://www.google-analytics.com/ga.js
 
