@@ -7,7 +7,7 @@
  *
  * Copyright (c) 2012, Fritz Obermeyer
  * Licensed under the MIT license:
- * http://www.opensource.org/licenses/mit-license.php
+ * http://www.opensource.org/licenses/MIT
  */
 
 // audio defaults to mono 16bit 22050 Hz

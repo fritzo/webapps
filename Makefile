@@ -32,30 +32,37 @@ wavencoder:
 # external libraries
 
 codemirror: FORCE
-	( test -e extern || mkdir extern ) && \
-	rm -rf extern/CodeMirror-* && \
+	test -e extern || mkdir extern
+	rm -rf extern/CodeMirror-*
 	( test -e /tmp/codemirror.zip || \
-	  wget http://codemirror.net/codemirror.zip -O /tmp/codemirror.zip ) && \
+	  wget http://codemirror.net/codemirror.zip -O /tmp/codemirror.zip )
 	unzip /tmp/codemirror.zip -d extern/ && \
-	( cd extern; ln -sf CodeMirror-* codemirror )
+	( cd extern ; ln -sf CodeMirror-* codemirror )
 
 audiolibjs: FORCE
-	( test -e extern || mkdir extern ) && \
-	rm -rf extern/*-audiolib.js-* && \
+	test -e extern || mkdir extern
+	rm -rf extern/*-audiolib.js-*
 	( test -e /tmp/audiolibjs.zip || \
 	  wget https://github.com/jussi-kalliokoski/audiolib.js/zipball/master \
 	    -O /tmp/audiolibjs.zip ) && \
 	unzip /tmp/audiolibjs.zip -d extern/ && \
-	( cd extern; ln -sf *-audiolib.js-* audiolibjs )
+	( cd extern ; ln -sf *-audiolib.js-* audiolibjs )
 
 diff_match_patch: FORCE
-	( test -e extern || mkdir extern ) && \
+	test -e extern || mkdir extern
 	rm -rf extern/diff_match_patch* && \
 	( test -e /tmp/diff_match_patch.zip || \
 	  wget http://google-diff-match-patch.googlecode.com/files/diff_match_patch_20120106.zip \
 	    -O /tmp/diff_match_patch.zip ) && \
 	unzip /tmp/diff_match_patch.zip -d extern/ && \
-	( cd extern; ln -sf diff_match_patch_*/javascript/diff_match_patch.js )
+	( cd extern ; ln -sf diff_match_patch_*/javascript/diff_match_patch.js )
+
+espeak: FORCE
+	test -e extern || mkdir extern
+	( cd extern ; \
+	  test -e espeak || \
+	  git clone https://github.com/kripken/speak.js.git espeak && \
+	  cd espeak && git pull )
 
 extern: codemirror audiolibjs diff_match_patch
 
@@ -109,7 +116,7 @@ lint: FORCE
 #-------------------------------------------------------------------------------
 # livecoder
 
-live-min: codemirror compiler FORCE
+live-codemirror: codemirror compiler FORCE
 	cat extern/codemirror/lib/codemirror.css \
 	    extern/codemirror/lib/util/dialog.css \
 	    extern/codemirror/lib/util/simple-hint.css \
@@ -124,6 +131,13 @@ live-min: codemirror compiler FORCE
 	  --js=extern/codemirror/lib/util/simple-hint.js \
 	  --js=extern/codemirror/lib/util/javascript-hint.js \
 	  --js_output_file=live/codemirror.min.js
+
+live-espeak: espeak
+	cp extern/espeak/speakClient.js live/
+	cp extern/espeak/speakGenerator.js live/
+	cp extern/espeak/speakWorker.js live/
+
+live: live-codemirror live-espeak FORCE
 
 #-------------------------------------------------------------------------------
 # keys

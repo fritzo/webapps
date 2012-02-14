@@ -28,7 +28,7 @@
  *
  * Copyright (c) 2012, Fritz Obermeyer
  * Licensed under the MIT license:
- * http://www.opensource.org/licenses/mit-license.php
+ * http://www.opensource.org/licenses/MIT
  */
 
 var live = (function(){
@@ -289,6 +289,10 @@ var live = (function(){
   // Help
 
   var _dir = function (o) {
+    if (o instanceof Array ||
+        o instanceof Uint8Array) {
+      return '[]';
+    }
     o = o || window;
     var a = [], i = 0;
     for (a[i++] in o);
