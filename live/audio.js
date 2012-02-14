@@ -21,6 +21,15 @@ var encodeWav = function (samples) {
 var play = function (uri, volume) {
   assert(typeof uri === 'string', 'bad data uri in play(-)');
   var audio = new Audio(uri);
+
+  // prevent garbage collection of audio element until done
+  //if (audio.duration) { // XXX sometimes duration is nan
+  //  var $audio = $(audio);
+  //  $audio.appendTo(play._$div || (play._$div = $('#audio')));
+  //  log('DEBUG ' + audio.duration);
+  //  //setTimeout(function(){ $audio.remove(); }, audio.duration + 200);
+  //}
+
   if (volume !== undefined) audio.volume = volume;
   audio.play();
 };
