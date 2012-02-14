@@ -80,9 +80,7 @@ var live = (function(){
   };
 
   live.logo = [
-      "// Hello World",
-      "// i am live code",
-      "// try changing me",
+      "once say('Hello World. i am live code. try changing me');",
       "",
       "context.font = 'bold 80px Courier';",
       "context.fillStyle = '#55aa55';",
