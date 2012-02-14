@@ -379,9 +379,11 @@ $(function() {
 
   // hide controls if window is an iframe
   if (window.location != window.parent.location) {
-    ui.hideToolbar(0)();
+    $('#showToolbar').show();
+    $('#toolbar').hide();
   } else {
-    ui.showToolbar(0)();
+    $('#toolbar').show();
+    $('#showToolbar').hide();
   }
 
   var canvas2d = document.getElementById('canvas2d');
@@ -393,5 +395,7 @@ $(function() {
         initSource: initSource,
         onFocus: hideOverlays
       });
+
+  live.focus();
 });
 

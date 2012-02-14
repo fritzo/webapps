@@ -21,10 +21,12 @@ wavencoder.js
 livecoder.js
 ui.js
 
+audio.js
+
 speakGenerator.js
 speakWorker.js
 speakClient.js
-audio.js
+speech.js
 
 toolbar.css
 codemirror.css
@@ -32,4 +34,8 @@ cm-live.css
 ui.css
 
 http://www.google-analytics.com/ga.js
+
+# using(-) can request other scripts
+NETWORK:
+*
 

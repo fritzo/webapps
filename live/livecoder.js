@@ -83,7 +83,10 @@ var live = (function(){
   };
 
   live.logo = [
-      "once say('Hello World! i am live code. try changing me.');",
+      //"once say('Hello World! i am live code. try changing me.');",
+      "// Hello World",
+      "// i am live code",
+      "// try changing me",
       "",
       "draw.font = 'bold 80px Courier';",
       "draw.fillStyle = '#55aa55';",
@@ -149,6 +152,9 @@ var live = (function(){
   //----------------------------------------------------------------------------
   // Evaluation
 
+  var Warning = function (message) { this.message = message; };
+  Warning.prototype.toString = function () { return this.message; };
+
   var _compileSource;
   var _startCompiling;
   var _toggleCompiling;
@@ -206,7 +212,11 @@ var live = (function(){
             vars, run, _clear, _setTimeout, _using,
             _help, _print, _error, _context2d);
       } catch (err) {
-        _error(err);
+        if (err instanceof Warning) {
+          _warn(err);
+        } else {
+          _error(err);
+        }
         return;
       }
 
@@ -323,8 +333,6 @@ var live = (function(){
   //--------------------------------------------------------------------------
   // Using external scripts
 
-  // XXX TODO this is not working yet
-
   var _using;
 
   (function(){
@@ -333,7 +341,13 @@ var live = (function(){
 
     _using = function (url) {
 
-      if (url in cached) return;
+      if (url in cached) {
+        if (cached[url]) {
+          throw cached[url];
+        } else {
+          return;
+        }
+      }
 
       // see http://stackoverflow.com/questions/2723140
       // XXX ff does not support extended regexp: "invalid reg. exp. flag x"
@@ -344,13 +358,19 @@ var live = (function(){
 
       $.ajax({ url:url, dataType:'script', cache:true })
         .done(function (script, textStatus) {
-              cached[url] = true;
-              _print(textStatus);
+              cached[url] = 0;
+              log('using(' + url + '):' + textStatus);
+              _compileSource();
+              _codemirror.focus();
             })
         .fail(function(jqxhr, settings, exception) {
-              cached[url] = false;
-              _print('Ajax error: ' + exception);
+              var message = 'Error using(' + url + '): ' + exception;
+              cached[url] = message;
+              log(message);
+              _error(message);
             });
+
+      throw new Warning('waiting for using(' + url + ') ...');
     };
 
   })();

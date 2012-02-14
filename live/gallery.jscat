@@ -1,5 +1,38 @@
 
 //==============================================================================
+// 1329260236573.js
+
+// synthesized speech:
+
+using('speech.js'); // this takes a while on slow connections
+
+once say('let me sing you a song');
+
+vars.la = vars.la || speech('lah');
+vars.da = vars.da || speech('dah');
+vars.di = vars.di || speech('dee');
+
+var sing = function (name) {
+  return function () { play(vars[name]); }
+};
+
+var PERIOD = 2000;
+vars.verse = function () {
+  setTimeout(vars.verse, PERIOD);
+  
+  var either = function (a, b) {
+    return Math.random() > 0.5 ? a : b;
+  };
+  
+  setTimeout(sing('la'), 0 * PERIOD);
+  setTimeout(either(sing('di'), sing('da')), 3/8 * PERIOD);
+  setTimeout(either(sing('di'), sing('da')), 4/8 * PERIOD);
+};
+
+once setTimeout(vars.verse , 2000); // XXX this is buggy
+nonce clear();
+
+//==============================================================================
 // 1328845920624.js
 
 // simple drawing program:

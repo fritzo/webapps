@@ -142,6 +142,7 @@ live-espeak: extern/espeak
 	cp extern/espeak/speakClient.js live/
 	cp extern/espeak/speakGenerator.js live/
 	cp extern/espeak/speakWorker.js live/
+	cat live/speakGenerator.js live/speakWrapper.js > live/speech.js
 
 live-dmp: extern/diff_match_patch.js
 	cp extern/diff_match_patch.js live/
