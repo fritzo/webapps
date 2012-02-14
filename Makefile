@@ -135,6 +135,7 @@ live-codemirror: extern/codemirror compiler
 	  --js=extern/codemirror/lib/util/search.js \
 	  --js=extern/codemirror/lib/util/simple-hint.js \
 	  --js=extern/codemirror/lib/util/javascript-hint.js \
+	  --js=extern/codemirror/lib/util/overlay.js \
 	  --js_output_file=live/codemirror.min.js
 
 live-espeak: extern/espeak

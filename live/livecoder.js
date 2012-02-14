@@ -50,6 +50,7 @@ var live = (function(){
     _$status = args.$status;
 
     _codemirror = CodeMirror.fromTextArea(args.$source[0], {
+      mode: 'live',
       undoDepth: 512,
       onFocus: args.onFocus,
       onChange: _compileSource,
@@ -84,9 +85,9 @@ var live = (function(){
   live.logo = [
       "once say('Hello World! i am live code. try changing me.');",
       "",
-      "context.font = 'bold 80px Courier';",
-      "context.fillStyle = '#55aa55';",
-      "context.textAlign = 'center';",
+      "draw.font = 'bold 80px Courier';",
+      "draw.fillStyle = '#55aa55';",
+      "draw.textAlign = 'center';",
       "",
       "run.hello = function () {",
       "",
@@ -96,8 +97,8 @@ var live = (function(){
       "  x += Math.sin(Date.now() / 500) * 10;",
       "  y += Math.cos(Date.now() / 500) * 10;",
       "",
-      "  context.clearRect(0, y-80, innerWidth, 160);",
-      "  context.fillText('Hello World!', x, y);",
+      "  draw.clearRect(0, y-80, innerWidth, 160);",
+      "  draw.fillText('Hello World!', x, y);",
       "};",
       ""
   ].join('\n');
@@ -178,8 +179,8 @@ var live = (function(){
         compiled = globalEval(
             '"use strict";\n' +
             '(function(' +
-                  'vars, run, clear, setTimeout,' +
-                  'help, print, error, context' +
+                  'vars, run, clear, setTimeout, using,' +
+                  'help, print, error, draw' +
                 '){\n' +
                 source
                   .replace(/\bonce\b/g, 'if(1)')
@@ -202,7 +203,7 @@ var live = (function(){
 
       try {
         compiled(
-            vars, run, _clear, _setTimeout,
+            vars, run, _clear, _setTimeout, _using,
             _help, _print, _error, _context2d);
       } catch (err) {
         _error(err);

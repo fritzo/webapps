@@ -7,22 +7,22 @@
 // set brush parameters here
 var airbrush = true; // style flag
 var radius = 8; // brush radius
-context.fillStyle = 'rgba(255,255,255,0.02)'; // brush color
-context.strokeStyle = 'green'; // line color
+draw.fillStyle = 'rgba(255,255,255,0.02)'; // brush color
+draw.strokeStyle = 'green'; // line color
 
 run.draw = airbrush ? (function () {
 
-  context.beginPath();
-  context.arc(mouseX, mouseY, radius, 2 * Math.PI, false);
-  context.fill();
+  draw.beginPath();
+  draw.arc(mouseX, mouseY, radius, 2 * Math.PI, false);
+  draw.fill();
   
 }) : (function () {
   
   if (vars.lastX) {
-    context.beginPath();
-    context.moveTo(vars.lastX, vars.lastY);
-    context.lineTo(mouseX, mouseY);
-    context.stroke();
+    draw.beginPath();
+    draw.moveTo(vars.lastX, vars.lastY);
+    draw.lineTo(mouseX, mouseY);
+    draw.stroke();
   }
   vars.lastX = mouseX;
   vars.lastY = mouseY;
@@ -261,12 +261,12 @@ var Z = function (a) { return (0.5 + Math.sin(8*a) / 2); };
 run.juggle = function () {
   var T = 1000, t = (Date.now() % T) / T;
 
-  context.clearRect(0, 0, innerWidth, innerHeight);
-  context.font = 'bold 64pt Courier';
+  draw.clearRect(0, 0, innerWidth, innerHeight);
+  draw.font = 'bold 64pt Courier';
   for (var i = 0, N = 79; i < N; ++i) {
     var a = 2 * Math.PI * (i + t) / N;
-    context.fillStyle = 'rgba(255,255,255,' + Z(a) + ')';
-    context.fillText('.', innerWidth * X(a), innerHeight * Y(a));
+    draw.fillStyle = 'rgba(255,255,255,' + Z(a) + ')';
+    draw.fillText('.', innerWidth * X(a), innerHeight * Y(a));
   }
 };
 
@@ -279,9 +279,9 @@ var N = 20;
 var W = innerWidth;
 var H = innerHeight;
 
-// use the 2D canvas context
-context.fillStyle = '#aaaaaa';
-context.fillRect(W / N, H / N, W * (1 - 2 / N), H * (1 - 2 / N));
+// use the 2D canvas draw
+draw.fillStyle = '#aaaaaa';
+draw.fillRect(W / N, H / N, W * (1 - 2 / N), H * (1 - 2 / N));
 
 //==============================================================================
 // 1323050746049.js
