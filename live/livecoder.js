@@ -153,7 +153,9 @@ var live = (function(){
   // Evaluation
 
   var Warning = function (message) { this.message = message; };
-  Warning.prototype.toString = function () { return this.message; };
+  Warning.prototype.toString = function () {
+    return 'Warning: ' + this.message;
+  };
 
   var _compileSource;
   var _startCompiling;
@@ -197,6 +199,8 @@ var live = (function(){
       }
 
       _success();
+      var warnings = [];
+      var errors = [];
 
       var oncePrev = {};
       for (var key in once) {
@@ -208,19 +212,30 @@ var live = (function(){
             vars, once, always, _clear, _setTimeout, _using,
             _help, _print, _error, _context2d);
       } catch (err) {
-        err instanceof Warning ? _warn(err) : _error(err);
-        return;
+        (err instanceof Warning ? warnings : errors).push(err.toString());
       }
 
       for (var key in once) {
-        if (key in oncePrev) continue;
-        try {
-          once[key]();
+        if (!(key in oncePrev)) {
+          try {
+            once[key]();
+          }
+          catch (err) {
+            delete once[key]; // try again next compile
+            var message = 'In once[' + JSON.stringify(key) + ']: ' + err;
+            (err instanceof Warning ? warnings : errors).push(message);
+          }
         }
-        catch (err) {
-          delete once[key]; // try again next compile
-          _error('In once[' + JSON.stringify(key) + ']: ' + err);
-        }
+      }
+
+      if (errors.length) {
+        _error(errors.concat(warnings).join(';\n'));
+        return;
+      }
+
+      if (warnings.length) {
+        _warn(warnings.join(';\n'));
+        return;
       }
 
       for (var i = 0; i < compileHandlers.length; ++i) {
