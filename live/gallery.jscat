@@ -2,11 +2,11 @@
 //==============================================================================
 // 1329260236573.js
 
-// synthesized speech:
+// speech (needs recent browser & fast connection):
 
-using('speech.js'); // this takes a while on slow connections
+using('speech.js');
 
-once say('let me sing you a song');
+once.intro = function(){ say('let me sing you a song'); };
 
 vars.la = vars.la || speech('lah');
 vars.da = vars.da || speech('dah');
@@ -29,8 +29,7 @@ vars.verse = function () {
   setTimeout(either(sing('di'), sing('da')), 4/8 * PERIOD);
 };
 
-once setTimeout(vars.verse , 2000); // XXX this is buggy
-nonce clear();
+once.start = function(){ setTimeout(vars.verse , 2000); };
 
 //==============================================================================
 // 1328845920624.js
@@ -38,31 +37,36 @@ nonce clear();
 // simple drawing program:
 
 // set brush parameters here
-var airbrush = true; // style flag
-var radius = 8; // brush radius
+var style = ['airbrush','pencil','clear'][0]; // change the index
 draw.fillStyle = 'rgba(255,255,255,0.02)'; // brush color
 draw.strokeStyle = 'green'; // line color
+var brushRadius = 8;
 
-run.draw = airbrush ? (function () {
+switch (style) {
 
-  draw.beginPath();
-  draw.arc(mouseX, mouseY, radius, 2 * Math.PI, false);
-  draw.fill();
-  
-}) : (function () {
-  
-  if (vars.lastX) {
-    draw.beginPath();
-    draw.moveTo(vars.lastX, vars.lastY);
-    draw.lineTo(mouseX, mouseY);
-    draw.stroke();
-  }
-  vars.lastX = mouseX;
-  vars.lastY = mouseY;
+  case 'airbrush':
+    always.draw = function () {
+      draw.beginPath();
+      draw.arc(mouseX, mouseY, brushRadius, 2 * Math.PI, false);
+      draw.fill();
+    };
+    break;
 
-});
+  case 'pencil':
+    always.draw = function () {
+      if (vars.lastX) {
+        draw.beginPath();
+        draw.moveTo(vars.lastX, vars.lastY);
+        draw.lineTo(mouseX, mouseY);
+        draw.stroke();
+      }
+      vars.lastX = mouseX;
+      vars.lastY = mouseY;
+    };
+    break;
 
-nonce clear(); // erase the 'n' to clear canvas
+  default: clear();
+}
 
 //==============================================================================
 // 1326994044727.js
@@ -143,8 +147,7 @@ if (vars.scale === undefined) {
   vars.scale = encodeWav(samples);
 }
 
-once play(vars.scale); // erase the 'n' to play again
-nonce clear(); // erase the 'n' to recompute
+once.play = function(){ play(vars.scale); };
 
 
 //==============================================================================
@@ -179,16 +182,13 @@ vars.scale = vars.scale || points.map(function(q){
   return note(q[0]/q[1]);
 });
 
-vars.S = function () {
-  setTimeout(vars.S, T); // recurse before possible errors
+once.S = function () {
+  setTimeout(once.S, T); // recurse before possible errors
 
   var n = vars.n || 0;
   play(vars.scale[n]);
   vars.n = (n + 1) % vars.scale.length;
 };
-
-once vars.S(); // erase the 'n' to start
-nonce clear(); // erase the 'n' to stop
 
 //==============================================================================
 // 1323324421097.js
@@ -235,12 +235,10 @@ vars.S2 = function () {
   show('-');
 };
 
-once vars.L1(); // start one of these
-once vars.S1(); // and a few of these
-once vars.S1();
-once vars.S1();
-
-nonce clear(); // erase the 'n' to stop
+once.long1 = vars.L1; // start one of these
+once.short1 = vars.S1; // and a few of these
+once.short2 = vars.S1;
+once.short3 = vars.S1;
 
 //==============================================================================
 // 1323226133754.js
@@ -263,8 +261,8 @@ var playLater = function (name, delay) {
   setTimeout(function(){ play(vars[name]); }, delay);
 };
 
-vars.loop = function () {
-  setTimeout(vars.loop, PERIOD); // recurse before possible errors
+once.loop = function () {
+  setTimeout(once.loop, PERIOD); // recurse before possible errors
   
   playLater('long', PERIOD * 0/1);
   playLater('short', PERIOD * 1/4);
@@ -279,9 +277,6 @@ vars.loop = function () {
   playLater('hi', hiTime * PERIOD);
 };
 
-once vars.loop(); // erase the 'n' to start a loop
-nonce clear(); // erase the 'n' to stop
-
 //==============================================================================
 // 1323196209122.js
 
@@ -291,7 +286,7 @@ var X = function (a) { return (0.5 + Math.sin(2*a) / 3); };
 var Y = function (a) { return (0.5 + Math.sin(3*a) / 3); };
 var Z = function (a) { return (0.5 + Math.sin(8*a) / 2); };
 
-run.juggle = function () {
+always.juggle = function () {
   var T = 1000, t = (Date.now() % T) / T;
 
   draw.clearRect(0, 0, innerWidth, innerHeight);
@@ -334,7 +329,5 @@ for (var t = 0, T = samples.length; t < T; ++t) {
 }
 
 var uri = encodeWav(samples); // encode to a data uri
-var audio = new Audio(uri);
-
-once audio.play(); // equivalent to play(uri)
+once.play = function(){ play(uri); };
 

@@ -34,8 +34,8 @@
 
 var live = (function(){
 
-  var runPollMs = 250;
-  var runLoopMs = 1;
+  var alwaysPollMs = 250;
+  var alwaysLoopMs = 1;
 
   var live = {};
 
@@ -92,7 +92,7 @@ var live = (function(){
       "draw.fillStyle = '#55aa55';",
       "draw.textAlign = 'center';",
       "",
-      "run.hello = function () {",
+      "always.hello = function () {",
       "",
       "  var x = 1/8 * mouseX + 3/8 * innerWidth;",
       "  var y = 1/8 * mouseY + 3/8 * innerHeight;",
@@ -165,8 +165,10 @@ var live = (function(){
 
     var compiling = false;
     var vars = {};
-    var run = {};
+    var once = {};
+    var always = {};
 
+    // TODO live.oncompile(function(){ diffHistory.add(live.getSource()); });
     var compileHandlers = [];
     live.oncompile = function (handler) {
       compileHandlers.push(handler);
@@ -181,43 +183,44 @@ var live = (function(){
       var source = _codemirror.getValue();
       var compiled;
       try {
-        // alternatively, use jQuery.globalEval(...)
         compiled = globalEval(
             '"use strict";\n' +
             '(function(' +
-                  'vars, run, clear, setTimeout, using,' +
+                  'vars, once, always, clear, setTimeout, using,' +
                   'help, print, error, draw' +
                 '){\n' +
-                source
-                  .replace(/\bonce\b/g, 'if(1)')
-                  .replace(/\bnonce\b/g, 'if(0)') +
+                source +
             '\n/**/})');
       } catch (err) {
         _warn(err);
         return;
       }
 
-      if (source.match(/\bonce\b/)) {
-        var cursor = _codemirror.getSearchCursor(/\bonce\b/g);
-        do {
-          cursor.replace('nonce');
-        } while (cursor.findNext());
-        setTimeout(_compileSource, 0);
-      }
-
       _success();
+
+      var oncePrev = {};
+      for (var key in once) {
+        oncePrev[key] = undefined;
+      }
 
       try {
         compiled(
-            vars, run, _clear, _setTimeout, _using,
+            vars, once, always, _clear, _setTimeout, _using,
             _help, _print, _error, _context2d);
       } catch (err) {
-        if (err instanceof Warning) {
-          _warn(err);
-        } else {
-          _error(err);
-        }
+        err instanceof Warning ? _warn(err) : _error(err);
         return;
+      }
+
+      for (var key in once) {
+        if (key in oncePrev) continue;
+        try {
+          once[key]();
+        }
+        catch (err) {
+          delete once[key]; // try again next compile
+          _error('In once[' + JSON.stringify(key) + ']: ' + err);
+        }
       }
 
       for (var i = 0; i < compileHandlers.length; ++i) {
@@ -242,33 +245,30 @@ var live = (function(){
     };
 
     _clearWorkspace = function () {
-      for (var key in vars) {
-        delete vars[key];
-      }
-      for (var key in run) {
-        delete run[key];
-      }
+      for (var key in vars) { delete vars[key]; }
+      for (var key in once) { delete once[key]; }
+      for (var key in always) { delete always[key]; }
     };
 
-    var runTask = function () {
-      if ($.isEmptyObject(run)) {
-        setTimeout(runTask, runPollMs);
+    var alwaysTask = function () {
+      if ($.isEmptyObject(always)) {
+        setTimeout(alwaysTask, alwaysPollMs); // later
       } else {
-        for (var key in run) {
+        for (var key in always) {
           try {
-            run[key]();
+            always[key]();
           }
           catch (err) {
-            _error(err);
+            _error('In always[' + JSON.stringify(key) + ']: ' + err);
           }
         }
-        setTimeout(runTask, runLoopMs);
+        setTimeout(alwaysTask, alwaysLoopMs); // sooner
       }
     };
 
     _startAlways = function () {
       _startAlways = function () {};
-      runTask();
+      alwaysTask();
     };
 
   })();
