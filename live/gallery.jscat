@@ -1,5 +1,38 @@
 
 //==============================================================================
+// 1329260236573.js
+
+// synthesized speech:
+
+using('speech.js'); // this takes a while on slow connections
+
+once say('let me sing you a song');
+
+vars.la = vars.la || speech('lah');
+vars.da = vars.da || speech('dah');
+vars.di = vars.di || speech('dee');
+
+var sing = function (name) {
+  return function () { play(vars[name]); }
+};
+
+var PERIOD = 2000;
+vars.verse = function () {
+  setTimeout(vars.verse, PERIOD);
+  
+  var either = function (a, b) {
+    return Math.random() > 0.5 ? a : b;
+  };
+  
+  setTimeout(sing('la'), 0 * PERIOD);
+  setTimeout(either(sing('di'), sing('da')), 3/8 * PERIOD);
+  setTimeout(either(sing('di'), sing('da')), 4/8 * PERIOD);
+};
+
+once setTimeout(vars.verse , 2000); // XXX this is buggy
+nonce clear();
+
+//==============================================================================
 // 1328845920624.js
 
 // simple drawing program:
@@ -7,22 +40,22 @@
 // set brush parameters here
 var airbrush = true; // style flag
 var radius = 8; // brush radius
-context.fillStyle = 'rgba(255,255,255,0.02)'; // brush color
-context.strokeStyle = 'green'; // line color
+draw.fillStyle = 'rgba(255,255,255,0.02)'; // brush color
+draw.strokeStyle = 'green'; // line color
 
-always.draw = airbrush ? (function () {
+run.draw = airbrush ? (function () {
 
-  context.beginPath();
-  context.arc(mouseX, mouseY, radius, 2 * Math.PI, false);
-  context.fill();
+  draw.beginPath();
+  draw.arc(mouseX, mouseY, radius, 2 * Math.PI, false);
+  draw.fill();
   
 }) : (function () {
   
   if (vars.lastX) {
-    context.beginPath();
-    context.moveTo(vars.lastX, vars.lastY);
-    context.lineTo(mouseX, mouseY);
-    context.stroke();
+    draw.beginPath();
+    draw.moveTo(vars.lastX, vars.lastY);
+    draw.lineTo(mouseX, mouseY);
+    draw.stroke();
   }
   vars.lastX = mouseX;
   vars.lastY = mouseY;
@@ -77,9 +110,9 @@ Rational.ball = function (radius) {
 };
 //print(Rational.ball(5).map(function(q){ return q.toNumber(); }));
 
-var radius = 16;
-var temperature = 3;
-var totalTime = 6000;
+var radius = 16;      // larger radius -> more steps
+var temperature = 3;  // higher temperature -> more evenly-sized steps
+var totalTime = 6000; // in milliseconds
 
 var QQ = Rational.ball(radius);
 vars.freqs = QQ.map(function(q){
@@ -104,13 +137,14 @@ if (vars.scale === undefined) {
   var phase = 0;
   for (var i = 0, t = 0, T = samples.length; t < T; ++t) {
     while (t / sampleRate > vars.ends[i]) ++i;
-    samples[t] = Math.sin(2 * Math.PI * phase);
+    samples[t] = 4 * Math.min(phase, 1 - phase) - 1; // triangle wave
     phase = (phase + vars.freqs[i] / sampleRate) % 1;
   }
   vars.scale = encodeWav(samples);
 }
 
 once play(vars.scale); // erase the 'n' to play again
+nonce clear(); // erase the 'n' to recompute
 
 
 //==============================================================================
@@ -257,15 +291,15 @@ var X = function (a) { return (0.5 + Math.sin(2*a) / 3); };
 var Y = function (a) { return (0.5 + Math.sin(3*a) / 3); };
 var Z = function (a) { return (0.5 + Math.sin(8*a) / 2); };
 
-always.juggle = function () {
+run.juggle = function () {
   var T = 1000, t = (Date.now() % T) / T;
 
-  context.clearRect(0, 0, innerWidth, innerHeight);
-  context.font = 'bold 64pt Courier';
+  draw.clearRect(0, 0, innerWidth, innerHeight);
+  draw.font = 'bold 64pt Courier';
   for (var i = 0, N = 79; i < N; ++i) {
     var a = 2 * Math.PI * (i + t) / N;
-    context.fillStyle = 'rgba(255,255,255,' + Z(a) + ')';
-    context.fillText('.', innerWidth * X(a), innerHeight * Y(a));
+    draw.fillStyle = 'rgba(255,255,255,' + Z(a) + ')';
+    draw.fillText('.', innerWidth * X(a), innerHeight * Y(a));
   }
 };
 
@@ -278,9 +312,9 @@ var N = 20;
 var W = innerWidth;
 var H = innerHeight;
 
-// use the 2D canvas context
-context.fillStyle = '#aaaaaa';
-context.fillRect(W / N, H / N, W * (1 - 2 / N), H * (1 - 2 / N));
+// use the 2D canvas draw
+draw.fillStyle = '#aaaaaa';
+draw.fillRect(W / N, H / N, W * (1 - 2 / N), H * (1 - 2 / N));
 
 //==============================================================================
 // 1323050746049.js

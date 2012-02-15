@@ -265,17 +265,28 @@ RatGrid.commonPeriod = function (grids) {
   return result;
 };
 
-test('RatGrid(5/2, 0).norm()', function(){
-  var grid = new RatGrid(new Rational(5,2), Rational.ZERO);
-  assertNear(grid.norm(), Math.sqrt(29),
-      'bad grid.norm\n    grid = ' + grid);
-});
+(function(){
 
-test('RatGrid(5/2, 1/15).norm()', function(){
-  var grid = new RatGrid(new Rational(5,2), new Rational(1,3));
-  assertNear(grid.norm(), Math.sqrt(29) * 3,
-      'bad grid.norm\n    grid = ' + grid);
-});
+  var assertNear = function (actual, expected, message) {
+    assert(Math.abs(actual - expected) < 1e-8,
+      (message || '') +
+      '\n    actual = ' + actual +
+      '\n    expected = ' + expected);
+  };
+
+  test('RatGrid(5/2, 0).norm()', function(){
+    var grid = new RatGrid(new Rational(5,2), Rational.ZERO);
+    assertNear(grid.norm(), Math.sqrt(29),
+        'bad grid.norm\n    grid = ' + grid);
+  });
+
+  test('RatGrid(5/2, 1/3).norm()', function(){
+    var grid = new RatGrid(new Rational(5,2), new Rational(1,3));
+    assertNear(grid.norm(), Math.sqrt(29) * 3,
+        'bad grid.norm\n    grid = ' + grid);
+  });
+
+})();
 
 test('RatGrid.dissonance symmetry', function(){
 

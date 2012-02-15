@@ -1,29 +1,5 @@
 
 #-------------------------------------------------------------------------------
-# external libraries
-
-codemirror: FORCE
-	( test -e extern || mkdir extern ) && \
-	rm -rf extern/CodeMirror-* && \
-	( test -e /tmp/codemirror.zip || \
-	  wget http://codemirror.net/codemirror.zip -O /tmp/codemirror.zip ) && \
-	unzip /tmp/codemirror.zip -d extern/ && \
-	( cd extern; ln -sf CodeMirror-* codemirror ) && \
-	sed -i 's/"finally": B,/"finally": B, "once": B, "nonce": B,/g' \
-	  extern/codemirror/mode/javascript/javascript.js # HACK
-
-audiolibjs: FORCE
-	( test -e extern || mkdir extern ) && \
-	rm -rf extern/*-audiolib.js-* && \
-	( test -e /tmp/audiolibjs.zip || \
-	  wget https://github.com/jussi-kalliokoski/audiolib.js/zipball/master \
-	    -O /tmp/audiolibjs.zip ) && \
-	unzip /tmp/audiolibjs.zip -d extern/ && \
-	( cd extern; ln -sf *-audiolib.js-* audiolibjs )
-
-extern: codemirror audiolibjs
-
-#-------------------------------------------------------------------------------
 # export to public git repository
 
 LV = ~/livecoder.net/live
@@ -51,6 +27,47 @@ rationalkeyboard: FORCE
 WE = ~/wavencoderjs.git
 wavencoder:
 	cp common/wavencoder.js $(WE)/
+
+#-------------------------------------------------------------------------------
+# external libraries
+
+extern/codemirror:
+	test -e extern || mkdir extern
+	rm -rf extern/CodeMirror-*
+	( test -e /tmp/codemirror.zip || \
+	  wget http://codemirror.net/codemirror.zip -O /tmp/codemirror.zip )
+	unzip /tmp/codemirror.zip -d extern/ && \
+	( cd extern ; ln -sf CodeMirror-* codemirror )
+
+extern/audiolibjs: FORCE
+	test -e extern || mkdir extern
+	rm -rf extern/*-audiolib.js-*
+	( test -e /tmp/audiolibjs.zip || \
+	  wget https://github.com/jussi-kalliokoski/audiolib.js/zipball/master \
+	    -O /tmp/audiolibjs.zip ) && \
+	unzip /tmp/audiolibjs.zip -d extern/ && \
+	( cd extern ; ln -sf *-audiolib.js-* audiolibjs )
+
+extern/diff_match_patch.js: FORCE
+	test -e extern || mkdir extern
+	rm -rf extern/diff_match_patch* && \
+	( test -e /tmp/diff_match_patch.zip || \
+	  wget http://google-diff-match-patch.googlecode.com/files/diff_match_patch_20120106.zip \
+	    -O /tmp/diff_match_patch.zip ) && \
+	unzip /tmp/diff_match_patch.zip -d extern/ && \
+	( cd extern ; ln -sf diff_match_patch_*/javascript/diff_match_patch.js )
+
+extern/espeak: FORCE
+	test -e extern || mkdir extern
+	( cd extern ; \
+	  test -e espeak || \
+	  git clone https://github.com/kripken/speak.js.git espeak && \
+	  cd espeak && git pull )
+
+extern: extern/codemirror \
+	extern/audiolibjs \
+	extern/espeak \
+	extern/diff_match_patch.js
 
 #-------------------------------------------------------------------------------
 # build & release tools
@@ -99,10 +116,39 @@ LINT = java -jar linter/*/*.jar --indent 2
 lint: FORCE
 	$(lint) common
 
-common/codemirror.min.js: codemirror
+#-------------------------------------------------------------------------------
+# livecoder
+
+live-codemirror: extern/codemirror compiler
+	# concat css
+	cat extern/codemirror/lib/codemirror.css \
+	    extern/codemirror/lib/util/dialog.css \
+	    extern/codemirror/lib/util/simple-hint.css \
+	  > live/codemirror.css
+	# concat + compress javascript
+	cp extern/codemirror/mode/javascript/javascript.js \
+	   live/cm-javascript.js # for reference only; we fork as cm-live.js
 	$(COMPILE1) \
 	  --js=extern/codemirror/lib/codemirror.js \
-	  --js_output_file=common/codemirror.min.js
+	  --js=extern/codemirror/lib/util/dialog.js \
+	  --js=extern/codemirror/lib/util/searchcursor.js \
+	  --js=extern/codemirror/lib/util/search.js \
+	  --js=extern/codemirror/lib/util/simple-hint.js \
+	  --js=extern/codemirror/lib/util/javascript-hint.js \
+	  --js=extern/codemirror/lib/util/overlay.js \
+	  --js_output_file=live/codemirror.min.js
+
+live-espeak: extern/espeak
+	cp extern/espeak/speakClient.js live/
+	cp extern/espeak/speakGenerator.js live/
+	cp extern/espeak/speakWorker.js live/
+	cat live/speakGenerator.js live/speakWrapper.js > live/speech.js
+
+live-dmp: extern/diff_match_patch.js
+	cp extern/diff_match_patch.js live/
+	chmod 644 live/diff_match_patch.js
+
+live: live-codemirror live-espeak live-dmp FORCE
 
 #-------------------------------------------------------------------------------
 # keys

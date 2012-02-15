@@ -1,1 +1,0 @@
-../extern/codemirror/lib/util/searchcursor.js
