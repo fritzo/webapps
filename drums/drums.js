@@ -423,17 +423,9 @@ var main = function () {
 $(function(){
 
   if (testing) {
-
-    test.runAll(function () {
-          window.location.hash = '';
-          document.title = 'The Rational Drums';
-          main();
-        });
-
+    test.runAll(main);
   } else {
-
     main();
-
   }
 });
 

@@ -1359,14 +1359,8 @@ var main = function () {
 $(function(){
 
   if (testing) {
-
-    test.runAll(function(){
-          //window.location.hash = '';
-          main();
-        });
-
+    test.runAll(main);
   } else {
-
     main ();
   }
 });

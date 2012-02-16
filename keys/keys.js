@@ -1593,17 +1593,9 @@ $(function(){
       }).resize();
 
   if (testing) {
-
-    test.runAll(function(){
-          document.title = 'The Rational Keyboard';
-          window.location.hash = '';
-          main();
-        });
-
+    test.runAll(main);
   } else {
-
     main();
-
   }
 });
 

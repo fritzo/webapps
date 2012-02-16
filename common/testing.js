@@ -8,10 +8,17 @@
  * http://www.opensource.org/licenses/GPL-2.0
  */
 
-/** @const */
-var testing = (testing === undefined)
-            ? (location.hash && location.hash.substr(1) === 'test')
-            : testing;
+var testing;
+if (testing === undefined) {
+  if (location.hash) {
+    (function(hash){
+      if (hash === 'test' || hash.substr(0,5) === 'test&') {
+        testing = true;
+        location.hash = hash.substr(5);
+      }
+    })(location.hash.substr(1));
+  }
+}
 
 /** @const */
 var test = (function(){
