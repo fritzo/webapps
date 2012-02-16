@@ -1592,9 +1592,8 @@ $(function(){
         canvas.height = window.innerHeight;
       }).resize();
 
-  if (window.location.hash && window.location.hash.substr(1) === 'test') {
+  if (testing) {
 
-    document.title = 'The Rational Keyboard - Unit Test';
     test.runAll(function(){
           document.title = 'The Rational Keyboard';
           window.location.hash = '';
