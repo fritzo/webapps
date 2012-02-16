@@ -56,7 +56,15 @@ var assert = function (condition, message) {
     throw new AssertException(message);
   }
 };
-assert.help = 'assert(condition, optionalMessage) throws if condition is false';
+assert.help = (
+'assert(condition, optionalMessage) throws if condition is false' +
+'see also:'+
+'  assertEval(message)' +
+'  assertEqual(lhs, rhs, optionalName)' +
+'  assertLess(lhs, rhs, optionalName)' +
+'  assertLength(array, length, optionalName)' +
+'  assertIndex(i, length, optionalName)'
+);
 
 var assertEval = function (message) {
   assert(eval(message), message);
