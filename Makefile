@@ -2,11 +2,10 @@
 #-------------------------------------------------------------------------------
 # export to public git repository
 
-LV = ~/livecoder.net/live
+LV = ~/livecoder.net/client
 livecoder.net: FORCE
 	rm -rf $(LV)
 	cp -rL live $(LV)
-	mv $(LV)/release.manifest $(LV)/cache.manifest
 	rm -rf $(LV)/temp*
 
 RK = ~/rationalkeyboard/keys
