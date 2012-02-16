@@ -56,7 +56,7 @@ var live = (function(){
       onChange: _compileSource,
       theme: 'live',
       lineNumbers: false,
-      matchBrackets: true,
+      matchBrackets: false, // bracket matching is slow
       workTime: 10, // very short
       workDelay: 300, // default
       pollinterval: 300, // long
