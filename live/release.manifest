@@ -1,5 +1,5 @@
 CACHE MANIFEST
-# version 2011-02-13
+# version DATE
 
 CACHE:
 
@@ -17,8 +17,10 @@ cm-live.js
 diff_match_patch.js
 
 safety.js
+testing.js
 wavencoder.js
 livecoder.js
+mixer.js
 ui.js
 
 audio.js

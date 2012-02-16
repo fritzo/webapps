@@ -2,11 +2,10 @@
 #-------------------------------------------------------------------------------
 # export to public git repository
 
-LV = ~/livecoder.net/live
+LV = ~/livecoder.net/client
 livecoder.net: FORCE
 	rm -rf $(LV)
 	cp -rL live $(LV)
-	mv $(LV)/release.manifest $(LV)/cache.manifest
 	rm -rf $(LV)/temp*
 
 RK = ~/rationalkeyboard/keys
@@ -136,6 +135,7 @@ live-codemirror: extern/codemirror compiler
 	  --js=extern/codemirror/lib/util/simple-hint.js \
 	  --js=extern/codemirror/lib/util/javascript-hint.js \
 	  --js=extern/codemirror/lib/util/overlay.js \
+	  --js=extern/codemirror/lib/util/runmode.js \
 	  --js_output_file=live/codemirror.min.js
 
 live-espeak: extern/espeak

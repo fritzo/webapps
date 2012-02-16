@@ -1358,17 +1358,9 @@ var main = function () {
 
 $(function(){
 
-  if (window.location.hash && window.location.hash.slice(1) === 'test') {
-
-    document.title = 'Splitband - Unit Test';
-    test.runAll(function(){
-          //window.location.hash = '';
-          //document.title = 'Splitband';
-          main();
-        });
-
+  if (testing) {
+    test.runAll(main);
   } else {
-
     main ();
   }
 });
