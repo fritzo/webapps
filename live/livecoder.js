@@ -12,7 +12,6 @@
  * - a button for status indication
  * - a canvas for 2d drawing
  * - jQuery
- * - google diff_match_patch
  * - CodeMirror2 (see compression api http://codemirror.net/doc/compress.html)
  *   - lib/util/simple-hint.js
  *   - lib/util/javascript-hint.js
@@ -42,7 +41,6 @@ var live = (function(){
   var _$log;
   var _$status;
   var _codemirror;
-  var _diff_match_patch;
 
   live.init = function (args) {
 
@@ -74,8 +72,6 @@ var live = (function(){
     scroller.style.width = '100%';
 
     _codemirror.setValue(args.initSource || live.logo);
-
-    _diff_match_patch = new diff_match_patch();
 
     _initGraphics(args.canvas2d);
 
