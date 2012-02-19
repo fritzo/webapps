@@ -171,7 +171,11 @@ var live = (function(){
 
     var cached = function (fun) {
       return function () {
-        var hash = fun + JSON.stringify(arguments); // HACK imprecise
+        var hash = [fun+''];
+        for (var i in arguments) {
+          hash.push(JSON.stringify(arguments[i])); // HACK imprecise
+        }
+        hash = hash.join();
         if (hash in cache) {
           return cache[hash];
         } else {
