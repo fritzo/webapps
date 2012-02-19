@@ -108,10 +108,10 @@ var live = (function(){
   ].join('\n');
 
   var _print = function (message) {
-    _$log.val('> ' + message).css('color', '#aaaaff').show();
+    _$log.text('> ' + message).css('color', '#aaaaff').show();
   };
   var _success = function () {
-    _$log.val('').hide();
+    _$log.text('').hide();
     _$status.css({
           'color': '#7f7',
           'border-color': '#7f7',
@@ -119,7 +119,8 @@ var live = (function(){
         }).text(':)');
   };
   var _warn = function (message) {
-    _$log.val(String(message)).css('color', '#ffff00').show();
+    log(message);
+    _$log.text(message).css('color', '#ffff00').show();
     _$status.css({
           'color': '#ff0',
           'border-color': '#ff0',
@@ -127,7 +128,8 @@ var live = (function(){
         }).text(':(');
   };
   var _error = function (message) {
-    _$log.val(String(message)).css('color', '#ff7777').show();
+    log(message);
+    _$log.text(message).css('color', '#ff7777').show();
     _$status.css({
           'color': '#f77',
           'border-color': '#f77',
@@ -168,7 +170,6 @@ var live = (function(){
 
     var compiling = false;
     var vars = {};
-    var once = {};
     var always = {};
 
     // TODO live.oncompile(function(){ diffHistory.add(live.getSource()); });
@@ -177,69 +178,66 @@ var live = (function(){
       compileHandlers.push(handler);
     };
 
+    var preWrapper = (
+        '"use strict";\n' +
+        '(function(' +
+              'vars, always, clear, setTimeout, using,' +
+              'help, print, error, draw' +
+            '){\n');
+    var postWrapper = '\n/**/})';
+    var compileAndEval = function (source) {
+
+      var compiled;
+      try {
+        compiled = globalEval(
+            preWrapper +
+            source.replace(/\bnonce\b/g,'if(0)') +
+            postWrapper);
+      }
+      catch (err) {
+        _warn(err);
+        return true;
+      }
+
+      _success();
+
+      try {
+        compiled(
+            vars, always, _clear, _setTimeout, _using,
+            _help, _print, _error, _context2d);
+      }
+      catch (err) {
+        (err instanceof Warning ? _warn : _error)(err);
+        return true;
+      }
+
+      return false;
+    };
+
     _compileSource = function () {
+
       if (!compiling) {
         _warn('hit escape to compile');
         return;
       }
 
       var source = _codemirror.getValue();
-      var compiled;
-      try {
-        compiled = globalEval(
-            '"use strict";\n' +
-            '(function(' +
-                  'vars, once, always, clear, setTimeout, using,' +
-                  'help, print, error, draw' +
-                '){\n' +
-                source +
-            '\n/**/})');
-      }
-      catch (err) {
-        _warn(err);
-        return;
-      }
+      var changed = false;
 
-      _success();
-      var warnings = [];
-      var errors = [];
+      while (source.match(/\bonce\b/)) {
 
-      var oncePrev = {};
-      for (var key in once) {
-        oncePrev[key] = undefined;
-      }
+        var firstOnce = (source
+            .replace(/\bonce\b/,'if(1)')     // activate first once
+            .replace(/\bonce\b[\s\S]*/,'')); // truncate remaining
 
-      try {
-        compiled(
-            vars, once, always, _clear, _setTimeout, _using,
-            _help, _print, _error, _context2d);
-      }
-      catch (err) {
-        (err instanceof Warning ? warnings : errors).push(err.toString());
-      }
+        if (compileAndEval(firstOnce)) return;
 
-      for (var key in once) {
-        if (!(key in oncePrev)) {
-          try {
-            once[key]();
-          }
-          catch (err) {
-            delete once[key]; // try again next compile
-            var message = 'In once[' + JSON.stringify(key) + ']: ' + err;
-            (err instanceof Warning ? warnings : errors).push(message);
-          }
-        }
+        source = source.replace(/\bonce\b/, 'nonce'); // deactivate first once
+        changed = true;
       }
+      if (changed) _codemirror.setValue(source);
 
-      if (errors.length) {
-        _error(errors.concat(warnings).join(';\n'));
-        return;
-      }
-
-      if (warnings.length) {
-        _warn(warnings.join(';\n'));
-        return;
-      }
+      if (compileAndEval(source)) return;
 
       for (var i = 0; i < compileHandlers.length; ++i) {
         compileHandlers[i]();
@@ -264,7 +262,6 @@ var live = (function(){
 
     _clearWorkspace = function () {
       for (var key in vars) { delete vars[key]; }
-      for (var key in once) { delete once[key]; }
       for (var key in always) { delete always[key]; }
     };
 
