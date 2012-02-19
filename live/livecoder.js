@@ -119,7 +119,7 @@ var live = (function(){
         }).text(':)');
   };
   var _warn = function (message) {
-    log('_warn: ' + message);
+    log('user warning: ' + message);
     _$log.val(message).css('color', '#ffff00').show();
     _$status.css({
           'color': '#ff0',
@@ -128,7 +128,7 @@ var live = (function(){
         }).text(':(');
   };
   var _error = function (message) {
-    log('_error: ' + message);
+    log('user error: ' + message);
     _$log.val(message).css('color', '#ff7777').show();
     _$status.css({
           'color': '#f77',
@@ -184,6 +184,23 @@ var live = (function(){
       };
     };
 
+    // this prevents fun from being reentrant
+    var scheduled = function (fun) {
+      var running = false;
+      var result = function () {
+        if (!running) {
+          running = true;
+          setTimeout(function(){ fun(); running = false; }, 0);
+        }
+      };
+      result.immediately = function () {
+        running = true;
+        fun();
+        running = false;
+      };
+      return result;
+    };
+
     // TODO live.oncompile(function(){ diffHistory.add(live.getSource()); });
     var compileHandlers = [];
     live.oncompile = function (handler) {
@@ -226,35 +243,31 @@ var live = (function(){
       return false;
     };
 
-    _compileSource = function () {
+    _compileSource = scheduled(function () {
 
       if (!compiling) {
         _warn('hit escape to compile');
         return;
       }
 
-      var source = _codemirror.getValue();
-      var changed = false;
+      var cursor = _codemirror.getSearchCursor(/\bonce\b/g);
+      while (cursor.findNext()) {
 
-      while (source.match(/\bonce\b/)) {
-
-        var firstOnce = (source
-            .replace(/\bonce\b/,'if(1)')     // activate first once
+        var firstOnce = (_codemirror.getValue()
+            .replace(/\bonce\b/,'if(1)')     // activate first once &
             .replace(/\bonce\b[\s\S]*/,'')); // truncate remaining
 
         if (compileAndEval(firstOnce)) return;
 
-        source = source.replace(/\bonce\b/, 'nonce'); // deactivate first once
-        changed = true;
+        cursor.replace('nonce'); // deactivate first once
       }
-      if (changed) _codemirror.setValue(source);
 
-      if (compileAndEval(source)) return;
+      if (compileAndEval(_codemirror.getValue())) return;
 
       for (var i = 0; i < compileHandlers.length; ++i) {
         compileHandlers[i]();
       }
-    };
+    });
 
     _stopCompiling = function () {
       compiling = false;
