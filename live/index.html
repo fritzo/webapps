@@ -74,10 +74,21 @@
 <div class='toolbar' id='toolbar'>
   <button class='roundRound' id='su'>su</button>
   &nbsp;
-  <button class='roundRound' id='showHelp' title='shortcut = F1'>help</button>
+  <button class='roundRound' id='showHelp' title='help = F1'><b>?</b></button>
   &nbsp;
-  <button class='roundFlat' id='save' title='shortcut = CTRL+S'>save</button><!--
-  --><button class='flatFlat' id='showGallery' title='shortcut = CTRL+O'>gallery</button><!--
+  <button class='roundFlat' id='playButton' title='play'><svg viewBox='0 0 1 1'>
+    <polygon fill='white' points='0,0 1,0.5 0,1' />
+  </svg></button><!--
+  --><button class='flatFlat' id='pauseButton' title='pause'><svg viewBox='0 0 1 1'>
+    <rect fill='white' x='0' y='0' width='0.3' height='1' />
+    <rect fill='white' x='0.7' y='0' width='0.3' height='1' />
+  </svg></button><!--
+  --><button class='flatRound' id='recordButton' title='record'><svg viewBox='0 0 1 1'>
+    <circle fill='#ffbfbf' cx='0.5' cy='0.5' r='0.5' />
+  </svg></button>
+  &nbsp;
+  <button class='roundFlat' id='save' title='save = CTRL+S'>save</button><!--
+  --><button class='flatFlat' id='showGallery' title='load = CTRL+O'>gallery</button><!--
   --><button class='flatRound' id='share'>share</button>
   &nbsp;
   <button class='statusFace' id='hideToolbar' title='hide toolbar'>:)</button>

@@ -8,6 +8,7 @@
  * http://www.opensource.org/licenses/MIT
  */
 
+// TODO make this a module-as-closure, since noone else uses ui
 var ui = {};
 
 //------------------------------------------------------------------------------
@@ -375,6 +376,10 @@ $(function() {
         }
       });
   //$('#help').click(function(){ $('#help').fadeToggle(100); });
+
+  $('#playButton').click(function(){ TODO('implement play'); });
+  $('#pauseButton').click(function(){ TODO('implement pause'); });
+  $('#recordButton').click(function(){ TODO('implement record'); });
 
   $('#save').click(ui.saveScript);
   $('#showGallery').click(function(){
