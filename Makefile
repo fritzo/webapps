@@ -30,8 +30,10 @@ wavencoder:
 #-------------------------------------------------------------------------------
 # external libraries
 
+extern:
+	mkdir extern
+
 extern/codemirror:
-	test -e extern || mkdir extern
 	rm -rf extern/CodeMirror-*
 	( test -e /tmp/codemirror.zip || \
 	  wget http://codemirror.net/codemirror.zip -O /tmp/codemirror.zip )
@@ -39,7 +41,6 @@ extern/codemirror:
 	( cd extern ; ln -sf CodeMirror-* codemirror )
 
 extern/audiolibjs: FORCE
-	test -e extern || mkdir extern
 	rm -rf extern/*-audiolib.js-*
 	( test -e /tmp/audiolibjs.zip || \
 	  wget https://github.com/jussi-kalliokoski/audiolib.js/zipball/master \
@@ -48,7 +49,6 @@ extern/audiolibjs: FORCE
 	( cd extern ; ln -sf *-audiolib.js-* audiolibjs )
 
 extern/diff_match_patch.js: FORCE
-	test -e extern || mkdir extern
 	rm -rf extern/diff_match_patch* && \
 	( test -e /tmp/diff_match_patch.zip || \
 	  wget http://google-diff-match-patch.googlecode.com/files/diff_match_patch_20120106.zip \
@@ -56,17 +56,17 @@ extern/diff_match_patch.js: FORCE
 	unzip /tmp/diff_match_patch.zip -d extern/ && \
 	( cd extern ; ln -sf diff_match_patch_*/javascript/diff_match_patch.js )
 
+extern/UglifyJS: FORCE
+	( cd extern ; \
+	  ( test -e UglifyJS || \
+	    git clone https://github.com/mishoo/UglifyJS.git ) && \
+	  cd UglifyJS && git pull )
+
 extern/espeak: FORCE
-	test -e extern || mkdir extern
 	( cd extern ; \
 	  test -e espeak || \
 	  git clone https://github.com/kripken/speak.js.git espeak && \
 	  cd espeak && git pull )
-
-extern: extern/codemirror \
-	extern/audiolibjs \
-	extern/espeak \
-	extern/diff_match_patch.js
 
 #-------------------------------------------------------------------------------
 # build & release tools
@@ -79,7 +79,7 @@ release:
 
 tools: compiler linter
 
-compiler: FORCE
+compiler:
 	rm -rf compiler
 	mkdir compiler
 	( test -e /tmp/closure-compiler.zip || \
@@ -138,17 +138,23 @@ live-codemirror: extern/codemirror compiler
 	  --js=extern/codemirror/lib/util/runmode.js \
 	  --js_output_file=live/codemirror.min.js
 
+live-dmp: extern/diff_match_patch.js
+	cp extern/diff_match_patch.js live/
+	chmod 644 live/diff_match_patch.js
+
+#live-uglify: extern/UglifyJS compiler
+#	# compress javascript
+#	$(COMPILE1) \
+#	  --js=extern/UglifyJS/uglify-js.js \
+#	  --js_output_file=live/uglify-js.min.js
+
 live-espeak: extern/espeak
 	cp extern/espeak/speakClient.js live/
 	cp extern/espeak/speakGenerator.js live/
 	cp extern/espeak/speakWorker.js live/
 	cat live/speakGenerator.js live/speakWrapper.js > live/speech.js
 
-live-dmp: extern/diff_match_patch.js
-	cp extern/diff_match_patch.js live/
-	chmod 644 live/diff_match_patch.js
-
-live: live-codemirror live-espeak live-dmp FORCE
+live: live-codemirror live-dmp live-espeak FORCE
 
 #-------------------------------------------------------------------------------
 # keys
