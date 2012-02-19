@@ -108,10 +108,10 @@ var live = (function(){
   ].join('\n');
 
   var _print = function (message) {
-    _$log.text('> ' + message).css('color', '#aaaaff').show();
+    _$log.val('> ' + message).css('color', '#aaaaff').show();
   };
   var _success = function () {
-    _$log.text('').hide();
+    _$log.val('').hide();
     _$status.css({
           'color': '#7f7',
           'border-color': '#7f7',
@@ -119,8 +119,8 @@ var live = (function(){
         }).text(':)');
   };
   var _warn = function (message) {
-    log(message);
-    _$log.text(message).css('color', '#ffff00').show();
+    log('_warn: ' + message);
+    _$log.val(message).css('color', '#ffff00').show();
     _$status.css({
           'color': '#ff0',
           'border-color': '#ff0',
@@ -128,8 +128,8 @@ var live = (function(){
         }).text(':(');
   };
   var _error = function (message) {
-    log(message);
-    _$log.text(message).css('color', '#ff7777').show();
+    log('_error: ' + message);
+    _$log.val(message).css('color', '#ff7777').show();
     _$status.css({
           'color': '#f77',
           'border-color': '#f77',
@@ -171,6 +171,18 @@ var live = (function(){
     var compiling = false;
     var vars = {};
     var always = {};
+    var cache = {};
+
+    var cached = function (fun) {
+      return function () {
+        var hash = fun + JSON.stringify(arguments); // HACK imprecise
+        if (hash in cache) {
+          return cache[hash];
+        } else {
+          return cache[hash] = fun.apply(this, arguments);
+        }
+      };
+    };
 
     // TODO live.oncompile(function(){ diffHistory.add(live.getSource()); });
     var compileHandlers = [];
@@ -181,7 +193,7 @@ var live = (function(){
     var preWrapper = (
         '"use strict";\n' +
         '(function(' +
-              'vars, always, clear, setTimeout, using,' +
+              'vars, always, cached, clear, setTimeout, using,' +
               'help, print, error, draw' +
             '){\n');
     var postWrapper = '\n/**/})';
@@ -203,7 +215,7 @@ var live = (function(){
 
       try {
         compiled(
-            vars, always, _clear, _setTimeout, _using,
+            vars, always, cached, _clear, _setTimeout, _using,
             _help, _print, _error, _context2d);
       }
       catch (err) {
@@ -263,6 +275,7 @@ var live = (function(){
     _clearWorkspace = function () {
       for (var key in vars) { delete vars[key]; }
       for (var key in always) { delete always[key]; }
+      for (var key in cache) { delete cache[key]; }
     };
 
     var alwaysTask = function () {

@@ -9,13 +9,8 @@ using('speech.js'); // a browser-based synthesis library
 once say('let me sing you a song');
 
 var sing = function (word, opts) {
-  
-  // synthesize & cache speech
-  var hash = JSON.stringify([word,opts]);
-  vars[hash] = vars[hash] || speech(word, opts);
-  
-  // return something for setTimeout
-  return function () { play(vars[hash]); }
+  var wav = cached(speech)(word, opts); // synthesize & cache speech
+  return function () { play(wav); }     // return something for setTimeout
 };
 
 var PERIOD = 3000;
