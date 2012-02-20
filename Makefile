@@ -33,14 +33,14 @@ wavencoder:
 extern:
 	mkdir extern
 
-extern/codemirror:
+extern/codemirror: extern
 	rm -rf extern/CodeMirror-*
 	( test -e /tmp/codemirror.zip || \
 	  wget http://codemirror.net/codemirror.zip -O /tmp/codemirror.zip )
 	unzip /tmp/codemirror.zip -d extern/ && \
 	( cd extern ; ln -sf CodeMirror-* codemirror )
 
-extern/audiolibjs: FORCE
+extern/audiolibjs: extern FORCE
 	rm -rf extern/*-audiolib.js-*
 	( test -e /tmp/audiolibjs.zip || \
 	  wget https://github.com/jussi-kalliokoski/audiolib.js/zipball/master \
@@ -48,7 +48,7 @@ extern/audiolibjs: FORCE
 	unzip /tmp/audiolibjs.zip -d extern/ && \
 	( cd extern ; ln -sf *-audiolib.js-* audiolibjs )
 
-extern/diff_match_patch.js: FORCE
+extern/diff_match_patch.js: extern FORCE
 	rm -rf extern/diff_match_patch* && \
 	( test -e /tmp/diff_match_patch.zip || \
 	  wget http://google-diff-match-patch.googlecode.com/files/diff_match_patch_20120106.zip \
@@ -56,13 +56,20 @@ extern/diff_match_patch.js: FORCE
 	unzip /tmp/diff_match_patch.zip -d extern/ && \
 	( cd extern ; ln -sf diff_match_patch_*/javascript/diff_match_patch.js )
 
-extern/UglifyJS: FORCE
+extern/mobwrite: extern FORCE
+	( cd extern ; \
+	  ( test -e mobwrite || \
+	    svn checkout \
+	      http://google-mobwrite.googlecode.com/svn/trunk/ mobwrite ) && \
+	  cd mobwrite && svn update )
+
+extern/UglifyJS: extern FORCE
 	( cd extern ; \
 	  ( test -e UglifyJS || \
 	    git clone https://github.com/mishoo/UglifyJS.git ) && \
 	  cd UglifyJS && git pull )
 
-extern/espeak: FORCE
+extern/espeak: extern FORCE
 	( cd extern ; \
 	  test -e espeak || \
 	  git clone https://github.com/kripken/speak.js.git espeak && \
