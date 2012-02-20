@@ -24,25 +24,25 @@
  *   - mode/javascript/javascript.js (modified for livecoder)
  *
  * Provides:
- * - an object 'live'
+ * - an object 'coder'
  *
  * Copyright (c) 2012, Fritz Obermeyer
  * Licensed under the MIT license:
  * http://www.opensource.org/licenses/MIT
  */
 
-var live = (function(){
+var coder = (function(){
 
   var alwaysPollMs = 250;
   var alwaysLoopMs = 1;
 
-  var live = {};
+  var coder = {};
 
   var _$log;
   var _$status;
   var _codemirror;
 
-  live.init = function (args) {
+  coder.init = function (args) {
 
     _$log = args.$log;
     _$status = args.$status;
@@ -71,7 +71,7 @@ var live = (function(){
     scroller.style.height = '100%';
     scroller.style.width = '100%';
 
-    _codemirror.setValue(args.initSource || live.logo);
+    _codemirror.setValue(args.initSource || coder.logo);
 
     _initGraphics(args.canvas2d);
 
@@ -79,7 +79,7 @@ var live = (function(){
     _startAlways();
   };
 
-  live.logo = [
+  coder.logo = [
       //"once say('Hello World! i am live code. try changing me.');",
       "// Hello World",
       "// i am live code",
@@ -139,12 +139,12 @@ var live = (function(){
     _context2d.clearRect(0, 0, innerWidth, innerHeight);
   };
 
-  live.setSource = function (val) {
+  coder.setSource = function (val) {
     _clear();
     _codemirror.setValue(val);
     _startCompiling();
   };
-  live.getSource = function (val) {
+  coder.getSource = function (val) {
     return _codemirror.getValue();
   };
 
@@ -201,9 +201,9 @@ var live = (function(){
       return result;
     };
 
-    // TODO live.oncompile(function(){ diffHistory.add(live.getSource()); });
+    // TODO coder.oncompile(function(){ diffHistory.add(coder.getSource()); });
     var compileHandlers = [];
-    live.oncompile = function (handler) {
+    coder.oncompile = function (handler) {
       compileHandlers.push(handler);
     };
 
@@ -474,13 +474,13 @@ var live = (function(){
 
   return {
 
-    init: live.init,
+    init: coder.init,
 
-    setSource: live.setSource,
-    getSource: live.getSource,
+    setSource: coder.setSource,
+    getSource: coder.getSource,
 
     toggleCompiling: _toggleCompiling,
-    oncompile: live.oncompile,
+    oncompile: coder.oncompile,
 
     focus: function(){ _codemirror.focus(); },
 

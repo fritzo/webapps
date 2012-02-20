@@ -42,10 +42,7 @@
 <script type='text/javascript' src='livecoder.js'></script>
 <script type='text/javascript' src='ui.js'></script>
 
-<!-- XXX this is huge and expensive; TODO try to factor out to a module -->
-<!-- GPL3 -->
-<script src='speakGenerator.js'></script>
-<!-- <script src='speakClient.js'></script> -->
+<!-- MIT -->
 <script type='text/javascript' src='audio.js'></script>
 
 <!-- MIT -->
@@ -61,15 +58,16 @@
 <body>
 
 <canvas id='canvas2d'></canvas>
-<div id='audio'></div> <!-- needed by speakClient.js -->
 
 <div id='editor'>
   <div><textarea id='source' name='source' spellcheck='false'></textarea></div>
+
+  <!-- TODO make log area more conveniently resizable -->
   <textarea id='log' readonly spellcheck='false'></textarea>
 </div>
 
 <div class='toolbar' id='toolbar'>
-  <span id='hidableButtons'>
+  <span class='hidableButtons'>
   <button class='roundRound' id='su'>su</button>
   &nbsp;
   <button id='helpButton' title='help = F1'><b>?</b></button>

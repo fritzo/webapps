@@ -18,12 +18,12 @@ var ui = {};
 ui.getAutosave = function () {
 
   var changed = false;
-  live.oncompile(function(){ changed = true; });
+  coder.oncompile(function(){ changed = true; });
 
   var autosave = function () {
     if (changed) {
       changed = false;
-      localStorage.setItem('autosave.js', live.getSource());
+      localStorage.setItem('autosave.js', coder.getSource());
     }
     setTimeout(autosave, 500);
   };
@@ -34,14 +34,14 @@ ui.getAutosave = function () {
 
 ui.saveScript = function () {
   var name = String(Date.now()) + '.js';
-  localStorage.setItem(name, live.getSource());
+  localStorage.setItem(name, coder.getSource());
   log('saved ' + name);
   ui.buildScriptList();
 };
 
 ui.loadScript = function (name) {
   log('loading ' + name);
-  live.setSource(localStorage.getItem(name));
+  coder.setSource(localStorage.getItem(name));
 };
 
 ui.deleteScript = function (name) {
@@ -188,7 +188,7 @@ ui.importGallery = function (concatenatedScripts) {
 // Hash Persistence
 
 ui.getHash = function () {
-  var hashedSource = btoa(live.getSource());
+  var hashedSource = btoa(coder.getSource());
   return window.location.href.replace(/\/?#.*/,'') + '#a=' + hashedSource;
 };
 
@@ -251,7 +251,7 @@ $(window).keydown(function (event) {
 
     // ESCAPE = hold/continue compiling
     case 27:
-      live.toggleCompiling();
+      coder.toggleCompiling();
       event.preventDefault();
       break;
 
@@ -285,7 +285,7 @@ $(window).keydown(function (event) {
         $('#F1target')[0].scrollIntoView();
       } else {
         $help.hide();
-        live.focus();
+        coder.focus();
       }
       event.preventDefault();
       break;
@@ -300,7 +300,7 @@ $(window).keydown(function (event) {
         $('#F2target')[0].scrollIntoView();
       } else {
         $help.hide();
-        live.focus();
+        coder.focus();
       }
       event.preventDefault();
       break;
@@ -309,6 +309,7 @@ $(window).keydown(function (event) {
 
 $(function() {
 
+  // set local title while developing
   if (document.location.hostname.toLowerCase() !== 'livecoder.net') {
     document.title = ( document.location.hostname
                      + document.location.pathname ).replace(/\/$/,'');
@@ -348,7 +349,7 @@ $(function() {
           $('#help a').first().focus();
         } else {
           $help.fadeOut(100);
-          live.focus();
+          coder.focus();
         }
       });
   //$('#help').click(function(){ $('#help').fadeToggle(100); });
@@ -372,7 +373,7 @@ $(function() {
       });
 
   $('#hideButton').click(function(){
-        $('#hidableButtons').fadeToggle(100);
+        $('.hidableButtons').fadeToggle(100);
       });
 
   // initialize livecoder
@@ -382,11 +383,11 @@ $(function() {
 
   // hide buttons if window is an iframe
   if (window.location != window.parent.location) {
-    $('#hidableButtons').hide();
+    $('.hidableButtons').hide();
   }
 
   var canvas2d = document.getElementById('canvas2d');
-  live.init({
+  coder.init({
         $source: $('#source'),
         $log: $('#log'),
         $status: $('.statusFace'),
@@ -395,6 +396,6 @@ $(function() {
         onFocus: hideOverlays
       });
 
-  live.focus();
+  coder.focus();
 });
 

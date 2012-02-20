@@ -3,12 +3,13 @@
  * http://livecoder.net
  * http://github.com/fritzo/livecoder.net
  *
+ * Requires:
+ * - diff_match_patch.js
+ *
  * Copyright (c) 2012, Fritz Obermeyer
  * Licensed under the MIT license:
  * http://www.opensource.org/licenses/MIT
  */
-
-//require('diff_match_patch');
 
 //------------------------------------------------------------------------------
 // History
@@ -264,9 +265,19 @@ var History = (function(){
 })();
 
 //------------------------------------------------------------------------------
-// Recorder
+// Player
+// - fine-garined recording: down to each character
+//   (Q1) how to deal with compile errors/compile toggle?
+// - two modes:
+//   - paused: no editing (does this really make sense)
+//   - playing: incoming changes = outgoing changes + user modifications
+// - supports navigation:
+//   - jump back in time
+//   - jump forward in time
+//   - merge editing changes while playing
+//   - fork present (ie eraseHence)
 
-var Recorder = (function(){
+var Player = (function(){
 
   /** @constant */
   var STATES = {
@@ -276,10 +287,12 @@ var Recorder = (function(){
   };
 
   /** @constructor */
-  var Recorder = function (coder, history) {
+  var Player = function (coder, history) {
 
     this._coder = coder;
-    this._history = history;
+    this._history = history || new History();
+
+    this._playing = false;
 
     this._startTime = undefined;
     this._pauseTime = undefined;
@@ -287,22 +300,25 @@ var Recorder = (function(){
     this._state = STATES.RECORDING;
     this._lastPlayed = [];
 
-    var recorder = this;
+    var player = this;
     coder.oncompile(function (code) {
-          switch (recorder._state) {
+          if (!player._playing) {
+            player.playing = true;
+          }
+          switch (player._state) {
             case STATES.RECORDING:
-              recorder.recordFrame(code);
+              player.recordFrame(code);
               break;
             case STATES.PLAYING:
-              recorder._assertPlayed(code);
+              player._assertPlayed(code);
               break;
             default:
-              throw 'bad recorder state: ' + recorder._state;
+              throw 'bad player state: ' + player._state;
         });
   };
 
   // TODO update from History
-  Recorder.prototype = {
+  Player.prototype = {
 
     // TODO deal with coder compiling state:
     // * if recording, coder is writable
@@ -351,7 +367,7 @@ var Recorder = (function(){
     none: undefined
   };
 
-  return Recorder;
+  return Player;
 
 })();
 
