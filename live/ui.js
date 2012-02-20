@@ -134,7 +134,7 @@ ui.buildScriptList = function () {
 
   var keys = ui.listScripts();
 
-  $('#showGallery').html('gallery (' + keys.length + ')');
+  $('#galleryButton').html('gallery (' + keys.length + ')');
 
   var menu = $('#gallery table').empty();
   for (var i = 0; i < keys.length; ++i) {
@@ -225,30 +225,6 @@ ui.shareHash = function () {
 };
 
 //------------------------------------------------------------------------------
-// Hiding
-
-// these cycle between 2 states
-
-ui.showToolbar = function (speed) {
-  if (speed == undefined) speed = 100;
-  return function (e) {
-    $('#toolbar').fadeIn(speed, function(){ $('#showToolbar').hide(); });
-    $('#hideToolbar').focus();
-    if (e) e.preventDefault();
-  };
-};
-
-ui.hideToolbar = function (speed) {
-  if (speed == undefined) speed = 100;
-  return function (e) {
-    $('#showToolbar').show();
-    $('#toolbar').fadeOut(speed);
-    $('#showToolbar').focus();
-    if (e) e.preventDefault();
-  };
-};
-
-//------------------------------------------------------------------------------
 // Admin
 
 var su = function () {
@@ -284,7 +260,7 @@ $(window).keydown(function (event) {
     case 83:
       if (!event.ctrlKey) break;
     case 19: // cmd+S on mac
-      ui.blink($('#save'));
+      ui.blink($('#saveButton'));
       ui.saveScript();
       event.preventDefault();
       break;
@@ -293,7 +269,7 @@ $(window).keydown(function (event) {
     case 79:
       if (!event.ctrlKey) break;
     //case ???: // cmd+O on mac
-      ui.blink($('#showGallery'));
+      ui.blink($('#galleryButton'));
       $('#gallery').fadeToggle('fast');
       ui.buildScriptList();
       event.preventDefault();
@@ -301,7 +277,7 @@ $(window).keydown(function (event) {
 
     // F1 = show language help
     case 112:
-      ui.blink($('#showHelp'));
+      ui.blink($('#helpButton'));
       var $help = $('#help');
       if ($help.is(':hidden')) {
         $help.show();
@@ -316,7 +292,7 @@ $(window).keydown(function (event) {
 
     // F2 = show keyboard shortcuts
     case 113:
-      ui.blink($('#showHelp'));
+      ui.blink($('#helpButton'));
       var $help = $('#help');
       if ($help.is(':hidden')) {
         $help.show();
@@ -365,7 +341,7 @@ $(function() {
   if ('su' in localStorage) su();
   $('#su').click(nosu).attr('title', 'leave superuser mode');
 
-  $('#showHelp').click(function(){
+  $('#helpButton').click(function(){
         var $help = $('#help');
         if ($help.is(':hidden')) {
           $help.fadeIn(100);
@@ -381,12 +357,12 @@ $(function() {
   $('#pauseButton').click(function(){ TODO('implement pause'); });
   $('#recordButton').click(function(){ TODO('implement record'); });
 
-  $('#save').click(ui.saveScript);
-  $('#showGallery').click(function(){
+  $('#saveButton').click(ui.saveScript);
+  $('#galleryButton').click(function(){
     $('#gallery').fadeToggle('fast');
     ui.buildScriptList();
   });
-  $('#share').click(ui.shareHash);
+  $('#shareButton').click(ui.shareHash);
 
   $('#export').click(function(){
         $('#galleryBox').val(ui.exportGallery).focus().select();
@@ -395,21 +371,18 @@ $(function() {
         ui.importGallery($('#galleryBox').val());
       });
 
-  $('#showToolbar').click(ui.showToolbar());
-  $('#hideToolbar').click(ui.hideToolbar());
+  $('#hideButton').click(function(){
+        $('#hidableButtons').fadeToggle(100);
+      });
 
   // initialize livecoder
 
   var initSource = (ui.popHash() || ui.getAutosave() || '').trim();
   $.get('gallery.jscat', function(val){ ui.importGallery(val); });
 
-  // hide controls if window is an iframe
+  // hide buttons if window is an iframe
   if (window.location != window.parent.location) {
-    $('#showToolbar').show();
-    $('#toolbar').hide();
-  } else {
-    $('#toolbar').show();
-    $('#showToolbar').hide();
+    $('#hidableButtons').hide();
   }
 
   var canvas2d = document.getElementById('canvas2d');

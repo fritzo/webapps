@@ -68,15 +68,13 @@
   <textarea id='log' readonly spellcheck='false'></textarea>
 </div>
 
-<div class='toolbar'>
-  <button class='statusFace' id='showToolbar' title='show toolbar'>:)</button>
-</div>
 <div class='toolbar' id='toolbar'>
+  <span id='hidableButtons'>
   <button class='roundRound' id='su'>su</button>
   &nbsp;
-  <button class='roundRound' id='showHelp' title='help = F1'><b>?</b></button>
+  <button id='helpButton' title='help = F1'><b>?</b></button>
   &nbsp;
-  <button class='roundFlat' id='playButton' title='play'><svg viewBox='0 0 1 1'>
+  <button id='playButton' title='play' class='roundFlat'><svg viewBox='0 0 1 1'>
     <polygon fill='white' points='0,0 1,0.5 0,1' />
   </svg></button><!--
   --><button class='flatFlat' id='pauseButton' title='pause'><svg viewBox='0 0 1 1'>
@@ -87,11 +85,12 @@
     <circle fill='#ffbfbf' cx='0.5' cy='0.5' r='0.5' />
   </svg></button>
   &nbsp;
-  <button class='roundFlat' id='save' title='save = CTRL+S'>save</button><!--
-  --><button class='flatFlat' id='showGallery' title='load = CTRL+O'>gallery</button><!--
-  --><button class='flatRound' id='share'>share</button>
+  <button id='saveButton' title='save = CTRL+S' class='roundFlat'>save</button><!--
+  --><button id='galleryButton' title='load = CTRL+O' class='flatFlat'>gallery</button><!--
+  --><button id='shareButton' class='flatRound'>share</button>
   &nbsp;
-  <button class='statusFace' id='hideToolbar' title='hide toolbar'>:)</button>
+  </span>
+  <button id='hideButton' class='statusFace' title='toggle toolbar'>:)</button>
 </div>
 
 <div class='toolbar' id='gallery'>
