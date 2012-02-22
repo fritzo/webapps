@@ -3,6 +3,7 @@
 <head>
 <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js'></script>
 <script src='http://localhost:8080/socket.io/socket.io.js'></script>
+<script src='./diff_match_patch.js'></script>
 <script type='text/javascript'>
   var message = function (from, msg) {
     console.log(from + ': ' + msg);
@@ -10,8 +11,7 @@
   };
 $(function(){
 
-  message('Client', 'connecting to server...');
-
+  message('Client', 'connecting to server');
   var socket = io.connect('http://localhost:8080');
 
   socket.on('connect', function () {
@@ -29,14 +29,14 @@ $(function(){
     message('Client', 'disconnected from server');
     $('#send').off('click');
   });
-  socket.on('reconnect', function () {
-    message('Client', 'Reconnected to the server');
-  });
   socket.on('reconnecting', function () {
-    message('Client', 'Attempting to re-connect to the server');
+    message('Client', 'attempting to re-connect to the server');
+  });
+  socket.on('reconnect', function () {
+    message('Client', 'reconnected to the server');
   });
   socket.on('error', function (e) {
-    message('Client', e ? e : 'A unknown error occurred');
+    message('Client', e || 'an unknown error occurred');
   });
 });
 </script>

@@ -59,8 +59,8 @@ process.once('SIGUSR2', function () {
 
 process.env.NODE_ENV = 'development';
 
-var dmp = require('diff_match_patch');
 var io = require('socket.io').listen(8080);
+var dmp = require('diff_match_patch');
 
 io.configure(function () {
   io.set('browser client minification', 'true');
