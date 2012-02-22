@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+<head>
+<script src='http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js'></script>
+<script src='http://localhost:8080/socket.io/socket.io.js'></script>
+<script type='text/javascript'>
+  var message = function (from, msg) {
+    console.log(from + ': ' + msg);
+    $('#log').append($('<p>').append($('<b>').text(from + ' '), msg));
+  };
+$(function(){
+
+  message('Client', 'connecting to server...');
+
+  var socket = io.connect('http://localhost:8080');
+
+  socket.on('connect', function () {
+    message('Client', 'connected to server');
+
+    $('#send').on('click', function(){
+      message('Client', 'sending message');
+      socket.emit('message', $('#input').val());
+    });
+  });
+  socket.on('message', function (msg) {
+    message('Server', msg);
+  });
+  socket.on('disconnect', function () {
+    message('Client', 'disconnected from server');
+    $('#send').off('click');
+  });
+  socket.on('reconnect', function () {
+    message('Client', 'Reconnected to the server');
+  });
+  socket.on('reconnecting', function () {
+    message('Client', 'Attempting to re-connect to the server');
+  });
+  socket.on('error', function (e) {
+    message('Client', e ? e : 'A unknown error occurred');
+  });
+});
+</script>
+</head>
+<body>
+
+<p>
+  <textarea id=input rows=1 cols=60></textarea>
+  <button id=send>send</button>
+</p>
+<div id=log></div>
+
+</body>
+</html>
+
