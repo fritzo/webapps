@@ -228,6 +228,15 @@ release/keys: keys.min release FORCE
 	sed -i '/BEGIN DEVEL/,/END DEVEL/d;/RELEASE/d' release/keys/index.html
 	tar -cjf keys.tbz2 -C release keys
 
+#-----------------------------------------------------------------------------
+# common
+
+common/sha1.min.js: common/sha1.js
+	$(COMPILE1) \
+	  --js=common/sha1.js \
+	  --js_output_file=common/sha1.min.js
+
+
 #-------------------------------------------------------------------------------
 
 clean: FORCE

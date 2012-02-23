@@ -1,10 +1,15 @@
-// from http://www.movable-type.co.uk/scripts/sha1.html
+/** @license
+ SHA-1 implementation in JavaScript
+ Copyright (c) Chris Veness 2002-2010
+ http://www.movable-type.co.uk
 
-/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  */
-/*  SHA-1 implementation in JavaScript | (c) Chris Veness 2002-2010 | www.movable-type.co.uk      */
-/*   - see http://csrc.nist.gov/groups/ST/toolkit/secure_hashing.html                             */
-/*         http://csrc.nist.gov/groups/ST/toolkit/examples.html                                   */
-/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  */
+ Licensed under LGPL: http://www.gnu.org/licenses/lgpl.html
+ please link to http://www.movable-type.co.uk/scripts/sha1.html
+*/
+
+// see:
+// http://csrc.nist.gov/groups/ST/toolkit/secure_hashing.html
+// http://csrc.nist.gov/groups/ST/toolkit/examples.html
 
 var Sha1 = {};  // Sha1 namespace
 
