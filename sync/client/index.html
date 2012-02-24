@@ -4,69 +4,23 @@
 <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js'></script>
 <script src='http://localhost:8080/socket.io/socket.io.js'></script>
 <script src='./diff_match_patch.js'></script>
-<script src='./sha1.js'></script>
-<script type='text/javascript'>
-
-var getInput = function () {
-  return Utf8.encode($('#input').val());
-};
-
-var getHash = function (text) {
-  return Sha1.hash(text, false);
-};
-
-var message = function (from, msg) {
-  console.log(from + ': ' + msg);
-  $('#log').append($('<p>').append($('<b>').text(from + ' '), msg));
-};
-
-$(function(){
-
-  $('#send').on('click', function(){
-    $('#hash').text(getHash(getInput()));
-  });
-
-  message('Client', 'connecting to server');
-  var socket = io.connect('http://localhost:8080');
-
-  socket.on('connect', function () {
-    message('Client', 'connected to server');
-
-    $('#send').on('click.send', function(){
-      message('Client', 'sending message');
-      socket.emit('message', getInput());
-    });
-  });
-  socket.on('message', function (msg) {
-    message('Server', msg);
-  });
-  socket.on('disconnect', function () {
-    message('Client', 'disconnected from server');
-    $('#send').off('click.send');
-  });
-  socket.on('reconnecting', function () {
-    message('Client', 'attempting to re-connect to the server');
-  });
-  socket.on('reconnect', function () {
-    message('Client', 'reconnected to the server');
-  });
-  socket.on('error', function (e) {
-    message('Client', e || 'an unknown error occurred');
-  });
-});
-</script>
+<script src='./sync.js'></script>
+<style>
+textarea {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  overflow: auto;
+}
+</style>
 </head>
 <body>
-
-<p>
-  <textarea id=input rows=1 cols=60></textarea>
-  <button id=send>send</button>
-</p>
-<p>
-  SHA1 Hash = <span id=hash></span>
-</p>
-<div id=log></div>
-
+<textarea id='editor' noresize></textarea>
 </body>
 </html>
 

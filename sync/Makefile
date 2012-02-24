@@ -17,13 +17,20 @@ client/diff_match_patch.js: extern
 	chmod 644 client/diff_match_patch.js
 
 # TODO switch to using a node.js package.json
-install: extern client/diff_match_patch.js
+install: extern client/diff_match_patch.js mongodb
 	npm install diff_match_patch
 	npm install express
 	npm install socket.io
+	npm install mongoose --mongodb:native
 	npm install uglify-js
 	sudo npm install nodemon -g
 	sudo npm install forever -g
+
+# see http://www.mongodb.org/display/DOCS/Quickstart+Unix
+mongodb: FORCE
+	sudo apt-get install -y mongodb
+	test -e /data/db || sudo mkdir /data/db
+	sudo chown `id -u` /data/db
 
 #-------------------------------------------------------------------------------
 # Running
@@ -32,17 +39,22 @@ log:
 	mkdir log
 
 test:
-	cd server && nodemon main.js
+	#forever start -c . /usr/bin/mongod
+	nodemon -w server server/main.js
+	#forever stop mongod
 
 start: log
 	export NODE_ENV=development
 	@#export NODE_ENV=production
-	forever -o log/out.text -e log/err.text \
+	#forever -o log/db.out.text -e log/db.err.text start \
+	#  -c . /usr/bin/mongodb
+	forever -o log/server.out.text -e log/server.err.text \
 		--watch --minUpTime 500 --spinSleepTime 4000 \
 		start server/main.js
 
 stop:
 	forever stop server/main.js
+	#forever stop mongod
 
 #-------------------------------------------------------------------------------
 
