@@ -77,21 +77,6 @@ var Differ = function () {
   var diff_match_patch = require('diff_match_patch').diff_match_patch;
   var dmp = new diff_match_patch();
 
-  var diff_apply = function (baseText, newText1, diffs2) {
-    var patches2 = dmp.patch_make(baseText, diffs2);
-    var pair = dmp.patch_apply(patches, newText1);
-    var levenshtein = 0;
-    var succeeded = pair[1];
-    assert.equal(succeeded.length, diffs.length);
-    for (var i = 0; i < diffs.length; ++i) {
-      if (!succeeded[i]) {
-        levenshtein += dmp.diff_levenshtein(diffs[i]);
-      }
-    }
-    pair[1] = levenshtein;
-    return pair;
-  };
-
   this.getDiff = function (baseText, newText) {
     var diffs = dmp.diff_main(baseText, newText);
     dmp.diff_cleanupEfficiency(diffs); // optional
@@ -106,11 +91,11 @@ var Differ = function () {
 
   this.fastForward = function (baseText, diffStack) {
     for (var i = 0; i < diffStack.length; ++i) {
-      var pair = diff_apply(baseText, baseText, diffStack[i]);
-      var baseText = pair[0];
-      var levenshtein = pair[1];
-      if (levenshtein !== 0) {
-        console.log('fast forward failed, levenshtein = ' + levenshtein);
+      var patches = dmp.patch_make(baseText, diffStack[i]);
+      var pair = dmp.patch_apply(patches, baseText);
+      baseText = pair[0];
+      if (!every(pair[1])) {
+        console.log('fastForward failed on step ' + i);
       }
     }
     return baseText;
@@ -120,31 +105,11 @@ var Differ = function () {
     for (var i = 0; i < patchStack.length; ++i) {
       var pair = dmp.patch_apply(patchStack[i], baseText);
       baseText = pair[0];
-      var succeeded = pair[1];
-      if (!every(succeeded)) {
-        console.log('applyPatchStack patch failed');
+      if (!every(pair[1])) {
+        console.log('applyPatchStack failed on step ' + i);
       }
     }
     return baseText
-  };
-
-  this.threeWayMerge = function (baseText, newText1, diffs2) {
-
-    var pair = diff_apply(baseText, newText1, diffs2);
-    var merged21 = pair[0];
-    var levenshtein21 = pair[1];
-    if (levenshtein21 === 0) return merged21;
-    console.log('merge failed on first try, levenshtein = ' + levenshtein21);
-
-    var newText2 = dmp.patch_apply(patches2, newText1)[0];
-    var diffs1 = dmp.diff_main(baseText, newText1);
-    var pair = diff_apply(baseText, newText2, diffs1);
-    var merged12 = pair[0];
-    var levenshtein12 = pair[1];
-    if (levenshtein12 === 0) return merged12;
-    console.log('merge failed on second try, levenshtein = ' + levenshtein21);
-
-    return levenshtein12 <= levenshtein21 ? merged12 : merged21;
   };
 };
 
@@ -204,6 +169,7 @@ var syncToSocket = (function(){
 
   var currentText = '';
   var history = [];
+  var times = [];
   var historyObservers = {};
 
   var updateHistory = function (patchStack, time) {
@@ -211,7 +177,8 @@ var syncToSocket = (function(){
     var diff = differ.getDiff(currentText, newText);
 
     currentText = newText;
-    history.push({time:time, diff:diff});
+    history.push(diff);
+    times.push(time);
 
     for (var key in historyObservers) {
       historyObservers[key]();

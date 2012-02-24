@@ -3,27 +3,19 @@ var assert = function (condition, message) {
   if (!condition) throw message;
 };
 
+var every = function (arg) {
+  for (var i = 0; i < arg.length; ++i) {
+    if (!arg[i]) return false;
+  }
+  return true;
+};
+
 // server/main.js has canonical version
 // client/sync.js has slave version
 var Differ = function () {
 
   //var diff_match_patch = require('diff_match_patch').diff_match_patch;
   var dmp = new diff_match_patch();
-
-  var diff_apply = function (baseText, newText1, diffs2) {
-    var patches2 = dmp.patch_make(baseText, diffs2);
-    var pair = dmp.patch_apply(patches, newText1);
-    var levenshtein = 0;
-    var succeeded = pair[1];
-    assert.equal(succeeded.length, diffs.length);
-    for (var i = 0; i < diffs.length; ++i) {
-      if (!succeeded[i]) {
-        levenshtein += dmp.diff_levenshtein(diffs[i]);
-      }
-    }
-    pair[1] = levenshtein;
-    return pair;
-  };
 
   this.getDiff = function (baseText, newText) {
     var diffs = dmp.diff_main(baseText, newText);
@@ -39,11 +31,11 @@ var Differ = function () {
 
   this.fastForward = function (baseText, diffStack) {
     for (var i = 0; i < diffStack.length; ++i) {
-      var pair = diff_apply(baseText, baseText, diffStack[i]);
-      var baseText = pair[0];
-      var levenshtein = pair[1];
-      if (levenshtein !== 0) {
-        console.log('fast forward failed, levenshtein = ' + levenshtein);
+      var patches = dmp.patch_make(baseText, diffStack[i]);
+      var pair = dmp.patch_apply(patches, baseText);
+      baseText = pair[0];
+      if (!every(pair[1])) {
+        console.log('fastForward failed on step ' + i);
       }
     }
     return baseText;
@@ -53,31 +45,11 @@ var Differ = function () {
     for (var i = 0; i < patchStack.length; ++i) {
       var pair = dmp.patch_apply(patchStack[i], baseText);
       baseText = pair[0];
-      var succeeded = pair[1];
-      if (!succeeded.every()) {
-        console.log('applyPatchStack patch failed');
+      if (!every(pair[1])) {
+        console.log('applyPatchStack failed on step ' + i);
       }
     }
     return baseText
-  };
-
-  this.threeWayMerge = function (baseText, newText1, diffs2) {
-
-    var pair = diff_apply(baseText, newText1, diffs2);
-    var merged21 = pair[0];
-    var levenshtein21 = pair[1];
-    if (levenshtein21 === 0) return merged21;
-    console.log('merge failed on first try, levenshtein = ' + levenshtein21);
-
-    var newText2 = dmp.patch_apply(patches2, newText1)[0];
-    var diffs1 = dmp.diff_main(baseText, newText1);
-    var pair = diff_apply(baseText, newText2, diffs1);
-    var merged12 = pair[0];
-    var levenshtein12 = pair[1];
-    if (levenshtein12 === 0) return merged12;
-    console.log('merge failed on second try, levenshtein = ' + levenshtein21);
-
-    return levenshtein12 <= levenshtein21 ? merged12 : merged21;
   };
 };
 
@@ -85,6 +57,12 @@ $(function(){
 
   var $editor = $('#editor');
   $editor.attr('disabled', true).text('connecting to server...');
+
+  if (window.io === undefined) {
+    $editor.text('server is down...');
+    setTimeout(function(){ window.location.reload() }, 60000);
+    return;
+  }
 
   var differ = new Differ();
 
@@ -166,16 +144,20 @@ $(function(){
       var clientBaseVersion = clientVersion - patchStack.length;
       assert(clientBaseVersion <= data.clientVersion &&
                                   data.clientVersion <= clientVersion,
-          'bad server.clientVersion: ' + data.clientVersion);
+          'bad clientVersion: ' + data.clientVersion);
       patchStack = patchStack.slice(data.clientVersion - clientBaseVersion);
 
+      socket_emit('serverVersion', serverVersion); // confirm
+      if (serverVersion === data.serverVersion) return;
+      console.log('DEBUG updating serverVersion '
+        + serverVersion + ' -> ' + data.serverVersion);
       serverVersion = data.serverVersion;
       serverText = differ.fastForward(serverText, diffStack);
-      socket_emit('serverVersion', serverVersion); // confirm
 
+      clientText = differ.applyPatchStack(serverText, patchStack);
       $editor
         .off('change') // avoid double-counting
-        .text(differ.applyPatchStack(serverText, patchStack))
+        .text(clientText)
         .on('change', updatePatches);
     });
   });
