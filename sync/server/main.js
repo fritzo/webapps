@@ -176,6 +176,8 @@ var syncToSocket = (function(){
     var newText = differ.applyPatchStack(currentText, patchStack);
     var diff = differ.getDiff(currentText, newText);
 
+    //console.log('DEBUG text = ' + newText);
+
     currentText = newText;
     history.push(diff);
     times.push(time);
@@ -209,7 +211,7 @@ var syncToSocket = (function(){
       if (serverVersion === history.length) return;
       var diffStack = history.slice(serverVersion);
       socket_emit('diffStack', {
-        serverVersion: serverVersion,
+        serverVersion: history.length,
         clientVersion: clientVersion,
         diffStack: diffStack
       });
@@ -227,6 +229,8 @@ var syncToSocket = (function(){
 
     socket_on('serverVersion', function (version) {
       assert(serverVersion <= version, 'bad version: ' + version);
+      //console.log('DEBUG updating serverVersion '
+      //  + serverVersion + ' -> ' + version);
       serverVersion = version;
     });
 
@@ -238,6 +242,9 @@ var syncToSocket = (function(){
                            clientVersion <= data.clientVersion,
           'bad clientVersion: ' + clientVersion);
       var patchStack = data.patchStack.slice(clientVersion - clientBase);
+      //console.log('DEBUG updating clientVersion '
+      //  + clientVersion + ' -> ' + data.clientVersion);
+      clientVersion = data.clientVersion;
 
       updateHistory(patchStack, time);
     });
@@ -255,8 +262,10 @@ var syncToSocket = (function(){
   };
 })();
 
+var clientId = 0;
 io.sockets.on('connection', function (socket) {
-  console.log('connected to client');
+  console.log('connected to client ' + (clientId++)
+    + ' (' + io.sockets.clients().length + ' clients connected)');
   syncToSocket(socket);
 });
 

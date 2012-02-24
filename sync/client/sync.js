@@ -56,10 +56,10 @@ var Differ = function () {
 $(function(){
 
   var $editor = $('#editor');
-  $editor.attr('disabled', true).text('connecting to server...');
+  $editor.attr('disabled', true).val('connecting to server...');
 
   if (window.io === undefined) {
-    $editor.text('server is down...');
+    $editor.val('server is down...');
     setTimeout(function(){ window.location.reload() }, 60000);
     return;
   }
@@ -75,11 +75,17 @@ $(function(){
   var socket;
   var socket_emit = function (name) {
     console.log('emitting ' + name);
+    //if (arguments.length > 1) {
+    //  console.log('  args = ' + JSON.stringify(arguments[1]));
+    //}
     socket.emit.apply(socket, arguments);
   };
   var socket_on = function (name, cb) {
     socket.on(name, function(){
       console.log('handling ' + name);
+      //if (arguments.length > 0) {
+      //  console.log('  args = ' + JSON.stringify(arguments[0]));
+      //}
       cb.apply(this, arguments);
     });
   };
@@ -90,9 +96,13 @@ $(function(){
       patchStack.push(differ.getPatch(clientText, newText));
       clientVersion += 1;
       clientText = newText;
+    } else {
+      if (Date.now() - updatePatches.lastPush < 5000) return;
     }
+    updatePatches.lastPush = Date.now();
     pushPatches();
   };
+  updatePatches.lastPush = 0;
 
   var pushPatches = function () {
     if (patchStack.length) {
@@ -106,7 +116,7 @@ $(function(){
   console.log('connecting to server');
   socket = io.connect('http://localhost:8080');
   socket_on('connect', function () {
-    $editor.text($editor.text() + ' connected.\nupdating...');
+    $editor.val($editor.val() + ' connected.\nupdating...');
   });
 
   var slowPoll = function () {
@@ -117,7 +127,7 @@ $(function(){
 
   var initClient = function () {
     socket_emit('initClient');
-    $editor.text($editor.text() + '\ntrying again...');
+    $editor.val($editor.val() + '\ntrying again...');
   };
   slowPoll.cb = initClient;
 
@@ -132,6 +142,8 @@ $(function(){
 
     $editor.val(clientText).removeAttr('disabled');
     $editor.on('change', updatePatches);
+    $editor.on('keyup', updatePatches);
+    $editor.on('click', updatePatches);
 
     socket_on('diffStack', function (data) {
 
@@ -149,16 +161,22 @@ $(function(){
 
       socket_emit('serverVersion', serverVersion); // confirm
       if (serverVersion === data.serverVersion) return;
-      console.log('DEBUG updating serverVersion '
-        + serverVersion + ' -> ' + data.serverVersion);
+      //console.log('DEBUG updating serverVersion '
+      //  + serverVersion + ' -> ' + data.serverVersion);
       serverVersion = data.serverVersion;
       serverText = differ.fastForward(serverText, diffStack);
 
       clientText = differ.applyPatchStack(serverText, patchStack);
-      $editor
-        .off('change') // avoid double-counting
-        .text(clientText)
-        .on('change', updatePatches);
+      $editor // avoid double-counting
+        .off('change')
+        .off('keyup')
+        .off('click')
+        .val(clientText)
+        .on('change', updatePatches)
+        .on('keyup', updatePatches)
+        .on('click', updatePatches);
+
+      //console.log('DEBUG text = ' + clientText);
     });
   });
 
