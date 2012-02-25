@@ -14,13 +14,6 @@ var assert = function (condition, message) {
   if (!condition) throw message;
 };
 
-var every = function (arg) {
-  for (var i = 0; i < arg.length; ++i) {
-    if (!arg[i]) return false;
-  }
-  return true;
-};
-
 //------------------------------------------------------------------------------
 // societ.io
 // see https://github.com/LearnBoost/socket.io
@@ -67,51 +60,61 @@ io.configure('production', function () {
 */
 
 //------------------------------------------------------------------------------
-// Differ
+// Patch Master
 // see http://code.google.com/p/google-diff-match-patch/wiki/API
 
 // server/main.js has canonical version
 // client/sync.js has slave version
-var Differ = function () {
+var patchMaster = (function(){
 
   var diff_match_patch = require('diff_match_patch').diff_match_patch;
   var dmp = new diff_match_patch();
 
-  this.getDiff = function (baseText, newText) {
-    var diffs = dmp.diff_main(baseText, newText);
-    dmp.diff_cleanupEfficiency(diffs); // optional
-    return diffs;
-  };
-
-  this.getPatch = function (baseText, newText) {
-    var diffs = dmp.diff_main(baseText, newText);
-    dmp.diff_cleanupEfficiency(diffs); // optional
-    return dmp.patch_make(baseText, diffs);
-  };
-
-  this.applyDiffStack = function (baseText, diffStack) {
-    for (var i = 0; i < diffStack.length; ++i) {
-      var patches = dmp.patch_make(baseText, diffStack[i]);
-      var pair = dmp.patch_apply(patches, baseText);
-      baseText = pair[0];
-      if (!every(pair[1])) {
-        console.log('WARNING applyDiffStack failed on step ' + i);
-      }
+  var every = function (arg) {
+    for (var i = 0; i < arg.length; ++i) {
+      if (!arg[i]) return false;
     }
-    return baseText;
+    return true;
   };
 
-  this.applyPatchStack = function (baseText, patchStack) {
-    for (var i = 0; i < patchStack.length; ++i) {
-      var pair = dmp.patch_apply(patchStack[i], baseText);
-      baseText = pair[0];
-      if (!every(pair[1])) {
-        console.log('WARNING applyPatchStack failed on step ' + i);
+  return {
+
+    getDiff: function (baseText, newText) {
+      var diffs = dmp.diff_main(baseText, newText);
+      dmp.diff_cleanupEfficiency(diffs); // optional
+      return diffs;
+    },
+
+    getPatch: function (baseText, newText) {
+      var diffs = dmp.diff_main(baseText, newText);
+      dmp.diff_cleanupEfficiency(diffs); // optional
+      return dmp.patch_make(baseText, diffs);
+    },
+
+    applyDiffStack: function (baseText, diffStack) {
+      for (var i = 0; i < diffStack.length; ++i) {
+        var patches = dmp.patch_make(baseText, diffStack[i]);
+        var pair = dmp.patch_apply(patches, baseText);
+        baseText = pair[0];
+        if (!every(pair[1])) {
+          console.log('WARNING applyDiffStack failed on step ' + i);
+        }
       }
+      return baseText;
+    },
+
+    applyPatchStack: function (baseText, patchStack) {
+      for (var i = 0; i < patchStack.length; ++i) {
+        var pair = dmp.patch_apply(patchStack[i], baseText);
+        baseText = pair[0];
+        if (!every(pair[1])) {
+          console.log('WARNING applyPatchStack failed on step ' + i);
+        }
+      }
+      return baseText
     }
-    return baseText
   };
-};
+})();
 
 //------------------------------------------------------------------------------
 // Synchronizer
@@ -119,15 +122,13 @@ var Differ = function () {
 
 (function(){
 
-  var differ = new Differ();
-
   var currentText = '';
   var history = [];
   var times = [];
 
   var updateHistory = function (patchStack, time) {
-    var newText = differ.applyPatchStack(currentText, patchStack);
-    var diff = differ.getDiff(currentText, newText);
+    var newText = patchMaster.applyPatchStack(currentText, patchStack);
+    var diff = patchMaster.getDiff(currentText, newText);
 
     //console.log('DEBUG text = ' + newText);
 

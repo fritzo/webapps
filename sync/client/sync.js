@@ -3,77 +3,69 @@ var assert = function (condition, message) {
   if (!condition) throw message;
 };
 
-var every = function (arg) {
-  for (var i = 0; i < arg.length; ++i) {
-    if (!arg[i]) return false;
-  }
-  return true;
-};
-
 //------------------------------------------------------------------------------
-// Differ
+// Patch Master
 // see http://code.google.com/p/google-diff-match-patch/wiki/API
 
 // server/main.js has canonical version
 // client/sync.js has slave version
-var Differ = function () {
+var patchMaster = (function(){
 
   //var diff_match_patch = require('diff_match_patch').diff_match_patch;
   var dmp = new diff_match_patch();
 
-  this.getDiff = function (baseText, newText) {
-    var diffs = dmp.diff_main(baseText, newText);
-    dmp.diff_cleanupEfficiency(diffs); // optional
-    return diffs;
-  };
-
-  this.getPatch = function (baseText, newText) {
-    var diffs = dmp.diff_main(baseText, newText);
-    dmp.diff_cleanupEfficiency(diffs); // optional
-    return dmp.patch_make(baseText, diffs);
-  };
-
-  this.applyDiffStack = function (baseText, diffStack) {
-    for (var i = 0; i < diffStack.length; ++i) {
-      var patches = dmp.patch_make(baseText, diffStack[i]);
-      var pair = dmp.patch_apply(patches, baseText);
-      baseText = pair[0];
-      if (!every(pair[1])) {
-        console.log('WARNING applyDiffStack failed on step ' + i);
-      }
+  var every = function (arg) {
+    for (var i = 0; i < arg.length; ++i) {
+      if (!arg[i]) return false;
     }
-    return baseText;
+    return true;
   };
 
-  this.applyPatchStack = function (baseText, patchStack) {
-    for (var i = 0; i < patchStack.length; ++i) {
-      var pair = dmp.patch_apply(patchStack[i], baseText);
-      baseText = pair[0];
-      if (!every(pair[1])) {
-        console.log('WARNING applyPatchStack failed on step ' + i);
+  return {
+
+    getDiff: function (baseText, newText) {
+      var diffs = dmp.diff_main(baseText, newText);
+      dmp.diff_cleanupEfficiency(diffs); // optional
+      return diffs;
+    },
+
+    getPatch: function (baseText, newText) {
+      var diffs = dmp.diff_main(baseText, newText);
+      dmp.diff_cleanupEfficiency(diffs); // optional
+      return dmp.patch_make(baseText, diffs);
+    },
+
+    applyDiffStack: function (baseText, diffStack) {
+      for (var i = 0; i < diffStack.length; ++i) {
+        var patches = dmp.patch_make(baseText, diffStack[i]);
+        var pair = dmp.patch_apply(patches, baseText);
+        baseText = pair[0];
+        if (!every(pair[1])) {
+          console.log('WARNING applyDiffStack failed on step ' + i);
+        }
       }
+      return baseText;
+    },
+
+    applyPatchStack: function (baseText, patchStack) {
+      for (var i = 0; i < patchStack.length; ++i) {
+        var pair = dmp.patch_apply(patchStack[i], baseText);
+        baseText = pair[0];
+        if (!every(pair[1])) {
+          console.log('WARNING applyPatchStack failed on step ' + i);
+        }
+      }
+      return baseText
     }
-    return baseText
   };
-};
+})();
 
 //------------------------------------------------------------------------------
 // Main
 
-$(function(){
+var syncTextarea = function ($editor) {
 
-  var $editor = $('#editor');
   $editor.attr('disabled', true).val('connecting to server...');
-
-  var reconnect = function () { window.location.reload(); };
-  if (window.io === undefined) {
-    $editor.val('server is down...');
-    $(document.body).click(reconnect);
-    setTimeout(reconnect, 30000);
-    return;
-  }
-
-  var differ = new Differ();
 
   var clientVersion = undefined;
   var clientText = undefined;
@@ -102,7 +94,7 @@ $(function(){
   var updatePatches = function () {
     var newText = $editor.val();
     if (newText !== clientText) {
-      patchStack.push(differ.getPatch(clientText, newText));
+      patchStack.push(patchMaster.getPatch(clientText, newText));
       clientVersion += 1;
       clientText = newText;
     } else {
@@ -173,9 +165,9 @@ $(function(){
       //  + serverVersion + ' -> ' + data.serverVersion);
       serverVersion = data.serverVersion;
       socket_emit('serverVersion', serverVersion); // confirm
-      serverText = differ.applyDiffStack(serverText, diffStack);
+      serverText = patchMaster.applyDiffStack(serverText, diffStack);
 
-      clientText = differ.applyPatchStack(serverText, patchStack);
+      clientText = patchMaster.applyPatchStack(serverText, patchStack);
       $editor // avoid double-counting
         .off('change')
         .off('keyup')
@@ -191,7 +183,7 @@ $(function(){
 
   // TODO deal with dropped connections, eg initClient
   socket_on('disconnect', function () {
-    reconnect(); // HACK TODO FIXME
+    window.location.reload(); // HACK TODO do this more gracefully
   });
   socket_on('reconnecting', function () {
   });
@@ -200,6 +192,27 @@ $(function(){
   socket_on('error', function (e) {
     console.log('error: ' + e);
   });
+};
+
+//----------------------------------------------------------------------------
+// Main
+
+$(function(){
+
+  if (window.io === undefined) {
+
+    $('textarea').val('server is down...');
+
+    var reload = function () {
+      window.location.reload();
+    };
+    $(document.body).click(reload);
+    setTimeout(reload, 30000);
+
+    return;
+  }
+
+  var $editor = $('#editor');
+  syncTextarea($editor);
 
 });
-
