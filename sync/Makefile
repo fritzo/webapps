@@ -40,7 +40,7 @@ log:
 
 test:
 	#forever start -c . /usr/bin/mongod
-	nodemon -w server server/main.js
+	nodemon -w server server/main.js | tee log/test.text
 	#forever stop mongod
 
 start: log

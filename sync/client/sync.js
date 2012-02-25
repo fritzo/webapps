@@ -10,6 +10,10 @@ var every = function (arg) {
   return true;
 };
 
+//------------------------------------------------------------------------------
+// Differ
+// see http://code.google.com/p/google-diff-match-patch/wiki/API
+
 // server/main.js has canonical version
 // client/sync.js has slave version
 var Differ = function () {
@@ -29,13 +33,13 @@ var Differ = function () {
     return dmp.patch_make(baseText, diffs);
   };
 
-  this.fastForward = function (baseText, diffStack) {
+  this.applyDiffStack = function (baseText, diffStack) {
     for (var i = 0; i < diffStack.length; ++i) {
       var patches = dmp.patch_make(baseText, diffStack[i]);
       var pair = dmp.patch_apply(patches, baseText);
       baseText = pair[0];
       if (!every(pair[1])) {
-        console.log('fastForward failed on step ' + i);
+        console.log('WARNING applyDiffStack failed on step ' + i);
       }
     }
     return baseText;
@@ -46,21 +50,26 @@ var Differ = function () {
       var pair = dmp.patch_apply(patchStack[i], baseText);
       baseText = pair[0];
       if (!every(pair[1])) {
-        console.log('applyPatchStack failed on step ' + i);
+        console.log('WARNING applyPatchStack failed on step ' + i);
       }
     }
     return baseText
   };
 };
 
+//------------------------------------------------------------------------------
+// Main
+
 $(function(){
 
   var $editor = $('#editor');
   $editor.attr('disabled', true).val('connecting to server...');
 
+  var reconnect = function () { window.location.reload(); };
   if (window.io === undefined) {
     $editor.val('server is down...');
-    setTimeout(function(){ window.location.reload() }, 60000);
+    $(document.body).click(reconnect);
+    setTimeout(reconnect, 30000);
     return;
   }
 
@@ -121,7 +130,7 @@ $(function(){
 
   var slowPoll = function () {
     if (slowPoll.cb) slowPoll.cb();
-    slowPoll.task = setTimeout(slowPoll.task, 5000);
+    slowPoll.task = setTimeout(slowPoll, 5000);
   };
   slowPoll.task = setTimeout(slowPoll, 5000);
 
@@ -159,12 +168,12 @@ $(function(){
           'bad clientVersion: ' + data.clientVersion);
       patchStack = patchStack.slice(data.clientVersion - clientBaseVersion);
 
-      socket_emit('serverVersion', serverVersion); // confirm
       if (serverVersion === data.serverVersion) return;
       //console.log('DEBUG updating serverVersion '
       //  + serverVersion + ' -> ' + data.serverVersion);
       serverVersion = data.serverVersion;
-      serverText = differ.fastForward(serverText, diffStack);
+      socket_emit('serverVersion', serverVersion); // confirm
+      serverText = differ.applyDiffStack(serverText, diffStack);
 
       clientText = differ.applyPatchStack(serverText, patchStack);
       $editor // avoid double-counting
@@ -182,6 +191,7 @@ $(function(){
 
   // TODO deal with dropped connections, eg initClient
   socket_on('disconnect', function () {
+    reconnect(); // HACK TODO FIXME
   });
   socket_on('reconnecting', function () {
   });

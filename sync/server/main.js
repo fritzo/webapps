@@ -89,13 +89,13 @@ var Differ = function () {
     return dmp.patch_make(baseText, diffs);
   };
 
-  this.fastForward = function (baseText, diffStack) {
+  this.applyDiffStack = function (baseText, diffStack) {
     for (var i = 0; i < diffStack.length; ++i) {
       var patches = dmp.patch_make(baseText, diffStack[i]);
       var pair = dmp.patch_apply(patches, baseText);
       baseText = pair[0];
       if (!every(pair[1])) {
-        console.log('fastForward failed on step ' + i);
+        console.log('WARNING applyDiffStack failed on step ' + i);
       }
     }
     return baseText;
@@ -106,7 +106,7 @@ var Differ = function () {
       var pair = dmp.patch_apply(patchStack[i], baseText);
       baseText = pair[0];
       if (!every(pair[1])) {
-        console.log('applyPatchStack failed on step ' + i);
+        console.log('WARNING applyPatchStack failed on step ' + i);
       }
     }
     return baseText
@@ -114,63 +114,16 @@ var Differ = function () {
 };
 
 //------------------------------------------------------------------------------
+// Synchronizer
 // see http://nodejs.org/docs/v0.3.1/api/crypto.html#hash.update
 
-/*
-var crypto = require('crypto');
-var getHash = function (text) {
-  return crypto.createHash('sha1').update(text).digest('hex');
-};
-*/
-
-var syncToSocket = (function(){
+(function(){
 
   var differ = new Differ();
-
-  /*
-  var History = function () {
-    this._text = '';
-    this._frames = [];
-  };
-
-  History.prototype = {
-
-    getLength: function () {
-      return this._frames.length - 1;
-    },
-
-    getFrame: function (index) {
-      assert(0 <= index && index < this._frames.length,
-        'frame index out of bounds: ' + index);
-      return this._frames[index];
-    },
-
-    addFrame: function (newText, time) {
-      time = time || Date.now();
-      if (newText === this._text) return;
-
-      var diffs = differ.getDiff(this._text, newText);
-
-      var index = this._frames.length;
-      this._text = newText;
-      this._frames[index] = {
-        index: index,
-        time: time,
-        diffs: diffs,
-        text: text // TODO OPTIMIZE clean out text when done
-      };
-
-      io.sockets.emit('pushDiff', {index:index, diffs:diffs});
-    }
-  };
-
-  var history = new History();
-  */
 
   var currentText = '';
   var history = [];
   var times = [];
-  var historyObservers = {};
 
   var updateHistory = function (patchStack, time) {
     var newText = differ.applyPatchStack(currentText, patchStack);
@@ -182,15 +135,17 @@ var syncToSocket = (function(){
     history.push(diff);
     times.push(time);
 
-    for (var key in historyObservers) {
-      historyObservers[key]();
+    var clients = io.sockets.clients();
+    for (var i = 0; i < clients.length; ++i) {
+      clients[i].get('pushHistory', function(err,val){ val(); });
     }
   };
 
-  var newSocketId = 0;
-  return function (socket) {
+  var newClientId = 0;
+  io.sockets.on('connection', function (socket) {
+    console.log('connected to client ' + (newClientId++)
+      + ' (' + io.sockets.clients().length + ' clients connected)');
 
-    var id = newSocketId++;
     var serverVersion = history.length;
     var serverText = currentText;
     var clientVersion = 0;
@@ -210,6 +165,7 @@ var syncToSocket = (function(){
     var pushHistory = function () {
       if (serverVersion === history.length) return;
       var diffStack = history.slice(serverVersion);
+      console.log('STATS diffStack.length = ' + diffStack.length);
       socket_emit('diffStack', {
         serverVersion: history.length,
         clientVersion: clientVersion,
@@ -222,7 +178,7 @@ var syncToSocket = (function(){
         version: serverVersion,
         text: serverText
       });
-      historyObservers[id] = pushHistory;
+      socket.set('pushHistory', pushHistory);
     };
     initClient();
     socket_on('initClient', initClient);
@@ -241,6 +197,7 @@ var syncToSocket = (function(){
       assert(clientBase <= clientVersion &&
                            clientVersion <= data.clientVersion,
           'bad clientVersion: ' + clientVersion);
+      console.log('STATS patchStack.length = ' + data.patchStack.length);
       var patchStack = data.patchStack.slice(clientVersion - clientBase);
       //console.log('DEBUG updating clientVersion '
       //  + clientVersion + ' -> ' + data.clientVersion);
@@ -259,16 +216,10 @@ var syncToSocket = (function(){
     socket_on('error', function (e) {
       console.log('error: ' + e);
     });
-  };
+  });
 })();
 
-var clientId = 0;
-io.sockets.on('connection', function (socket) {
-  console.log('connected to client ' + (clientId++)
-    + ' (' + io.sockets.clients().length + ' clients connected)');
-  syncToSocket(socket);
-});
-
+//------------------------------------------------------------------------------
 // clean exit
 
 var cleanExit = function () {
