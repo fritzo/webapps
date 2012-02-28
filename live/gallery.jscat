@@ -104,41 +104,46 @@ Rational.ball = function (radius) {
 };
 //print(Rational.ball(5).map(function(q){ return q.toNumber(); }));
 
-var radius = 16;      // larger radius -> more steps
-var temperature = 3;  // higher temperature -> more evenly-sized steps
-var totalTime = 6000; // in milliseconds
+var config = {
+  radius: 16,      // larger radius -> more steps
+  temperature: 3,  // higher temperature -> more evenly-sized steps
+  totalTime: 6000  // in milliseconds
+};
 
-var QQ = Rational.ball(radius);
-vars.freqs = QQ.map(function(q){
-  return middleC * q.toNumber();
-});
-var times = QQ.map(function(q){
-  return Math.exp(-q.norm() / temperature);
-});
-var sum = times.reduce(function(x,y){ return x+y; });
-var timeScale = totalTime / sum;
-vars.times = times.map(function(t){ return timeScale * t; });
+vars.scale = cached(function (config) {
 
-vars.starts = [0];
-vars.ends = [vars.times[0]];
-for (var i = 1; i < QQ.length; ++i) {
-  vars.starts[i] = vars.starts[i-1] + vars.times[i-1];
-  vars.ends[i] = vars.starts[i] + vars.times[i];
-}
+  var QQ = Rational.ball(config.radius);
+  vars.freqs = QQ.map(function(q){
+    return middleC * q.toNumber();
+  });
+  var times = QQ.map(function(q){
+    return Math.exp(-q.norm() / config.temperature);
+  });
+  var sum = times.reduce(function(x,y){ return x+y; });
+  var timeScale = config.totalTime / sum;
+  vars.times = times.map(function(t){ return timeScale * t; });
 
-if (vars.scale === undefined) {
-  var samples = new Array(totalTime * sampleRate);
+  vars.starts = [0];
+  vars.ends = [vars.times[0]];
+  for (var i = 1; i < QQ.length; ++i) {
+    vars.starts[i] = vars.starts[i-1] + vars.times[i-1];
+    vars.ends[i] = vars.starts[i] + vars.times[i];
+  }
+
+  var samples = new Array(config.totalTime * sampleRate);
   var phase = 0;
   for (var i = 0, t = 0, T = samples.length; t < T; ++t) {
     while (t / sampleRate > vars.ends[i]) ++i;
     samples[t] = 4 * Math.min(phase, 1 - phase) - 1; // triangle wave
     phase = (phase + vars.freqs[i] / sampleRate) % 1;
   }
-  vars.scale = encodeWav(samples);
-}
+
+  return encodeWav(samples);
+
+})(config);
 
 once.play = function(){
-   setTimeout(once.play, totalTime); // recurse before possible errors
+   setTimeout(once.play, config.totalTime); // recurse before possible errors
 
    play(vars.scale);
 };
