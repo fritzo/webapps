@@ -8,7 +8,8 @@
  * http://www.opensource.org/licenses/MIT
  */
 
-// TODO make this a module-as-closure, since noone else uses ui
+(function(){ // UI
+
 var ui = {};
 
 ui.reset = function () {
@@ -231,13 +232,13 @@ ui.shareHash = function () {
 //------------------------------------------------------------------------------
 // Admin
 
-var su = function () {
+window.su = function () {
   // turn on the ugly stuff
   $('#importExport, #su').show();
   localStorage.setItem('su', Date.now());
 };
 
-var nosu = function () {
+window.su.exit = function () {
   // turn off the ugly stuff
   $('#importExport, #su').hide();
   localStorage.removeItem('su');
@@ -353,7 +354,7 @@ $(function() {
           });
 
   if ('su' in localStorage) su();
-  $('#su').click(nosu).attr('title', 'leave superuser mode');
+  $('#su').click(su.exit).attr('title', 'leave superuser mode');
 
   $('#helpButton').click(function(){
         var $help = $('#help');
@@ -412,4 +413,6 @@ $(function() {
 
   coder.focus();
 });
+
+})(); // UI
 
