@@ -40,12 +40,12 @@ log:
 
 test:
 	#forever start -c . /usr/bin/mongod
-	nodemon -w server -w ../common server/syncserver.js | tee log/test.text
+	NODE_ENV=development \
+	  nodemon -w server -w ../common server/syncserver.js \
+	  | tee log/test.text
 	#forever stop mongod
 
 start: log
-	export NODE_ENV=development
-	@#export NODE_ENV=production
 	#forever -o log/db.out.text -e log/db.err.text start \
 	#  -c . /usr/bin/mongodb
 	forever -o log/server.out.text -e log/server.err.text \

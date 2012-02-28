@@ -76,7 +76,7 @@ var syncTextarea = function (args) {
   var setSource = args.setSource;
   var getSource = args.getSource;
   var onchange = args.onchange;
-  var serverUrl = args.serverUrl || 'http://localhost:8080/code'
+  var serverUrl = args.serverUrl || 'http://localhost:8080'
 
   setSource('connecting to server...');
 
@@ -128,7 +128,7 @@ var syncTextarea = function (args) {
   };
 
   console.log('connecting to server');
-  socket = io.connect(serverUrl);
+  socket = io.connect(serverUrl + '/code');
   socket_on('connect', function () {
     setSource(getSource() + '// connected.\n// updating...');
   });
@@ -206,9 +206,9 @@ var syncChatter = function (args) {
 
   var $write = args.$write.removeAttr('readonly');
   var $read = args.$read.attr('readonly', true);
-  var serverUrl = args.serverUrl || 'http://localhost:8080/chat'
+  var serverUrl = args.serverUrl || 'http://localhost:8080'
 
-  var socket = io.connect(serverUrl);
+  var socket = io.connect(serverUrl + '/chat');
   var socket_emit = function (name) {
     console.log('chat emitting ' + name);
     //if (arguments.length > 1) {

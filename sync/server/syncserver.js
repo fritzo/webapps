@@ -5,7 +5,8 @@
 
 // see http://nodejs.org/docs/latest/api/index.html
 
-process.env.NODE_ENV = 'development';
+process.env.NODE_ENV = process.env.NODE_ENV || 'production';
+console.log('NODE_ENV = ' + process.env.NODE_ENV);
 
 // see http://nodejs.org/docs/latest/api/assert.html
 //require('assert');
@@ -25,8 +26,14 @@ var channel = (function(){
     io.enable('browser client minification');
   });
   io.configure('development', function () {
+    io.set('origins', 'localhost:*');
+    //io.set('authorization', function (hs, cb) {
+    //  console.log('DEBUG ' + hs.headers.origin);
+    //  cb(null, true);
+    //});
   });
   io.configure('production', function () {
+    io.set('origins', 'livecoder.net:*');
     io.set('log level', 1);
     io.enable('browser client gzip', 'true');
     io.enable('browser client etag');
