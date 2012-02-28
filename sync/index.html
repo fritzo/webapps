@@ -23,6 +23,7 @@ if (window.io === undefined) {
 
 var $editor = $('#editor');
 syncTextarea({
+  serverUrl: 'http://localhost:8080',
   setSource: function (text) {
     $editor.val(text);
   },
@@ -37,8 +38,9 @@ syncTextarea({
 });
 
 syncChatter({
-  $read:$('#chatRead'),
-  $write:$('#chatWrite')
+  serverUrl: 'http://localhost:8080',
+  $read: $('#chatRead'),
+  $write: $('#chatWrite')
 });
 
 });

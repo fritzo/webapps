@@ -1,5 +1,5 @@
 
-(function(){ // MODULE
+//(function(){ // MODULE
 
 var assert = function (condition, message) {
   if (!condition) throw message;
@@ -75,12 +75,12 @@ this.syncTextarea = function (args) {
     reloadPageMs: 10000
   };
 
+  var serverUrl = args.serverUrl;
   var setSource = args.setSource;
   var getSource = args.getSource;
   var onchange = args.onchange;
-  var serverUrl = args.serverUrl || 'http://localhost:8080'
 
-  setSource('connecting to server...');
+  setSource('// connecting to server...');
 
   var clientVersion = undefined;
   var clientText = undefined;
@@ -132,7 +132,7 @@ this.syncTextarea = function (args) {
   console.log('connecting to server');
   socket = io.connect(serverUrl + '/code');
   socket_on('connect', function () {
-    setSource(getSource() + '// connected.\n// updating...');
+    setSource(getSource() + '\n// connected.\n// updating...');
   });
 
   var slowPoll = function () {
@@ -206,9 +206,9 @@ this.syncTextarea = function (args) {
 
 this.syncChatter = function (args) {
 
+  var serverUrl = args.serverUrl
   var $write = args.$write.removeAttr('readonly');
   var $read = args.$read.attr('readonly', true);
-  var serverUrl = args.serverUrl || 'http://localhost:8080'
 
   var socket = io.connect(serverUrl + '/chat');
   var socket_emit = function (name) {
@@ -272,5 +272,5 @@ this.syncChatter = function (args) {
   });
 };
 
-})(); // MODULE
+//})(); // MODULE
 

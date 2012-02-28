@@ -84,7 +84,10 @@ build:
 release:
 	mkdir release
 
-tools: compiler linter
+tools: uglifyjs compiler linter
+
+uglifyjs: FORCE
+	which uglifyjs || sudo npm install uglify-hs -g
 
 compiler:
 	rm -rf compiler
@@ -163,11 +166,10 @@ live-espeak: extern/espeak
 
 live: live-codemirror live-dmp live-espeak FORCE
 
-sync/server/client.js: extern/diff_match_patch.js sync/server/syncclient.js
-	$(COMPILE1) \
-	  --js=extern/diff_match_patch.js \
-	  --js=sync/server/syncclient.js \
-	  --js_output_file=sync/server/client.js
+sync/server/client.js: uglifyjs FORCE
+	cat extern/diff_match_patch.js sync/server/syncclient.js \
+	  | uglifyjs \
+	  > sync/server/client.js
 	
 live.nodester: sync/server/client.js FORCE
 	git submodule init
