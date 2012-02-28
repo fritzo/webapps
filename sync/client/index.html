@@ -22,8 +22,19 @@ if (window.io === undefined) {
   return;
 }
 
+var $editor = $('#editor');
 syncTextarea({
-  $editor: $('#editor')
+  setSource: function (text) {
+    $editor.val(text);
+  },
+  getSource: function () {
+    return $editor.val();
+  },
+  onchange: function (cb) {
+    $editor.on('change', cb);
+    $editor.on('keyup', cb);
+    $editor.on('click', cb);
+  }
 });
 
 syncChatter({

@@ -73,10 +73,12 @@ var syncTextarea = function (args) {
     reloadPageMs: 10000
   };
 
-  var $editor = args.$editor;
+  var setSource = args.setSource;
+  var getSource = args.getSource;
+  var onchange = args.onchange;
   var serverUrl = args.serverUrl || 'http://localhost:8080/code'
 
-  $editor.attr('disabled', true).val('connecting to server...');
+  setSource('connecting to server...');
 
   var clientVersion = undefined;
   var clientText = undefined;
@@ -103,7 +105,7 @@ var syncTextarea = function (args) {
   };
 
   var updatePatches = function () {
-    var newText = $editor.val();
+    var newText = getSource();
     if (newText !== clientText) {
       patchStack.push(patchMaster.getPatch(clientText, newText));
       clientVersion += 1;
@@ -128,7 +130,7 @@ var syncTextarea = function (args) {
   console.log('connecting to server');
   socket = io.connect(serverUrl);
   socket_on('connect', function () {
-    $editor.val($editor.val() + ' connected.\nupdating...');
+    setSource(getSource() + '// connected.\n// updating...');
   });
 
   var slowPoll = function () {
@@ -139,7 +141,7 @@ var syncTextarea = function (args) {
 
   var initClient = function () {
     socket_emit('initClient');
-    $editor.val($editor.val() + '\ntrying again...');
+    setSource(getSource() + '\n// trying again...');
   };
   slowPoll.cb = initClient;
 
@@ -152,10 +154,8 @@ var syncTextarea = function (args) {
     clientVersion = 0;
     clientText = data.text;
 
-    $editor.val(clientText).removeAttr('disabled');
-    $editor.on('change', updatePatches);
-    $editor.on('keyup', updatePatches);
-    $editor.on('click', updatePatches);
+    setSource(clientText);
+    onchange(updatePatches);
 
     socket_on('diffStack', function (data) {
 
@@ -178,15 +178,9 @@ var syncTextarea = function (args) {
       socket_emit('serverVersion', serverVersion); // confirm
       serverText = patchMaster.applyDiffStack(serverText, diffStack);
 
+      // setting client text first prevents patching & double counting
       clientText = patchMaster.applyPatchStack(serverText, patchStack);
-      $editor // avoid double-counting
-        .off('change')
-        .off('keyup')
-        .off('click')
-        .val(clientText)
-        .on('change', updatePatches)
-        .on('keyup', updatePatches)
-        .on('click', updatePatches);
+      setSource(clientText);
 
       //console.log('DEBUG text = ' + clientText);
     });
