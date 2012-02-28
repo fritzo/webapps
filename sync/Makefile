@@ -40,7 +40,7 @@ log:
 
 test:
 	#forever start -c . /usr/bin/mongod
-	nodemon -w server server/main.js | tee log/test.text
+	nodemon -w server -w ../common server/syncserver.js | tee log/test.text
 	#forever stop mongod
 
 start: log
@@ -50,10 +50,10 @@ start: log
 	#  -c . /usr/bin/mongodb
 	forever -o log/server.out.text -e log/server.err.text \
 		--watch --minUpTime 500 --spinSleepTime 4000 \
-		start server/main.js
+		start server/syncserver.js
 
 stop:
-	forever stop server/main.js
+	forever stop server/syncserver.js
 	#forever stop mongod
 
 #-------------------------------------------------------------------------------
