@@ -199,6 +199,19 @@ this.syncTextarea = function (args) {
   socket_on('error', function (e) {
     console.log('error: ' + e);
   });
+
+  return {
+    close: function () {
+      socket.disconnect();
+
+      slowPoll.cb = undefined;
+      clearTimeout(slowPoll.task);
+
+      clientText = '';
+      setSource = function () {};
+      getSource = function () { return clientText; };
+    }
+  };
 };
 
 //----------------------------------------------------------------------------
@@ -270,6 +283,15 @@ this.syncChatter = function (args) {
     };
     socket_on('message', show);
   });
+
+  return {
+    close: function () {
+      socket.close();
+
+      $read.val('');
+      $write.val('');
+    }
+  };
 };
 
 //})(); // MODULE

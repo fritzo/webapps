@@ -200,7 +200,14 @@ var patchMaster = (function(){
     var socket_on = function (name, cb) {
       socket.on(name, function(){
         console.log('handling ' + name);
-        cb.apply(this, arguments);
+        try {
+          cb.apply(this, arguments);
+        }
+        catch (err) {
+          console.log('Error: ' + err);
+          socket.emit('error', err);
+          socket.disconnect();
+        }
       });
     };
 

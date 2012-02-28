@@ -185,7 +185,6 @@ var coder = (function(){
       };
     };
 
-    // TODO coder.oncompile(function(){ diffHistory.add(coder.getSource()); });
     var compileHandlers = [];
     coder.oncompile = function (handler) {
       compileHandlers.push(handler);

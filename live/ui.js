@@ -230,6 +230,57 @@ ui.shareHash = function () {
 };
 
 //------------------------------------------------------------------------------
+// Jamming
+
+ui.jam = (function(){
+  if (!(this.syncTextarea && this.syncChatter)) return undefined;
+
+  var jammer;
+  var source; // keep an extra copy for sync polling
+  var onchange;
+
+  var getSource = function () {
+    return source;
+  };
+  var setSource = function (text) {
+    coder.setSource(source = text);
+  };
+  coder.oncompile(function(){
+    if (onchange) {
+      source = coder.getSource();
+      onchange();
+    }
+  });
+
+  var start = function () {
+    if (jammer) return;
+    jammer = syncTextarea({
+      serverUrl: 'http://localhost:8080',
+      setSource: setSource,
+      getSource: getSource,
+      onchange: function (cb) { onchange = cb; }
+    });
+
+    $('#jamButton').text('leave jam');
+  };
+
+  var stop = function () {
+    if (!jammer) return;
+    onchange = undefined;
+    jammer.close();
+    jammer = undefined;
+
+    $('#jamButton').text('join jam');
+  };
+
+  return {
+    start: start,
+    stop: stop,
+    toggle: function () { jammer ? stop() : start(); }
+  };
+})();
+
+//------------------------------------------------------------------------------
 // Admin
 
 window.su = function () {
@@ -379,6 +430,12 @@ $(function() {
     ui.buildScriptList();
   });
   $('#shareButton').click(ui.shareHash);
+
+  if (ui.jam) {
+    $('#jamButton').click(ui.jam.toggle);
+  } else {
+    $('#jamButtonSpan').hide();
+  }
 
   $('#export').click(function(){
         $('#galleryBox').val(ui.exportGallery).focus().select();
