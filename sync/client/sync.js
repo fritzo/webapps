@@ -74,20 +74,7 @@ var syncTextarea = function (args) {
   };
 
   var $editor = args.$editor;
-  var serverUrl = args.serverUrl || 'http://localhost:8080'
-
-  if (window.io === undefined) {
-
-    $editor.val('server is down...');
-
-    var reload = function () {
-      window.location.reload();
-    };
-    $(document.body).click(reload);
-    setTimeout(reload, config.reloadPageMs);
-
-    return;
-  }
+  var serverUrl = args.serverUrl || 'http://localhost:8080/code'
 
   $editor.attr('disabled', true).val('connecting to server...');
 
@@ -99,7 +86,7 @@ var syncTextarea = function (args) {
 
   var socket;
   var socket_emit = function (name) {
-    console.log('emitting ' + name);
+    console.log('code emitting ' + name);
     //if (arguments.length > 1) {
     //  console.log('  args = ' + JSON.stringify(arguments[1]));
     //}
@@ -107,7 +94,7 @@ var syncTextarea = function (args) {
   };
   var socket_on = function (name, cb) {
     socket.on(name, function(){
-      console.log('handling ' + name);
+      console.log('code handling ' + name);
       //if (arguments.length > 0) {
       //  console.log('  args = ' + JSON.stringify(arguments[0]));
       //}
@@ -215,6 +202,77 @@ var syncTextarea = function (args) {
   });
   socket_on('error', function (e) {
     console.log('error: ' + e);
+  });
+};
+
+//----------------------------------------------------------------------------
+// Chat
+
+var syncChatter = function (args) {
+
+  var $write = args.$write.removeAttr('readonly');
+  var $read = args.$read.attr('readonly', true);
+  var serverUrl = args.serverUrl || 'http://localhost:8080/chat'
+
+  var socket = io.connect(serverUrl);
+  var socket_emit = function (name) {
+    console.log('chat emitting ' + name);
+    //if (arguments.length > 1) {
+    //  console.log('  args = ' + JSON.stringify(arguments[1]));
+    //}
+    socket.emit.apply(socket, arguments);
+  };
+  var socket_on = function (name, cb) {
+    socket.on(name, function(){
+      console.log('chat handling ' + name);
+      //if (arguments.length > 0) {
+      //  console.log('  args = ' + JSON.stringify(arguments[0]));
+      //}
+      cb.apply(this, arguments);
+    });
+  };
+
+  var show = function (text) {
+    $read.val($read.val() + '\n\n' + text);
+  };
+  var submit = function (text) {};
+  $write.on('keyup', function (e) {
+    var ENTER = 13;
+    if (e.which === ENTER) {
+      submit($.trim($write.val()));
+      $write.val('');
+      e.preventDefault();
+    }
+  });
+
+  socket_on('connect', function () {
+    $read.val('enter nickname');
+    $write.val('');
+
+    submit = function (text) {
+      if (text.length > 64) {
+        $read.val('enter a shorter nickname');
+      } else if (text.length === 0) {
+        $read.val('enter a longer nickname');
+      } else {
+        socket_emit('login', text);
+        $read.val('logging in...');
+      }
+    };
+  });
+
+  socket_on('loginRetry', function (text) {
+    $read.val(text);
+  });
+
+  socket_on('loginDone', function (name) {
+    $read.val('logged in as ' + name);
+    submit = function (text) {
+      if (text.length === 0) return;
+      socket_emit('message', text);
+      show(name + ': ' + text);
+    };
+    socket_on('message', show);
   });
 };
 

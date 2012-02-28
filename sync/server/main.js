@@ -18,24 +18,32 @@ var assert = function (condition, message) {
 // socket.io
 // see https://github.com/LearnBoost/socket.io
 
-var io = require('socket.io').listen(8080);
-io.configure(function () {
-  io.enable('browser client minification');
-});
-io.configure('development', function () {
-});
-io.configure('production', function () {
-  io.set('log level', 1);
-  io.enable('browser client gzip', 'true');
-  io.enable('browser client etag');
-  io.set('transports', [
-    'websocket',
-    'flashsocket',
-    'htmlfile',
-    'xhr-polling',
-    'jsonp-polling'
-  ]);
-});
+var channel = (function(){
+
+  var io = require('socket.io').listen(8080);
+  io.configure(function () {
+    io.enable('browser client minification');
+  });
+  io.configure('development', function () {
+  });
+  io.configure('production', function () {
+    io.set('log level', 1);
+    io.enable('browser client gzip', 'true');
+    io.enable('browser client etag');
+    io.set('transports', [
+      'websocket',
+      'flashsocket',
+      'htmlfile',
+      'xhr-polling',
+      'jsonp-polling'
+    ]);
+  });
+
+  return function (name) {
+    return io.of(name);
+  };
+
+})();
 
 //------------------------------------------------------------------------------
 // mongodb via mongoose
@@ -132,6 +140,8 @@ var patchMaster = (function(){
 
 (function(){
 
+  var code = channel('/code');
+
   var currentText = '';
   var history = [];
   var times = [];
@@ -146,16 +156,16 @@ var patchMaster = (function(){
     history.push(diff);
     times.push(time);
 
-    var clients = io.sockets.clients();
+    var clients = code.clients();
     for (var i = 0; i < clients.length; ++i) {
       clients[i].get('pushHistory', function(err,val){ val(); });
     }
   };
 
   var newClientId = 0;
-  io.sockets.on('connection', function (socket) {
+  code.on('connection', function (socket) {
     console.log('connected to client ' + (newClientId++)
-      + ' (' + io.sockets.clients().length + ' clients connected)');
+      + ' (' + code.clients().length + ' clients connected)');
 
     var serverVersion = history.length;
     var serverText = currentText;
@@ -228,6 +238,68 @@ var patchMaster = (function(){
       console.log('error: ' + e);
     });
   });
+
+})();
+
+//------------------------------------------------------------------------------
+// Chat
+
+(function(){
+
+  var chat = channel('/chat');
+
+  var users = {};
+  chat.on('connection', function (socket) {
+
+    var socket_emit = function (name) {
+      console.log('emitting ' + name);
+      socket.emit.apply(socket, arguments);
+    };
+    var socket_on = function (name, cb) {
+      socket.on(name, function(){
+        console.log('handling ' + name);
+        cb.apply(this, arguments);
+      });
+    };
+
+    var user = undefined;
+    socket.on('login', function (name) {
+      if (user !== undefined) return;
+      if (name in users) {
+        socket.emit('loginRetry', 'try another nickname');
+        return;
+      }
+      if (name.length > 64) {
+        socket.emit('loginRetry', 'enter a shorter nickname');
+        return;
+      }
+
+      user = name;
+      var others = []
+      for (var i in users) others.push(i);
+      others = others.sort().join();
+      users[user] = socket;
+      socket.emit('loginDone', user);
+      socket.emit('message', 'joining ' + (others || '(nobody yet)'));
+      socket.broadcast.emit('message', user + ' has joined');
+      socket.on('message', function (text) {
+        socket.broadcast.emit('message', user + ': ' + text);
+      });
+    });
+
+    socket_on('disconnect', function () {
+      socket.broadcast.emit('message', user + ' has left');
+      delete users[user];
+    });
+    socket_on('reconnecting', function () {
+    });
+    socket_on('reconnect', function () {
+    });
+    socket_on('error', function (e) {
+      console.log('error: ' + e);
+    });
+  });
+
 })();
 
 //------------------------------------------------------------------------------

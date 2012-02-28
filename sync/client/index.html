@@ -7,9 +7,29 @@
 <script src='./sync.js'></script>
 <script>
 $(function(){
-  syncTextarea({
-    $editor: $('#editor')
-  });
+
+if (window.io === undefined) {
+
+  $('#editor').val('server is down...');
+
+  var reload = function () {
+    window.location.reload();
+  };
+  $(document.body).click(reload);
+  setTimeout(reload, config.reloadPageMs);
+
+  return;
+}
+
+syncTextarea({
+  $editor: $('#editor')
+});
+
+syncChatter({
+  $read:$('#chatRead'),
+  $write:$('#chatWrite')
+});
+
 });
 </script>
 <style>
@@ -24,13 +44,29 @@ textarea {
 #editor {
   top: 0;
   left: 0;
-  width: 100%;
+  width: 80%;
   height: 100%;
+}
+#chatRead {
+  top: 0;
+  left: 80%;
+  width: 20%;
+  height: 80%;
+  background-color: #eee;
+}
+#chatWrite {
+  top: 80%;
+  left: 80%;
+  width: 20%;
+  height: 20%;
+  background-color: #ffc;
 }
 </style>
 </head>
 <body>
 <textarea id='editor' noresize spellcheck='false'></textarea>
+<textarea id='chatRead' noresize readonly></textarea>
+<textarea id='chatWrite' noresize></textarea>
 </body>
 </html>
 
