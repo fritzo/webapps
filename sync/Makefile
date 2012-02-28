@@ -7,20 +7,12 @@ all: install start
 extern:
 	mkdir extern
 
-server/diff_match_patch.js: extern
-	rm -rf extern/diff_match_patch* && \
-	( test -e /tmp/diff_match_patch.zip || \
-	  wget http://google-diff-match-patch.googlecode.com/files/diff_match_patch_20120106.zip \
-	    -O /tmp/diff_match_patch.zip ) && \
-	unzip /tmp/diff_match_patch.zip -d extern/ && \
-	cp extern/diff_match_patch_*/javascript/diff_match_patch.js client/ && \
-	chmod 644 client/diff_match_patch.js
-
-server/client.js: server/diff_match_patch.js server/syncclient.js
-	cat server/diff_match_patch.js server/syncclient.js > server/client.js
+server/client.js: server/syncclient.js
+	@# use the closure compiler
+	$(MAKE) -C .. sync/server/client.js
 
 # TODO switch to using a node.js package.json
-install: extern client/diff_match_patch.js mongodb
+install: extern mongodb
 	npm install diff_match_patch
 	npm install express
 	npm install socket.io
@@ -43,7 +35,7 @@ log:
 
 test: server/client.js
 	#forever start -c . /usr/bin/mongod
-	NODE_ENV=development \
+	NODE_ENV=development NODE_PORT=8080 \
 	  nodemon -w server -w ../common server/server.js \
 	  | tee log/test.text
 	#forever stop mongod
@@ -51,6 +43,7 @@ test: server/client.js
 start: server/client.js log
 	#forever -o log/db.out.text -e log/db.err.text start \
 	#  -c . /usr/bin/mongodb
+	NODE_PORT=8080 \
 	forever -o log/server.out.text -e log/server.err.text \
 		--watch --minUpTime 500 --spinSleepTime 4000 \
 		start server/server.js

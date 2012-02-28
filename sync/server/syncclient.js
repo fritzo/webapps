@@ -1,4 +1,6 @@
 
+(function(){ // MODULE
+
 var assert = function (condition, message) {
   if (!condition) throw message;
 };
@@ -65,7 +67,7 @@ var patchMaster = (function(){
 //------------------------------------------------------------------------------
 // Synchronization
 
-var syncTextarea = function (args) {
+this.syncTextarea = function (args) {
 
   var config = {
     updateDelayMs: 5000,
@@ -202,7 +204,7 @@ var syncTextarea = function (args) {
 //----------------------------------------------------------------------------
 // Chat
 
-var syncChatter = function (args) {
+this.syncChatter = function (args) {
 
   var $write = args.$write.removeAttr('readonly');
   var $read = args.$read.attr('readonly', true);
@@ -269,4 +271,6 @@ var syncChatter = function (args) {
     socket_on('message', show);
   });
 };
+
+})(); // MODULE
 

@@ -48,7 +48,7 @@ extern/audiolibjs: extern FORCE
 	unzip /tmp/audiolibjs.zip -d extern/ && \
 	( cd extern ; ln -sf *-audiolib.js-* audiolibjs )
 
-extern/diff_match_patch.js: extern FORCE
+extern/diff_match_patch.js: extern
 	rm -rf extern/diff_match_patch* && \
 	( test -e /tmp/diff_match_patch.zip || \
 	  wget http://google-diff-match-patch.googlecode.com/files/diff_match_patch_20120106.zip \
@@ -162,6 +162,20 @@ live-espeak: extern/espeak
 	cat live/speakGenerator.js live/speakWrapper.js > live/speech.js
 
 live: live-codemirror live-dmp live-espeak FORCE
+
+sync/server/client.js: extern/diff_match_patch.js sync/server/syncclient.js
+	$(COMPILE1) \
+	  --js=extern/diff_match_patch.js \
+	  --js=sync/server/syncclient.js \
+	  --js_output_file=sync/server/client.js
+	
+live.nodester: sync/server/client.js FORCE
+	git submodule init
+	git submodule update
+	(cd live.nodester && git co master --force)
+	cp sync/server/server.js live.nodester/
+	cp sync/server/client.js live.nodester/
+
 
 #-------------------------------------------------------------------------------
 # keys

@@ -20,11 +20,10 @@ var assert = function (condition, message) {
 // see https://github.com/LearnBoost/socket.io
 
 var channel = (function(){
-
+  var NODESTER_PORT = 15019;
   var http = require('http');
   var url = require('url');
   var fs = require('fs');
-
   var server = http.createServer(function (req, res) {
     if (url.parse(req.url).pathname === '/client.js') {
       res.writeHead(200, {'Content-Type': 'text/javascript'});
@@ -34,7 +33,7 @@ var channel = (function(){
       res.write('404 Not Found\n' + req.url);
       res.end();
     }
-  }).listen(8080);
+  }).listen(process.env.NODE_PORT || NODESTER_PORT);
 
   var io = require('socket.io').listen(server);
   io.configure(function () {
