@@ -255,6 +255,15 @@ $(window).keydown(function (event) {
       event.preventDefault();
       break;
 
+    // CTRL+C to clear
+    case 67:
+      if (!event.ctrlKey) break;
+    //case ???: // cmd+C on mac
+      ui.blink($('#clearButton'));
+      coder.clear();
+      event.preventDefault();
+      break;
+
     // CTRL+S to save
     case 115: // WTF?
     case 83:

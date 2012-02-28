@@ -481,6 +481,7 @@ var coder = (function(){
 
     toggleCompiling: _toggleCompiling,
     oncompile: coder.oncompile,
+    clear: _clear,
 
     focus: function(){ _codemirror.focus(); },
 
