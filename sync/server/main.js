@@ -15,17 +15,26 @@ var assert = function (condition, message) {
 };
 
 //------------------------------------------------------------------------------
-// societ.io
+// socket.io
 // see https://github.com/LearnBoost/socket.io
 
 var io = require('socket.io').listen(8080);
 io.configure(function () {
-  io.set('browser client minification', 'true');
+  io.enable('browser client minification');
 });
 io.configure('development', function () {
 });
 io.configure('production', function () {
-  io.set('browser client gzip', 'true');
+  io.set('log level', 1);
+  io.enable('browser client gzip', 'true');
+  io.enable('browser client etag');
+  io.set('transports', [
+    'websocket',
+    'flashsocket',
+    'htmlfile',
+    'xhr-polling',
+    'jsonp-polling'
+  ]);
 });
 
 //------------------------------------------------------------------------------
@@ -67,7 +76,9 @@ io.configure('production', function () {
 // client/sync.js has slave version
 var patchMaster = (function(){
 
-  var diff_match_patch = require('diff_match_patch').diff_match_patch;
+  if (this.diff_match_patch === undefined) {
+    this.diff_match_patch = require('diff_match_patch').diff_match_patch;
+  }
   var dmp = new diff_match_patch();
 
   var every = function (arg) {
@@ -117,8 +128,7 @@ var patchMaster = (function(){
 })();
 
 //------------------------------------------------------------------------------
-// Synchronizer
-// see http://nodejs.org/docs/v0.3.1/api/crypto.html#hash.update
+// Synchronization
 
 (function(){
 

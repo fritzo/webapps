@@ -5,18 +5,27 @@
 <script src='http://localhost:8080/socket.io/socket.io.js'></script>
 <script src='./diff_match_patch.js'></script>
 <script src='./sync.js'></script>
+<script>
+$(function(){
+  syncTextarea({
+    $editor: $('#editor')
+  });
+});
+</script>
 <style>
 textarea {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
   outline: none;
   border: 0;
   padding: 0;
   margin: 0;
   overflow: auto;
+}
+#editor {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
 }
 </style>
 </head>

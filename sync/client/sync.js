@@ -11,7 +11,9 @@ var assert = function (condition, message) {
 // client/sync.js has slave version
 var patchMaster = (function(){
 
-  //var diff_match_patch = require('diff_match_patch').diff_match_patch;
+  if (this.diff_match_patch === undefined) {
+    this.diff_match_patch = require('diff_match_patch').diff_match_patch;
+  }
   var dmp = new diff_match_patch();
 
   var every = function (arg) {
@@ -61,9 +63,31 @@ var patchMaster = (function(){
 })();
 
 //------------------------------------------------------------------------------
-// Main
+// Synchronization
 
-var syncTextarea = function ($editor) {
+var syncTextarea = function (args) {
+
+  var config = {
+    updateDelayMs: 5000,
+    slowPollMs: 5000,
+    reloadPageMs: 10000
+  };
+
+  var $editor = args.$editor;
+  var serverUrl = args.serverUrl || 'http://localhost:8080'
+
+  if (window.io === undefined) {
+
+    $editor.val('server is down...');
+
+    var reload = function () {
+      window.location.reload();
+    };
+    $(document.body).click(reload);
+    setTimeout(reload, config.reloadPageMs);
+
+    return;
+  }
 
   $editor.attr('disabled', true).val('connecting to server...');
 
@@ -98,7 +122,7 @@ var syncTextarea = function ($editor) {
       clientVersion += 1;
       clientText = newText;
     } else {
-      if (Date.now() - updatePatches.lastPush < 5000) return;
+      if (Date.now() - updatePatches.lastPush < config.updateDelayMs) return;
     }
     updatePatches.lastPush = Date.now();
     pushPatches();
@@ -115,16 +139,16 @@ var syncTextarea = function ($editor) {
   };
 
   console.log('connecting to server');
-  socket = io.connect('http://localhost:8080');
+  socket = io.connect(serverUrl);
   socket_on('connect', function () {
     $editor.val($editor.val() + ' connected.\nupdating...');
   });
 
   var slowPoll = function () {
     if (slowPoll.cb) slowPoll.cb();
-    slowPoll.task = setTimeout(slowPoll, 5000);
+    slowPoll.task = setTimeout(slowPoll, config.slowPollMs);
   };
-  slowPoll.task = setTimeout(slowPoll, 5000);
+  slowPoll.task = setTimeout(slowPoll, config.slowPollMs);
 
   var initClient = function () {
     socket_emit('initClient');
@@ -194,25 +218,3 @@ var syncTextarea = function ($editor) {
   });
 };
 
-//----------------------------------------------------------------------------
-// Main
-
-$(function(){
-
-  if (window.io === undefined) {
-
-    $('textarea').val('server is down...');
-
-    var reload = function () {
-      window.location.reload();
-    };
-    $(document.body).click(reload);
-    setTimeout(reload, 30000);
-
-    return;
-  }
-
-  var $editor = $('#editor');
-  syncTextarea($editor);
-
-});
