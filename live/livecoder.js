@@ -166,6 +166,7 @@ var coder = (function(){
 
     var compiling = false;
     var vars = {};
+    var once = {};
     var always = {};
     var cache = {};
 
@@ -184,23 +185,6 @@ var coder = (function(){
       };
     };
 
-    // this prevents fun from being reentrant
-    var scheduled = function (fun) {
-      var running = false;
-      var result = function () {
-        if (!running) {
-          running = true;
-          setTimeout(function(){ fun(); running = false; }, 0);
-        }
-      };
-      result.immediately = function () {
-        running = true;
-        fun();
-        running = false;
-      };
-      return result;
-    };
-
     // TODO coder.oncompile(function(){ diffHistory.add(coder.getSource()); });
     var compileHandlers = [];
     coder.oncompile = function (handler) {
@@ -210,64 +194,73 @@ var coder = (function(){
     var preWrapper = (
         '"use strict";\n' +
         '(function(' +
-              'vars, always, cached, clear, setTimeout, using,' +
+              'vars, once, always, cached, clear, setTimeout, using,' +
               'help, print, error, draw' +
             '){\n');
     var postWrapper = '\n/**/})';
-    var compileAndEval = function (source) {
 
-      var compiled;
-      try {
-        compiled = globalEval(
-            preWrapper +
-            source.replace(/\bnonce\b/g,'if(0)') +
-            postWrapper);
-      }
-      catch (err) {
-        _warn(err);
-        return true;
-      }
-
-      _success();
-
-      try {
-        compiled(
-            vars, always, cached, _clear, _setTimeout, _using,
-            _help, _print, _error, _context2d);
-      }
-      catch (err) {
-        (err instanceof Warning ? _warn : _error)(err);
-        return true;
-      }
-
-      return false;
-    };
-
-    _compileSource = scheduled(function () {
+    _compileSource = function () {
 
       if (!compiling) {
         _warn('hit escape to compile');
         return;
       }
 
-      var cursor = _codemirror.getSearchCursor(/\bonce\b/g);
-      while (cursor.findNext()) {
-
-        var firstOnce = (_codemirror.getValue()
-            .replace(/\bonce\b/,'if(1)')     // activate first once &
-            .replace(/\bonce\b[\s\S]*/,'')); // truncate remaining
-
-        if (compileAndEval(firstOnce)) return;
-
-        cursor.replace('nonce'); // deactivate first once
+      var source = _codemirror.getValue();
+      var compiled;
+      try {
+        compiled = globalEval(preWrapper + source + postWrapper);
+      }
+      catch (err) {
+        _warn(err);
+        return;
       }
 
-      if (compileAndEval(_codemirror.getValue())) return;
+      _success();
+      var warnings = [];
+      var errors = [];
+
+      var oncePrev = {};
+      for (var key in once) {
+        oncePrev[key] = undefined;
+      }
+
+      try {
+        compiled(
+            vars, once, always, cached, _clear, _setTimeout, _using,
+            _help, _print, _error, _context2d);
+      }
+      catch (err) {
+        (err instanceof Warning ? warnings : errors).push(err.toString());
+      }
+
+      for (var key in once) {
+        if (!(key in oncePrev)) {
+          try {
+            once[key]();
+          }
+          catch (err) {
+            delete once[key]; // try again next compile
+            var message = 'In once[' + JSON.stringify(key) + ']: ' + err;
+            (err instanceof Warning ? warnings : errors).push(message);
+          }
+        }
+      }
+
+      if (errors.length) {
+        _error(errors.concat(warnings).join(';\n'));
+        return;
+      }
+
+      if (warnings.length) {
+        _warn(warnings.join(';\n'));
+        return;
+      }
 
       for (var i = 0; i < compileHandlers.length; ++i) {
         compileHandlers[i]();
       }
-    });
+    };
 
     _stopCompiling = function () {
       compiling = false;
@@ -287,6 +280,7 @@ var coder = (function(){
 
     _clearWorkspace = function () {
       for (var key in vars) { delete vars[key]; }
+      for (var key in once) { delete once[key]; }
       for (var key in always) { delete always[key]; }
       for (var key in cache) { delete cache[key]; }
     };
@@ -481,7 +475,6 @@ var coder = (function(){
 
     toggleCompiling: _toggleCompiling,
     oncompile: coder.oncompile,
-    clear: _clear,
 
     focus: function(){ _codemirror.focus(); },
 

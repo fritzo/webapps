@@ -11,6 +11,10 @@
 // TODO make this a module-as-closure, since noone else uses ui
 var ui = {};
 
+ui.reset = function () {
+  coder.setSource(coder.getSource());
+};
+
 //------------------------------------------------------------------------------
 // LocalStorage Persistence
 
@@ -134,7 +138,7 @@ ui.buildScriptList = function () {
 
   var keys = ui.listScripts();
 
-  $('#galleryButton').html('gallery (' + keys.length + ')');
+  $('#galleryCount').html(' (' + keys.length + ')');
 
   var menu = $('#gallery table').empty();
   for (var i = 0; i < keys.length; ++i) {
@@ -255,12 +259,12 @@ $(window).keydown(function (event) {
       event.preventDefault();
       break;
 
-    // CTRL+C to clear
+    // CTRL+C to reset
     case 67:
       if (!event.ctrlKey) break;
     //case ???: // cmd+C on mac
-      ui.blink($('#clearButton'));
-      coder.clear();
+      ui.blink($('#resetButton'));
+      ui.reset();
       event.preventDefault();
       break;
 
@@ -367,6 +371,7 @@ $(function() {
   $('#pauseButton').click(function(){ TODO('implement pause'); });
   $('#recordButton').click(function(){ TODO('implement record'); });
 
+  $('#resetButton').click(ui.reset);
   $('#saveButton').click(ui.saveScript);
   $('#galleryButton').click(function(){
     $('#gallery').fadeToggle('fast');
