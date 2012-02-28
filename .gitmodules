@@ -1,0 +1,3 @@
+[submodule "live.nodester"]
+	path = live.nodester
+	url = git@nodester.com:/node/git/fritzo/6866-ef9a315d6d8f7c84ba54d559634d859c.git
