@@ -21,7 +21,22 @@ var assert = function (condition, message) {
 
 var channel = (function(){
 
-  var io = require('socket.io').listen(8080);
+  var http = require('http');
+  var url = require('url');
+  var fs = require('fs');
+
+  var server = http.createServer(function (req, res) {
+    if (url.parse(req.url).pathname === '/client.js') {
+      res.writeHead(200, {'Content-Type': 'text/javascript'});
+      fs.createReadStream('server/client.js').pipe(res);
+    } else {
+      res.writeHead(404, {'Content-Type': 'text/plain'});
+      res.write('404 Not Found\n' + req.url);
+      res.end();
+    }
+  }).listen(8080);
+
+  var io = require('socket.io').listen(server);
   io.configure(function () {
     io.enable('browser client minification');
   });

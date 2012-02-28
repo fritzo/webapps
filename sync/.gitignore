@@ -1,4 +1,5 @@
 log
 extern
 node_modules
+server/client.js
 
