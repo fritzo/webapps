@@ -233,9 +233,12 @@ ui.shareHash = function () {
 // Jamming
 
 ui.jam = (function(){
-  if (!(this.syncTextarea && this.syncChatter)) return undefined;
+  if (!(this.syncCoder && this.syncChatter)) return undefined;
 
-  var jammer;
+  var serverUrl = 'http://localhost:8080';
+
+  var jamming;
+  var chatter;
   var source; // keep an extra copy for sync polling
   var onchange;
 
@@ -253,32 +256,46 @@ ui.jam = (function(){
   });
 
   var start = function () {
-    if (jammer) return;
-    jammer = syncTextarea({
-      serverUrl: 'http://localhost:8080',
-      setSource: setSource,
-      getSource: getSource,
-      setCursor: coder.setCursor,
-      getCursor: coder.getCursor,
-      onchange: function (cb) { onchange = cb; }
-    });
+    if (jamming) return;
+
+    jamming = {
+
+      code: syncCoder({
+        serverUrl: serverUrl,
+        setSource: setSource,
+        getSource: getSource,
+        setCursor: coder.setCursor,
+        getCursor: coder.getCursor,
+        onchange: function (cb) { onchange = cb; }
+      }),
+
+      chat: syncChatter({
+        serverUrl: serverUrl,
+        $read: $('#chatRead'),
+        $write: $('#chatWrite')
+      })
+    };
 
     $('#jamButton').text('leave jam');
+    $('#chat').fadeIn(100);
   };
 
   var stop = function () {
-    if (!jammer) return;
+    if (!jamming) return;
+
     onchange = undefined;
-    jammer.close();
-    jammer = undefined;
+    jamming.code.close();
+    jamming.chat.close();
+    jamming = undefined;
 
     $('#jamButton').text('join jam');
+    $('#chat').fadeOut(100);
   };
 
   return {
     start: start,
     stop: stop,
-    toggle: function () { jammer ? stop() : start(); }
+    toggle: function () { jamming ? stop() : start(); }
   };
 })();
 
@@ -387,7 +404,7 @@ $(function() {
   var hideOverlays = function () {
     $('#gallery,#shareBox,#help').fadeOut('fast');
   };
-  $('#log').on('focus', hideOverlays);
+  $('#log,#chat textarea').on('focus', hideOverlays);
 
   // XXX HACK FIXME
   $('#log')

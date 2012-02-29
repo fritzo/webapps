@@ -23,7 +23,7 @@ if (window.io === undefined) {
 
 var $editor = $('#editor');
 var editor = $editor[0];
-syncTextarea({
+syncCoder({
   serverUrl: 'http://localhost:8080',
   getSource: function () {
     return $editor.val();

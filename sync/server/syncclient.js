@@ -67,7 +67,7 @@ var patchMaster = (function(){
 //------------------------------------------------------------------------------
 // Synchronization
 
-this.syncTextarea = function (args) {
+this.syncCoder = function (args) {
 
   var config = {
     updateDelayMs: 5000,
@@ -284,21 +284,25 @@ this.syncChatter = function (args) {
   var show = function (text) {
     $read.val($read.val() + '\n\n' + text);
   };
-  var submit = function (text) {};
+  var submit = function (text) {
+    // do nothing until connected
+  };
   $write.on('keyup', function (e) {
     var ENTER = 13;
     if (e.which === ENTER) {
-      submit($.trim($write.val()));
+      submit($write.val());
       $write.val('');
       e.preventDefault();
     }
   });
 
   socket_on('connect', function () {
-    $read.val('enter nickname');
+    $read.val('enter a nickname');
     $write.val('');
 
     submit = function (text) {
+      text = $.trim(text);
+      text = text.replace(/\s*\n\s*/g,'\n');
       if (text.length > 64) {
         $read.val('enter a shorter nickname');
       } else if (text.length === 0) {
