@@ -76,8 +76,10 @@ this.syncTextarea = function (args) {
   };
 
   var serverUrl = args.serverUrl;
-  var setSource = args.setSource;
   var getSource = args.getSource;
+  var setSource = args.setSource;
+  var getCursor = args.getCursor;
+  var setCursor = args.setCursor;
   var onchange = args.onchange;
 
   setSource('// connecting to server...');
@@ -182,7 +184,45 @@ this.syncTextarea = function (args) {
 
       // setting client text first prevents patching & double counting
       clientText = patchMaster.applyPatchStack(serverText, patchStack);
+      if (getCursor && setCursor) {
+        var oldSource = getSource();
+        var oldCursor = getCursor && getCursor();
+      }
       setSource(clientText);
+
+      if (oldCursor) {
+        var start = oldCursor[0];
+        var end = oldCursor[1];
+        assert(0 <= start && start <= end && end <= oldSource.length,
+            'bad cursor: [' + start + ', ' + end + ']');
+
+        var diff = patchMaster.getDiff(oldSource, clientText);
+        var oldPos = 0;
+        var newPos = 0;
+        for (var i = 0, moveStart = true, moveEnd = true; moveEnd; ++i) {
+          var part = diff[i];
+          var parity = part[0];
+          var length = part[1].length;
+
+          if (parity <= 0) { // deletion or equal
+            if (moveStart && oldPos <= start && start <= oldPos + length) {
+              start += newPos - oldPos;
+              moveStart = false;
+            }
+            if (moveEnd && oldPos <= end && end <= oldPos + length) {
+              end += newPos - oldPos;
+              moveEnd = false;
+            }
+            oldPos += length;
+          }
+
+          if (parity >= 0) { // insertion or equal
+            newPos += length;
+          }
+        }
+
+        setCursor([start, end]);
+      }
 
       //console.log('DEBUG text = ' + clientText);
     });

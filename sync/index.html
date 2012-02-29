@@ -22,13 +22,21 @@ if (window.io === undefined) {
 }
 
 var $editor = $('#editor');
+var editor = $editor[0];
 syncTextarea({
   serverUrl: 'http://localhost:8080',
+  getSource: function () {
+    return $editor.val();
+  },
   setSource: function (text) {
     $editor.val(text);
   },
-  getSource: function () {
-    return $editor.val();
+  getCursor: function () {
+    return [editor.selectionStart, editor.selectionEnd];
+  },
+  setCursor: function (pair) {
+    editor.selectionStart = pair[0];
+    editor.selectionEnd = pair[1];
   },
   onchange: function (cb) {
     $editor.on('change', cb);
