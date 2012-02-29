@@ -8,6 +8,10 @@
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 console.log('NODE_ENV = ' + process.env.NODE_ENV);
 
+var NODESTER_PORT = 15019;
+process.env.NODE_PORT = process.env.NODE_PORT || NODESTER_PORT;
+console.log('NODE_PORT = ' + process.env.NODE_PORT);
+
 // see http://nodejs.org/docs/latest/api/assert.html
 //require('assert');
 
@@ -20,7 +24,6 @@ var assert = function (condition, message) {
 // see https://github.com/LearnBoost/socket.io
 
 var channel = (function(){
-  var NODESTER_PORT = 15019;
   var http = require('http');
   var url = require('url');
   var fs = require('fs');
@@ -33,7 +36,7 @@ var channel = (function(){
       res.write('404 Not Found\n' + req.url);
       res.end();
     }
-  }).listen(process.env.NODE_PORT || NODESTER_PORT);
+  }).listen(process.env.NODE_PORT);
 
   var io = require('socket.io').listen(server);
   io.configure(function () {
@@ -47,7 +50,7 @@ var channel = (function(){
     //});
   });
   io.configure('production', function () {
-    io.set('origins', 'livecoder.net:*');
+    io.set('origins', 'livecoder.net:80');
     io.set('log level', 1);
     io.enable('browser client gzip', 'true');
     io.enable('browser client etag');

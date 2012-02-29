@@ -36,7 +36,7 @@ log:
 test: server/client.js
 	#forever start -c . /usr/bin/mongod
 	NODE_ENV=development NODE_PORT=8080 \
-	  nodemon -w server -w ../common server/server.js \
+	  nodemon -w server server/server.js \
 	  | tee log/test.text
 	#forever stop mongod
 

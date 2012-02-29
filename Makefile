@@ -7,6 +7,7 @@ livecoder.net: FORCE
 	rm -rf $(LV)
 	cp -rL live $(LV)
 	rm -rf $(LV)/temp*
+	sed -i 's/localhost:8080/livecoder.nodester.com/g' $(LV)/ui.js $(LV)/index.html
 
 RK = ~/rationalkeyboard/keys
 rationalkeyboard: FORCE
