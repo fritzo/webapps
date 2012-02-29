@@ -258,6 +258,8 @@ ui.jam = (function(){
       serverUrl: 'http://localhost:8080',
       setSource: setSource,
       getSource: getSource,
+      setCursor: coder.setCursor,
+      getCursor: coder.getCursor,
       onchange: function (cb) { onchange = cb; }
     });
 

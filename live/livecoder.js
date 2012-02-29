@@ -148,6 +148,17 @@ var coder = (function(){
     return _codemirror.getValue();
   };
 
+  coder.getCursor = function () {
+    var startIndex = _codemirror.indexFromPos(_codemirror.getCursor(true));
+    var endIndex = _codemirror.indexFromPos(_codemirror.getCursor(false));
+    return [startIndex, endIndex];
+  };
+  coder.setCursor = function (pair) {
+    var startPos = _codemirror.posFromIndex(pair[0]);
+    var endPos = _codemirror.posFromIndex(pair[1]);
+    _codemirror.setSelection(startPos, endPos);
+  };
+
   //----------------------------------------------------------------------------
   // Evaluation
 
@@ -471,6 +482,8 @@ var coder = (function(){
 
     setSource: coder.setSource,
     getSource: coder.getSource,
+    setCursor: coder.setCursor,
+    getCursor: coder.getCursor,
 
     toggleCompiling: _toggleCompiling,
     oncompile: coder.oncompile,
