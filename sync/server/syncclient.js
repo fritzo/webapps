@@ -328,17 +328,21 @@ this.syncChatter = function (args) {
     }
   });
 
+  $read.val('connecting...');
+  $write.val('');
   socket_on('connect', function () {
     $read.val('enter a nickname');
-    $write.val('');
+    $write.focus();
 
     submit = function (text) {
       text = $.trim(text);
       text = text.replace(/\s*\n\s*/g,'\n');
-      if (text.length > 64) {
+      if (text.length > 32) {
         $read.val('enter a shorter nickname');
+        $write.focus();
       } else if (text.length === 0) {
         $read.val('enter a longer nickname');
+        $write.focus();
       } else {
         socket_emit('login', text);
         $read.val('logging in...');

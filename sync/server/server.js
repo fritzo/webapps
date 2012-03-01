@@ -339,7 +339,7 @@ var patchMaster = (function(){
         socket.emit('loginRetry', 'try another nickname');
         return;
       }
-      if (name.length > 64) {
+      if (name.length > 32) {
         socket.emit('loginRetry', 'enter a shorter nickname');
         return;
       }
