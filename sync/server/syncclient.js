@@ -369,6 +369,7 @@ this.syncChatter = function (args) {
 
       $read.val('');
       $write.val('');
+      onlogin = function () {};
     }
   };
 };

@@ -347,8 +347,10 @@ var patchMaster = (function(){
     });
 
     socket_on('disconnect', function () {
-      socket.broadcast.emit('message', user + ' has left');
-      delete users[user];
+      if (user) {
+        socket.broadcast.emit('message', user + ' has left');
+        delete users[user];
+      }
     });
     socket_on('reconnecting', function () {
     });

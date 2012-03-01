@@ -238,10 +238,9 @@ ui.jam = (function(){
   var serverUrl = 'http://localhost:8080';
 
   var jamming;
-  var chatter;
-  var source; // keep an extra copy for sync polling
   var onchange;
 
+  var source; // keep an extra copy for sync polling
   var getSource = function () {
     return source;
   };
@@ -260,30 +259,37 @@ ui.jam = (function(){
     if (jamming) return;
 
     oldMaxCodeSize = coder.getMaxCodeSize();
-    coder.setMaxCodeSize(syncCoder.MAX_CODE_SIZE);
 
-    jamming = {
+    var onlogin = function (username) {
+      localStorage.setItem('username', username);
 
-      code: syncCoder({
+      coder.setMaxCodeSize(syncCoder.MAX_CODE_SIZE);
+
+      assert(jamming, 'tried to login while not jamming');
+      jamming.code = syncCoder({
         serverUrl: serverUrl,
         setSource: setSource,
         getSource: getSource,
         setCursor: coder.setCursor,
         getCursor: coder.getCursor,
         onchange: function (cb) { onchange = cb; }
-      }),
+      });
 
+      $('#editor').show();
+      coder.focus();
+    };
+
+    jamming = {
       chat: syncChatter({
         serverUrl: serverUrl,
         $read: $('#chatRead'),
         $write: $('#chatWrite'),
-        onlogin: function (username) {
-          localStorage.setItem('username', username);
-          coder.focus();
-        }
-      })
+        onlogin: onlogin
+      }),
     };
 
+    coder.setSource('');
+    $('#editor').hide();
     $('#toolbar').css('right', '20%');
     $('#jamButton').text('leave jam');
     $('#chat').fadeIn(100, function(){
@@ -292,7 +298,6 @@ ui.jam = (function(){
           write.selectionStart = 0;
           write.selectionEnd = username.length;
         });
-    // TODO save username and store in localStorage
   };
 
   var stop = function () {
@@ -301,10 +306,11 @@ ui.jam = (function(){
     coder.setMaxCodeSize(oldMaxCodeSize);
 
     onchange = undefined;
-    jamming.code.close();
     jamming.chat.close();
+    if (jamming.code) jamming.code.close();
     jamming = undefined;
 
+    $('#editor').show();
     $('#toolbar').css('right', '0');
     $('#jamButton').text('join jam');
     $('#chat').fadeOut(100);
