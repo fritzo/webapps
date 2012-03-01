@@ -26,19 +26,28 @@ var assert = function (condition, message) {
 // see https://github.com/LearnBoost/socket.io
 
 var channel = (function(){
+
+  var path = require('path');
+  var clientjs = path.join(__dirname, 'client.js');
+  path.exists(clientjs, function (exists) {
+    assert(exists, 'client.js is missing');
+  });
+
   var http = require('http');
   var url = require('url');
   var fs = require('fs');
+
   var server = http.createServer(function (req, res) {
-    if (url.parse(req.url).pathname === '/client.js') {
+    var pathname = url.parse(req.url).pathname;
+    if (req.method === 'GET' && pathname === '/client.js') {
       res.writeHead(200, {'Content-Type': 'text/javascript'});
-      fs.createReadStream('server/client.js').pipe(res);
+      fs.createReadStream(clientjs).pipe(res);
     } else {
       res.writeHead(404, {'Content-Type': 'text/plain'});
       res.write('404 Not Found\n' + req.url);
       res.end();
     }
-  }).listen(process.env.NODE_PORT);
+  });
 
   var io = require('socket.io').listen(server);
   io.configure(function () {
@@ -64,6 +73,8 @@ var channel = (function(){
       'jsonp-polling'
     ]);
   });
+
+  server.listen(Number(process.env.NODE_PORT));
 
   return function (name) {
     return io.of(name);
