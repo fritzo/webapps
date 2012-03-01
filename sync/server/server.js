@@ -120,11 +120,33 @@ var patchMaster = (function(){
     return true;
   };
 
+  var compressDiffs = function (diffs) {
+    for (var i = 0; i < diffs.length; ++i) {
+      var diff = diffs[i];
+      if (diff[0] <= 0) {
+        diff[1] = diff[1].length;
+      }
+    }
+  };
+
+  var expandDiffs = function (baseText, diffs) {
+    var currPos = 0;
+    for (var i = 0; i < diffs.length; ++i) {
+      var diff = diffs[i];
+      if (diff[0] <= 0) {
+        var prevPos = currPos;
+        currPos += diff[1];
+        diff[1] = baseText.slice(prevPos, currPos);
+      }
+    }
+  };
+
   return {
 
     getDiff: function (baseText, newText) {
       var diffs = dmp.diff_main(baseText, newText);
       dmp.diff_cleanupEfficiency(diffs); // optional
+      compressDiffs(diffs);
       return diffs;
     },
 
@@ -136,7 +158,9 @@ var patchMaster = (function(){
 
     applyDiffStack: function (baseText, diffStack) {
       for (var i = 0; i < diffStack.length; ++i) {
-        var patches = dmp.patch_make(baseText, diffStack[i]);
+        var diffs = diffStack[i];
+        expandDiffs(baseText, diffs);
+        var patches = dmp.patch_make(baseText, diffs);
         var pair = dmp.patch_apply(patches, baseText);
         baseText = pair[0];
         if (!every(pair[1])) {
