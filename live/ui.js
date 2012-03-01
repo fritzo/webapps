@@ -284,6 +284,7 @@ ui.jam = (function(){
       })
     };
 
+    $('#toolbar').css('right', '20%');
     $('#jamButton').text('leave jam');
     $('#chat').fadeIn(100, function(){
           var username = localStorage.getItem('username');
@@ -304,6 +305,7 @@ ui.jam = (function(){
     jamming.chat.close();
     jamming = undefined;
 
+    $('#toolbar').css('right', '0');
     $('#jamButton').text('join jam');
     $('#chat').fadeOut(100);
   };

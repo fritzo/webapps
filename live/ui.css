@@ -116,13 +116,13 @@ textarea,
 #chat textarea {
   display: block;
   position: fixed;
-  left: 80%;
-  width: 19%;
+  left: 81%;
+  width: 18%;
   color: white;
   font-family: helvetica, verdana, sans;
   font-size: small;
   color: white;
-  border: none;
+  border: solid 2px black;
   padding: 0;
   margin: 0;
   resize: none;
@@ -136,8 +136,8 @@ textarea,
   outline: none;
 }
 #chatWrite {
-  top: 90%;
-  height: 9%;
+  top: 91%;
+  height: 8%;
   background-color: rgb(63,63,63);
 }
 
