@@ -255,8 +255,12 @@ ui.jam = (function(){
     }
   });
 
+  var oldMaxCodeSize;
   var start = function () {
     if (jamming) return;
+
+    oldMaxCodeSize = coder.getMaxCodeSize();
+    coder.setMaxCodeSize(syncCoder.MAX_CODE_SIZE);
 
     jamming = {
 
@@ -277,11 +281,13 @@ ui.jam = (function(){
     };
 
     $('#jamButton').text('leave jam');
-    $('#chat').fadeIn(100);
+    $('#chat').fadeIn(100, function(){ $('#chatWrite').focus(); });
   };
 
   var stop = function () {
     if (!jamming) return;
+
+    coder.setMaxCodeSize(oldMaxCodeSize);
 
     onchange = undefined;
     jamming.code.close();

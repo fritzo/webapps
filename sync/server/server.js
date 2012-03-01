@@ -5,6 +5,8 @@
 
 // see http://nodejs.org/docs/latest/api/index.html
 
+var MAX_CODE_SIZE = 8192;
+
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 console.log('NODE_ENV = ' + process.env.NODE_ENV);
 
@@ -196,6 +198,8 @@ var patchMaster = (function(){
 
   var updateHistory = function (patchStack, time) {
     var newText = patchMaster.applyPatchStack(currentText, patchStack);
+    assert(newText.length < MAX_CODE_SIZE,
+        'code is too big: length = ' + newText.length);
     var diff = patchMaster.getDiff(currentText, newText);
 
     //console.log('DEBUG text = ' + newText);

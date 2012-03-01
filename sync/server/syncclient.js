@@ -1,6 +1,8 @@
 
 if(1){(function(){ // MODULE
 
+var MAX_CODE_SIZE = 8192;
+
 var assert = function (condition, message) {
   if (!condition) throw message;
 };
@@ -132,19 +134,21 @@ this.syncCoder = function (args) {
     });
   };
 
-  var updatePatches = function () {
+  var checkForLocalChanges = function () {
     var newText = getSource();
+    assert(newText.length <= MAX_CODE_SIZE,
+        'code is too big: length = ' + newText.length);
     if (newText !== clientText) {
       patchStack.push(patchMaster.getPatch(clientText, newText));
       clientVersion += 1;
       clientText = newText;
     } else {
-      if (Date.now() - updatePatches.lastPush < config.updateDelayMs) return;
+      if (Date.now() < checkForLocalChanges.nextPush) return;
     }
-    updatePatches.lastPush = Date.now();
+    checkForLocalChanges.nextPush = Date.now() + config.updateDelayMs;
     pushPatches();
   };
-  updatePatches.lastPush = 0;
+  checkForLocalChanges.nextPush = config.updateDelayMs;
 
   var pushPatches = function () {
     if (patchStack.length) {
@@ -183,7 +187,7 @@ this.syncCoder = function (args) {
     clientText = data.text;
 
     setSource(clientText);
-    onchange(updatePatches);
+    onchange(checkForLocalChanges);
 
     socket_on('diffStack', function (data) {
 
@@ -279,6 +283,8 @@ this.syncCoder = function (args) {
   };
 };
 
+this.syncCoder.MAX_CODE_SIZE = MAX_CODE_SIZE;
+
 //----------------------------------------------------------------------------
 // Chat
 
@@ -307,7 +313,7 @@ this.syncChatter = function (args) {
   };
 
   var show = function (text) {
-    $read.val($read.val() + '\n\n' + text);
+    $read.val($read.val() + '\n- ' + text);
   };
   var submit = function (text) {
     // do nothing until connected
@@ -344,8 +350,10 @@ this.syncChatter = function (args) {
   });
 
   socket_on('loginDone', function (name) {
-    $read.val('logged in as ' + name);
+    $read.val('- logged in as ' + name);
     submit = function (text) {
+      text = $.trim(text);
+      text = text.replace(/\s*\n\s*/g,'\n');
       if (text.length === 0) return;
       socket_emit('message', text);
       show(name + ': ' + text);
