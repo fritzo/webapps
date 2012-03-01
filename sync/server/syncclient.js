@@ -365,7 +365,7 @@ this.syncChatter = function (args) {
 
   return {
     close: function () {
-      socket.close();
+      socket.disconnect();
 
       $read.val('');
       $write.val('');

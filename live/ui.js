@@ -285,7 +285,7 @@ ui.jam = (function(){
         $read: $('#chatRead'),
         $write: $('#chatWrite'),
         onlogin: onlogin
-      }),
+      })
     };
 
     coder.setSource('');
