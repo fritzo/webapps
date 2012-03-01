@@ -363,6 +363,18 @@ this.syncChatter = function (args) {
     onlogin(name);
   });
 
+  // TODO deal with dropped connections
+  socket_on('disconnect', function () {
+    window.location.reload(); // HACK TODO do this more gracefully
+  });
+  socket_on('reconnecting', function () {
+  });
+  socket_on('reconnect', function () {
+  });
+  socket_on('error', function (e) {
+    console.log('error: ' + e);
+  });
+
   return {
     close: function () {
       socket.disconnect();
