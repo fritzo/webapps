@@ -293,6 +293,7 @@ this.syncChatter = function (args) {
   var serverUrl = args.serverUrl
   var $write = args.$write.removeAttr('readonly');
   var $read = args.$read.attr('readonly', true);
+  var onlogin = args.onlogin || function(){};
 
   var socket = io.connect(serverUrl + '/chat');
   var socket_emit = function (name) {
@@ -318,7 +319,7 @@ this.syncChatter = function (args) {
   var submit = function (text) {
     // do nothing until connected
   };
-  $write.on('keyup', function (e) {
+  $write.on('keydown', function (e) {
     var ENTER = 13;
     if (e.which === ENTER) {
       submit($write.val());
@@ -359,6 +360,7 @@ this.syncChatter = function (args) {
       show(name + ': ' + text);
     };
     socket_on('message', show);
+    onlogin(name);
   });
 
   return {

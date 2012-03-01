@@ -276,12 +276,22 @@ ui.jam = (function(){
       chat: syncChatter({
         serverUrl: serverUrl,
         $read: $('#chatRead'),
-        $write: $('#chatWrite')
+        $write: $('#chatWrite'),
+        onlogin: function (username) {
+          localStorage.setItem('username', username);
+          coder.focus();
+        }
       })
     };
 
     $('#jamButton').text('leave jam');
-    $('#chat').fadeIn(100, function(){ $('#chatWrite').focus(); });
+    $('#chat').fadeIn(100, function(){
+          var username = localStorage.getItem('username');
+          var write = $('#chatWrite').focus().val(username)[0];
+          write.selectionStart = 0;
+          write.selectionEnd = username.length;
+        });
+    // TODO save username and store in localStorage
   };
 
   var stop = function () {
